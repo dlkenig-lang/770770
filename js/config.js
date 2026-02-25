@@ -2,8 +2,8 @@
 // Supabase Configuration
 // Replace with your actual Supabase project URL and anon key
 // =============================================
-const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+const SUPABASE_URL = 'https://qiibgzypiljjwjqebyxo.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpaWJnenlwaWxqandqcWVieXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMDg0MDQsImV4cCI6MjA4NzU4NDQwNH0.EKWJxVJkMX3vGzfosXWnQEYZ5iWtMlrg8SmG6xVwqYU';
 
 // Initialize Supabase client
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

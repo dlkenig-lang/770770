@@ -4,6 +4,7 @@
   "description": "Quality Control App for Pod Manufacturing - בקרת איכות ייצור פודים",
   "private": true,
   "scripts": {
+    "build": "echo 'Static site - no build needed'",
     "start": "npx serve . -p 3000",
     "dev": "npx live-server --port=3000"
   },

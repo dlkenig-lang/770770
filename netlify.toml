@@ -1,9 +1,10 @@
 [build]
-  publish = "."
-  command = "echo 'Static site - no build needed'"
+publish = "dist"
+command = "npm run build"
 
 [[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-Content-Type-Options = "nosniff"
+for = "/*"
+
+[headers.values]
+X-Frame-Options = "DENY"
+X-Content-Type-Options = "nosniff"

@@ -565,17 +565,21 @@ async function createProject() {
           .select().single();
         if (dirErr) throw dirErr;
 
-        // Create pods
+        // Create pods in a single batch insert
+        const podsToInsert = [];
         for (let s = 1; s <= podCount; s++) {
-          const podCode = generatePodCode(code, dateReceived, i, dir, s);
-          await supabaseClient.from('pods').insert({
+          podsToInsert.push({
             project_id: project.id,
             type_id: typeData.id,
             direction_id: dirData.id,
             serial_number: s,
-            pod_code: podCode,
+            pod_code: generatePodCode(code, dateReceived, i, dir, s),
             status: 'pending',
           });
+        }
+        if (podsToInsert.length > 0) {
+          const { error: podsErr } = await supabaseClient.from('pods').insert(podsToInsert);
+          if (podsErr) throw podsErr;
         }
       }
     }

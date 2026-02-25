@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>בקרת איכות - ייצור פודים</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <!-- JsBarcode -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <!-- jsPDF -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <!-- SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- QRCode -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <!-- Signature Pad -->
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ========== LOADING SCREEN ========== -->
+<div id="loading-screen" class="loading-screen">
+  <div class="loading-content">
+    <div class="loading-logo">QC</div>
+    <div class="loading-title">בקרת איכות פודים</div>
+    <div class="loading-spinner"></div>
+  </div>
+</div>
+
+<!-- ========== APP WRAPPER ========== -->
+<div id="app" class="app hidden">
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="navbar-brand">
+      <span class="brand-icon">🏭</span>
+      <span class="brand-text">בקרת איכות פודים</span>
+    </div>
+    <div class="navbar-menu">
+      <span id="nav-user-name" class="nav-user"></span>
+      <span id="nav-user-role" class="nav-role-badge"></span>
+      <button class="btn btn-ghost btn-sm" id="btn-logout">התנתק</button>
+    </div>
+  </nav>
+
+  <!-- SIDEBAR -->
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <nav class="sidebar-nav">
+        <a href="#" class="sidebar-item active" data-view="dashboard">
+          <span class="sidebar-icon">🏠</span><span>לוח בקרה</span>
+        </a>
+        <a href="#" class="sidebar-item" data-view="projects">
+          <span class="sidebar-icon">📋</span><span>פרויקטים</span>
+        </a>
+        <a href="#" class="sidebar-item admin-only" data-view="users">
+          <span class="sidebar-icon">👥</span><span>ניהול משתמשים</span>
+        </a>
+        <a href="#" class="sidebar-item admin-only pm-only" data-view="reports">
+          <span class="sidebar-icon">📊</span><span>דוחות</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content" id="main-content">
+
+      <!-- ===== DASHBOARD VIEW ===== -->
+      <div id="view-dashboard" class="view active">
+        <div class="page-header">
+          <h1>לוח בקרה</h1>
+        </div>
+        <div class="stats-grid" id="dashboard-stats"></div>
+        <div class="dashboard-recent">
+          <h2>פרויקטים פעילים</h2>
+          <div id="dashboard-projects-list" class="projects-grid"></div>
+        </div>
+      </div>
+
+      <!-- ===== PROJECTS VIEW ===== -->
+      <div id="view-projects" class="view">
+        <div class="page-header">
+          <h1>פרויקטים</h1>
+          <button class="btn btn-primary admin-only pm-only" id="btn-new-project">+ פרויקט חדש</button>
+        </div>
+        <div id="projects-list" class="projects-grid"></div>
+      </div>
+
+      <!-- ===== PROJECT DETAIL VIEW ===== -->
+      <div id="view-project-detail" class="view">
+        <div class="page-header">
+          <button class="btn btn-ghost" id="btn-back-projects">← חזרה</button>
+          <h1 id="project-detail-title">פרויקט</h1>
+          <div class="header-actions">
+            <button class="btn btn-secondary admin-only pm-only" id="btn-edit-project">עריכה</button>
+            <button class="btn btn-primary admin-only pm-only" id="btn-add-pod">+ הוסף פוד</button>
+          </div>
+        </div>
+        <div id="project-info-bar" class="project-info-bar"></div>
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="pods">פודים</button>
+          <button class="tab-btn" data-tab="groups">קבוצות ביצוע</button>
+          <button class="tab-btn" data-tab="details">פרטים נוספים</button>
+          <button class="tab-btn" data-tab="plans">תוכניות</button>
+        </div>
+        <div id="tab-pods" class="tab-content active">
+          <div class="filter-bar">
+            <select id="filter-group" class="form-control filter-select">
+              <option value="">כל הקבוצות</option>
+            </select>
+            <select id="filter-type" class="form-control filter-select">
+              <option value="">כל הטיפוסים</option>
+            </select>
+            <select id="filter-direction" class="form-control filter-select">
+              <option value="">כל הכיוונים</option>
+            </select>
+            <select id="filter-status" class="form-control filter-select">
+              <option value="">כל הסטטוסים</option>
+              <option value="pending">ממתין</option>
+              <option value="in_progress">בביצוע</option>
+              <option value="completed">הושלם</option>
+              <option value="failed">נכשל</option>
+            </select>
+          </div>
+          <div id="pods-table-container"></div>
+        </div>
+        <div id="tab-groups" class="tab-content">
+          <div class="groups-header">
+            <button class="btn btn-primary admin-only pm-only" id="btn-add-group">+ הוסף קבוצה</button>
+          </div>
+          <div id="groups-list"></div>
+        </div>
+        <div id="tab-details" class="tab-content">
+          <div id="project-details-form"></div>
+        </div>
+        <div id="tab-plans" class="tab-content">
+          <div id="plans-list"></div>
+        </div>
+      </div>
+
+      <!-- ===== POD DETAIL / QC VIEW ===== -->
+      <div id="view-pod-detail" class="view">
+        <div class="page-header">
+          <button class="btn btn-ghost" id="btn-back-project">← חזרה לפרויקט</button>
+          <div class="pod-header-info">
+            <h1 id="pod-detail-code" class="pod-code-title"></h1>
+            <span id="pod-detail-status" class="status-badge"></span>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-secondary" id="btn-pod-comments">💬 הערות</button>
+            <button class="btn btn-secondary" id="btn-pod-barcode">🔲 ברקוד</button>
+            <button class="btn btn-primary admin-only pm-only inspector-only" id="btn-pod-pdf">📄 ייצוא PDF</button>
+            <button class="btn btn-primary admin-only pm-only" id="btn-pod-excel">📊 ייצוא Excel</button>
+          </div>
+        </div>
+        <div id="pod-info-bar" class="pod-info-bar"></div>
+        <div id="qc-stages-container" class="qc-stages-container"></div>
+      </div>
+
+      <!-- ===== USERS VIEW ===== -->
+      <div id="view-users" class="view">
+        <div class="page-header">
+          <h1>ניהול משתמשים</h1>
+        </div>
+        <div id="users-list"></div>
+      </div>
+
+      <!-- ===== REPORTS VIEW ===== -->
+      <div id="view-reports" class="view">
+        <div class="page-header">
+          <h1>דוחות</h1>
+        </div>
+        <div id="reports-content"></div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ========== AUTH SCREENS ========== -->
+<div id="auth-screen" class="auth-screen">
+  <!-- Login -->
+  <div id="auth-login" class="auth-panel active">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">QC</div>
+        <h1>בקרת איכות פודים</h1>
+        <p>כניסה למערכת</p>
+      </div>
+      <form id="form-login" class="auth-form">
+        <div class="form-group">
+          <label>אימייל</label>
+          <input type="email" id="login-email" class="form-control" placeholder="your@email.com" required />
+        </div>
+        <div class="form-group">
+          <label>סיסמה</label>
+          <div class="input-password-wrapper">
+            <input type="password" id="login-password" class="form-control" placeholder="••••••••" required />
+            <button type="button" class="btn-show-pass" data-target="login-password">👁</button>
+          </div>
+        </div>
+        <div id="login-error" class="error-msg hidden"></div>
+        <button type="submit" class="btn btn-primary btn-full">כניסה</button>
+      </form>
+      <div class="auth-links">
+        <a href="#" id="link-forgot">שכחתי סיסמה</a>
+        <a href="#" id="link-register">הרשמה</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register -->
+  <div id="auth-register" class="auth-panel">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">QC</div>
+        <h1>הרשמה</h1>
+        <p>צור חשבון חדש</p>
+      </div>
+      <form id="form-register" class="auth-form">
+        <div class="form-group">
+          <label>שם מלא</label>
+          <input type="text" id="reg-name" class="form-control" placeholder="ישראל ישראלי" required />
+        </div>
+        <div class="form-group">
+          <label>אימייל</label>
+          <input type="email" id="reg-email" class="form-control" placeholder="your@email.com" required />
+        </div>
+        <div class="form-group">
+          <label>סיסמה</label>
+          <div class="input-password-wrapper">
+            <input type="password" id="reg-password" class="form-control" placeholder="לפחות 6 תווים" required minlength="6" />
+            <button type="button" class="btn-show-pass" data-target="reg-password">👁</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>אימות סיסמה</label>
+          <div class="input-password-wrapper">
+            <input type="password" id="reg-password2" class="form-control" placeholder="חזור על הסיסמה" required />
+            <button type="button" class="btn-show-pass" data-target="reg-password2">👁</button>
+          </div>
+        </div>
+        <div id="register-error" class="error-msg hidden"></div>
+        <div id="register-success" class="success-msg hidden"></div>
+        <button type="submit" class="btn btn-primary btn-full">הרשמה</button>
+      </form>
+      <div class="auth-links">
+        <a href="#" id="link-login-back">חזרה לכניסה</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forgot Password -->
+  <div id="auth-forgot" class="auth-panel">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">QC</div>
+        <h1>שחזור סיסמה</h1>
+        <p>הזן את האימייל שלך</p>
+      </div>
+      <form id="form-forgot" class="auth-form">
+        <div class="form-group">
+          <label>אימייל</label>
+          <input type="email" id="forgot-email" class="form-control" placeholder="your@email.com" required />
+        </div>
+        <div id="forgot-error" class="error-msg hidden"></div>
+        <div id="forgot-success" class="success-msg hidden"></div>
+        <button type="submit" class="btn btn-primary btn-full">שלח קישור לאיפוס</button>
+      </form>
+      <div class="auth-links">
+        <a href="#" id="link-login-from-forgot">חזרה לכניסה</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== MODALS ========== -->
+
+<!-- Generic Modal -->
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div id="modal-container" class="modal-container">
+    <div class="modal-header">
+      <h2 id="modal-title"></h2>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div id="modal-body" class="modal-body"></div>
+    <div id="modal-footer" class="modal-footer"></div>
+  </div>
+</div>
+
+<!-- Barcode Modal -->
+<div id="barcode-modal" class="modal-overlay hidden">
+  <div class="modal-container modal-sm">
+    <div class="modal-header">
+      <h2>ברקוד פוד</h2>
+      <button class="modal-close" id="barcode-modal-close">✕</button>
+    </div>
+    <div class="modal-body barcode-modal-body">
+      <div id="barcode-display" class="barcode-display"></div>
+      <p id="barcode-pod-code" class="barcode-pod-code"></p>
+      <button class="btn btn-primary btn-full" id="btn-print-barcode">🖨️ הדפס</button>
+    </div>
+  </div>
+</div>
+
+<!-- Signature Modal -->
+<div id="signature-modal" class="modal-overlay hidden">
+  <div class="modal-container modal-md">
+    <div class="modal-header">
+      <h2>חתימת בודק</h2>
+      <button class="modal-close" id="sig-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>שם הבודק *</label>
+        <input type="text" id="sig-inspector-name" class="form-control" placeholder="שם מלא" />
+      </div>
+      <div class="form-group">
+        <label>חתימה *</label>
+        <div class="signature-wrapper">
+          <canvas id="signature-canvas" class="signature-canvas"></canvas>
+          <button class="btn btn-ghost btn-sm sig-clear-btn" id="sig-clear">נקה</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>תאריך</label>
+        <input type="date" id="sig-date" class="form-control" />
+      </div>
+      <div id="sig-error" class="error-msg hidden"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="sig-cancel">ביטול</button>
+      <button class="btn btn-primary" id="sig-confirm">אשר ושמור</button>
+    </div>
+  </div>
+</div>
+
+<!-- Comments Modal -->
+<div id="comments-modal" class="modal-overlay hidden">
+  <div class="modal-container modal-md">
+    <div class="modal-header">
+      <h2>הערות לפוד</h2>
+      <button class="modal-close" id="comments-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="comments-list" class="comments-list"></div>
+      <div class="comment-input-area">
+        <textarea id="new-comment-text" class="form-control" rows="3" placeholder="הוסף הערה..."></textarea>
+        <div class="comment-actions-row">
+          <label class="checkbox-label viewer-flag-option">
+            <input type="checkbox" id="comment-flag-cb" />
+            <span>סמן כדגל אדום (חייב להתייחס)</span>
+          </label>
+          <button class="btn btn-primary" id="btn-submit-comment">שלח הערה</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notifications -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- Scripts -->
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/qc-data.js"></script>
+<script src="js/projects.js"></script>
+<script src="js/pods.js"></script>
+<script src="js/qc.js"></script>
+<script src="js/reports.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

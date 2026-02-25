@@ -474,9 +474,7 @@ function buildNewProjectForm() {
         </div>
         <div class="form-group">
           <label>מספר טיפוסים</label>
-          <select id="np-type-count" class="form-control">
-            ${[1,2,3,4,5,6].map(n=>`<option value="${n}">${n}</option>`).join('')}
-          </select>
+          <input type="number" id="np-type-count" class="form-control" value="1" min="1" max="99" />
         </div>
       </div>
       <div id="np-types-container"></div>

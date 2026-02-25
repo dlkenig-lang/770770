@@ -218,7 +218,9 @@ async function init() {
 
   // Check current session
   const { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session) {
+  if (session) {
+    await onAuthStateChange(session);
+  } else {
     document.getElementById('loading-screen').classList.add('hidden');
     document.getElementById('auth-screen').style.display = 'flex';
   }

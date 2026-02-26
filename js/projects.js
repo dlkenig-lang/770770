@@ -2,6 +2,10 @@
 // Projects Module
 // =============================================
 
+// In-memory cache so openProject never needs a second round-trip to the DB.
+// Populated whenever loadDashboard / loadProjects runs.
+const ProjectCache = new Map();
+
 // ---- LOAD DASHBOARD ----
 async function loadDashboard() {
   const { data: projects, error: dashErr } = await supabaseClient
@@ -47,6 +51,7 @@ async function loadDashboard() {
     return;
   }
 
+  projects.forEach(p => ProjectCache.set(p.id, p));
   projList.innerHTML = projects.slice(0, 6).map(p => renderProjectCard(p)).join('');
   projList.querySelectorAll('.project-card').forEach(card => {
     card.addEventListener('click', () => openProject(card.dataset.projectId));
@@ -73,6 +78,7 @@ async function loadProjects() {
     return;
   }
 
+  projects.forEach(p => ProjectCache.set(p.id, p));
   list.innerHTML = projects.map(p => renderProjectCard(p)).join('');
   list.querySelectorAll('.project-card').forEach(card => {
     card.addEventListener('click', () => openProject(card.dataset.projectId));
@@ -119,13 +125,25 @@ function renderProjectCard(p) {
 async function openProject(projectId) {
   AppState.currentProject = null;
 
-  const { data: project, error } = await supabaseClient
-    .from('projects')
-    .select('*')
-    .eq('id', projectId)
-    .single();
+  // Use cached project data when available to avoid a network round-trip.
+  // This is the common case: user clicked a card we already loaded.
+  let project = ProjectCache.get(projectId) || null;
 
-  if (error || !project) { showToast('שגיאה בטעינת פרויקט', 'error'); return; }
+  if (!project) {
+    // Not in cache — fetch from DB with a timeout so we never hang silently.
+    try {
+      const result = await Promise.race([
+        supabaseClient.from('projects').select('*').eq('id', projectId).single(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+      ]);
+      if (result.error) { showToast('שגיאה בטעינת פרויקט: ' + result.error.message, 'error'); return; }
+      project = result.data;
+    } catch (e) {
+      showToast('שגיאה בטעינת פרויקט — רענן את הדף (F5)', 'error'); return;
+    }
+  }
+
+  if (!project) { showToast('הפרויקט לא נמצא', 'error'); return; }
 
   AppState.currentProject = project;
 
@@ -140,14 +158,19 @@ async function openProject(projectId) {
   showView('project-detail');
   activateTab('pods');
 
-  // Run all tab loads in parallel instead of sequentially
-  await Promise.all([
-    loadPodsTab(projectId),
-    loadGroupsTab(projectId),
-    loadProjectDetailsTab(project),
-    loadPlansTab(projectId),
-    setupPodFilters(projectId),
-  ]);
+  // Run all tab loads in parallel; catch errors per-tab so one failure
+  // doesn't prevent other tabs from rendering.
+  try {
+    await Promise.all([
+      loadPodsTab(projectId).catch(e => console.error('[openProject] pods tab error:', e)),
+      loadGroupsTab(projectId).catch(e => console.error('[openProject] groups tab error:', e)),
+      loadProjectDetailsTab(project).catch(e => console.error('[openProject] details tab error:', e)),
+      loadPlansTab(projectId).catch(e => console.error('[openProject] plans tab error:', e)),
+      setupPodFilters(projectId).catch(e => console.error('[openProject] filters error:', e)),
+    ]);
+  } catch (e) {
+    console.error('[openProject] unexpected error:', e);
+  }
 }
 
 // ---- PODS TAB ----

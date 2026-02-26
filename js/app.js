@@ -177,19 +177,33 @@ async function onAuthStateChange(session) {
     appEl.classList.remove('hidden');
     showView('dashboard');
 
-    // Load profile
+    // Load profile — with 5 s timeout so a network hang never blocks the dashboard.
     console.time('[LOAD] profile');
-    let profile = await loadCurrentProfile(session.user.id);
+    let profile = await Promise.race([
+      loadCurrentProfile(session.user.id),
+      new Promise(resolve => setTimeout(() => resolve(null), 5000)),
+    ]);
     console.timeEnd('[LOAD] profile');
 
     if (!profile) {
-      await supabaseClient.from('profiles').upsert({
-        id: session.user.id,
-        email: session.user.email,
-        full_name: session.user.user_metadata?.full_name || session.user.email,
-        role: 'viewer',
-      }, { onConflict: 'id', ignoreDuplicates: true });
-      profile = await loadCurrentProfile(session.user.id);
+      // Profile missing or timed-out — try upsert then re-fetch, each with timeout.
+      try {
+        await Promise.race([
+          supabaseClient.from('profiles').upsert({
+            id: session.user.id,
+            email: session.user.email,
+            full_name: session.user.user_metadata?.full_name || session.user.email,
+            role: 'viewer',
+          }, { onConflict: 'id', ignoreDuplicates: true }),
+          new Promise(resolve => setTimeout(() => resolve(null), 4000)),
+        ]);
+        profile = await Promise.race([
+          loadCurrentProfile(session.user.id),
+          new Promise(resolve => setTimeout(() => resolve(null), 4000)),
+        ]);
+      } catch (e) {
+        console.warn('[LOAD] profile upsert failed:', e);
+      }
     }
     AppState.currentProfile = profile;
 

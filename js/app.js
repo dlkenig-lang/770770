@@ -220,19 +220,20 @@ async function init() {
   initSignatureModal();
   initPodDetailButtons();
 
-  // Listen for auth changes
+  // Listen for auth changes — Supabase fires INITIAL_SESSION immediately on load,
+  // so no need for a separate getSession() call (which would double all queries).
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
-    await onAuthStateChange(session);
+    if (event === 'INITIAL_SESSION') {
+      if (!session) {
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('auth-screen').style.display = 'flex';
+      } else {
+        await onAuthStateChange(session);
+      }
+    } else {
+      await onAuthStateChange(session);
+    }
   });
-
-  // Check current session
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (session) {
-    await onAuthStateChange(session);
-  } else {
-    document.getElementById('loading-screen').classList.add('hidden');
-    document.getElementById('auth-screen').style.display = 'flex';
-  }
 }
 
 // Start app

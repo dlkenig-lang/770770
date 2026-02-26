@@ -535,37 +535,52 @@ async function createProject() {
   if (code.length !== 3) {
     showToast('הקוד חייב להיות 3 אותיות בדיוק', 'error'); return;
   }
+  if (!AppState.currentProfile) {
+    showToast('שגיאה: פרופיל משתמש לא נטען. נסה להתנתק ולהתחבר מחדש.', 'error'); return;
+  }
 
-  setLoading(btn, true);
+  const setBtnStep = (text) => { if (btn) { btn.innerHTML = `⏳ ${text}`; btn.disabled = true; } };
+  const resetBtn = () => { if (btn) { btn.innerHTML = 'צור פרויקט'; btn.disabled = false; } };
+
+  setBtnStep('יוצר פרויקט...');
   try {
-    // Insert project
+    // Step 1: Insert project
+    console.log('[createProject] Step 1: inserting project');
     const { data: project, error: projErr } = await supabaseClient
       .from('projects')
       .insert({ name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile.id })
       .select().single();
 
-    if (projErr) throw projErr;
+    if (projErr) throw new Error('שלב 1 – פרויקט: ' + projErr.message);
+    console.log('[createProject] Step 1 OK, project id:', project.id);
 
-    // Insert types and directions, create pods
+    // Step 2: Insert types and directions, create pods
     for (let i = 1; i <= typeCount; i++) {
+      setBtnStep(`שומר טיפוס ${i}/${typeCount}...`);
       const dims = document.getElementById(`np-type${i}-dims`)?.value.trim();
+      console.log(`[createProject] Step 2: inserting type ${i}`);
       const { data: typeData, error: typeErr } = await supabaseClient
         .from('project_types')
         .insert({ project_id: project.id, type_number: i, dimensions: dims || null })
         .select().single();
-      if (typeErr) throw typeErr;
+      if (typeErr) throw new Error(`שלב 2 – טיפוס ${i}: ` + typeErr.message);
+      console.log(`[createProject] Type ${i} OK`);
 
       for (const dir of ['R', 'L']) {
         const cb = document.getElementById(`np-type${i}-${dir}`);
         if (!cb?.checked) continue;
         const podCount = parseInt(document.getElementById(`np-type${i}-${dir}-count`)?.value || 1);
+
+        setBtnStep(`שומר כיוון ${dir}...`);
+        console.log(`[createProject] Step 3: inserting direction ${dir} for type ${i}`);
         const { data: dirData, error: dirErr } = await supabaseClient
           .from('type_directions')
           .insert({ type_id: typeData.id, direction: dir, pod_count: podCount })
           .select().single();
-        if (dirErr) throw dirErr;
+        if (dirErr) throw new Error(`שלב 3 – כיוון ${dir}: ` + dirErr.message);
+        console.log(`[createProject] Direction ${dir} OK`);
 
-        // Create pods in a single batch insert
+        setBtnStep(`יוצר פודים...`);
         const podsToInsert = [];
         for (let s = 1; s <= podCount; s++) {
           podsToInsert.push({
@@ -578,8 +593,10 @@ async function createProject() {
           });
         }
         if (podsToInsert.length > 0) {
+          console.log(`[createProject] Step 4: inserting ${podsToInsert.length} pods`);
           const { error: podsErr } = await supabaseClient.from('pods').insert(podsToInsert);
-          if (podsErr) throw podsErr;
+          if (podsErr) throw new Error('שלב 4 – פודים: ' + podsErr.message);
+          console.log('[createProject] Pods OK');
         }
       }
     }
@@ -589,9 +606,10 @@ async function createProject() {
     await loadProjects();
     openProject(project.id);
   } catch (err) {
+    console.error('[createProject] Error:', err);
     showToast('שגיאה: ' + (err.message || err), 'error');
   } finally {
-    setLoading(btn, false);
+    resetBtn();
   }
 }
 

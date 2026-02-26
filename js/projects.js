@@ -4,7 +4,7 @@
 
 // ---- LOAD DASHBOARD ----
 async function loadDashboard() {
-  const { data: projects } = await supabaseClient
+  const { data: projects, error: dashErr } = await supabaseClient
     .from('projects')
     .select('*, pods(id, status)')
     .eq('is_active', true)
@@ -12,6 +12,11 @@ async function loadDashboard() {
 
   const statsEl = document.getElementById('dashboard-stats');
   const projList = document.getElementById('dashboard-projects-list');
+
+  if (dashErr) {
+    projList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-text">שגיאה בטעינת פרויקטים. רענן את הדף (F5).</div></div>';
+    return;
+  }
 
   const totalProjects = (projects || []).length;
   const totalPods = (projects || []).reduce((a, p) => a + (p.pods?.length || 0), 0);
@@ -57,6 +62,11 @@ async function loadProjects() {
     .order('created_at', { ascending: false });
 
   const list = document.getElementById('projects-list');
+
+  if (error) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-text">שגיאה בטעינת פרויקטים. רענן את הדף (F5).</div></div>';
+    return;
+  }
 
   if (!projects || projects.length === 0) {
     list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">אין פרויקטים עדיין. לחץ "+ פרויקט חדש" להוספה</div></div>';
@@ -541,7 +551,14 @@ async function createProject() {
     showToast('הקוד חייב להיות 3 אותיות בדיוק', 'error'); return;
   }
   if (!AppState.currentProfile) {
-    showToast('שגיאה: פרופיל משתמש לא נטען. נסה להתנתק ולהתחבר מחדש.', 'error'); return;
+    // Try to reload profile once before giving up
+    if (AppState.currentUser) {
+      const reloaded = await loadCurrentProfile(AppState.currentUser.id);
+      if (reloaded) AppState.currentProfile = reloaded;
+    }
+    if (!AppState.currentProfile) {
+      showToast('שגיאה: פרופיל לא נטען. רענן את הדף (F5) ונסה שוב.', 'error'); return;
+    }
   }
 
   const setBtnStep = (text) => { if (btn) { btn.innerHTML = `⏳ ${text}`; btn.disabled = true; } };

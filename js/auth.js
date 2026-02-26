@@ -115,10 +115,16 @@ function initAuth() {
     }
   });
 
-  // Logout
+  // Logout — use timeout so reload always happens even if signOut hangs (bolt.new service worker)
   document.getElementById('btn-logout').addEventListener('click', async () => {
-    await supabaseClient.auth.signOut();
-    window.location.reload();
+    try {
+      await Promise.race([
+        supabaseClient.auth.signOut(),
+        new Promise(resolve => setTimeout(resolve, 3000)),
+      ]);
+    } finally {
+      window.location.reload();
+    }
   });
 }
 

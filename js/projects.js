@@ -553,13 +553,26 @@ async function createProject() {
     console.log('[createProject] Step 1: inserting project');
     console.log('[createProject] currentProfile:', AppState.currentProfile);
     console.log('[createProject] payload:', { name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile?.id });
-    // Step 1a: Insert only (no select) to avoid RLS select blocking
-    console.log('[createProject] Step 1a: insert only');
-    const { error: insertErr } = await supabaseClient
-      .from('projects')
-      .insert({ name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile.id });
-    console.log('[createProject] Step 1a insertErr:', insertErr);
-    if (insertErr) throw new Error('שלב 1 – insert: ' + insertErr.message);
+    // Step 1a: Insert using direct REST API call (more reliable in WebContainer environments)
+    console.log('[createProject] Step 1a: insert via REST');
+    const payload = { name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile.id };
+
+    const session = (await supabaseClient.auth.getSession()).data.session;
+    const restResp = await fetch(`${SUPABASE_URL}/rest/v1/projects`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${session.access_token}`,
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(payload),
+    });
+    console.log('[createProject] Step 1a status:', restResp.status);
+    if (!restResp.ok) {
+      const errBody = await restResp.text();
+      throw new Error(`שלב 1 – insert: ${restResp.status} ${errBody}`);
+    }
 
     // Step 1b: Fetch the newly created project
     console.log('[createProject] Step 1b: fetching project by code');

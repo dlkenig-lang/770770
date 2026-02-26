@@ -168,8 +168,10 @@ async function onAuthStateChange(session) {
   const authEl = document.getElementById('auth-screen');
 
   if (session) {
-    // Load profile
+    console.time('[LOAD] total');
+    console.time('[LOAD] profile');
     const profile = await loadCurrentProfile(session.user.id);
+    console.timeEnd('[LOAD] profile');
     if (!profile) {
       // Create profile if missing — ignoreDuplicates prevents overwriting an existing role
       await supabaseClient.from('profiles').upsert({
@@ -201,7 +203,10 @@ async function onAuthStateChange(session) {
 
     // Load dashboard
     showView('dashboard');
+    console.time('[LOAD] dashboard');
     await loadDashboard();
+    console.timeEnd('[LOAD] dashboard');
+    console.timeEnd('[LOAD] total');
   } else {
     AppState.currentUser = null;
     AppState.currentProfile = null;

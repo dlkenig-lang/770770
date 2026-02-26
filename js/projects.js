@@ -546,10 +546,14 @@ async function createProject() {
   try {
     // Step 1: Insert project
     console.log('[createProject] Step 1: inserting project');
-    const { data: project, error: projErr } = await supabaseClient
+    console.log('[createProject] currentProfile:', AppState.currentProfile);
+    console.log('[createProject] payload:', { name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile?.id });
+    const insertResult = await supabaseClient
       .from('projects')
       .insert({ name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile.id })
       .select().single();
+    console.log('[createProject] Step 1 raw result:', insertResult);
+    const { data: project, error: projErr } = insertResult;
 
     if (projErr) throw new Error('שלב 1 – פרויקט: ' + projErr.message);
     console.log('[createProject] Step 1 OK, project id:', project.id);

@@ -119,6 +119,15 @@ async function loadUsersView() {
         .update({ role: sel.value }).eq('id', sel.dataset.userId);
       if (error) { showToast('שגיאה', 'error'); return; }
       showToast('תפקיד עודכן', 'success');
+      // Refresh navbar if current user's role was changed
+      if (sel.dataset.userId === AppState.currentProfile?.id) {
+        AppState.currentProfile.role = sel.value;
+        const roleEl = document.getElementById('nav-user-role');
+        roleEl.textContent = ROLE_LABELS[sel.value] || sel.value;
+        roleEl.style.background = (ROLE_COLORS[sel.value] || '#64748b') + '20';
+        roleEl.style.color = ROLE_COLORS[sel.value] || '#64748b';
+        applyRoleVisibility();
+      }
     });
   });
 
@@ -162,13 +171,13 @@ async function onAuthStateChange(session) {
     // Load profile
     const profile = await loadCurrentProfile(session.user.id);
     if (!profile) {
-      // Create profile if missing
+      // Create profile if missing — ignoreDuplicates prevents overwriting an existing role
       await supabaseClient.from('profiles').upsert({
         id: session.user.id,
         email: session.user.email,
         full_name: session.user.user_metadata?.full_name || session.user.email,
-        role: session.user.user_metadata?.role || 'viewer',
-      });
+        role: 'viewer',
+      }, { onConflict: 'id', ignoreDuplicates: true });
       AppState.currentProfile = await loadCurrentProfile(session.user.id);
     } else {
       AppState.currentProfile = profile;

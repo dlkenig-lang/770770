@@ -118,6 +118,7 @@ function initAuth() {
   // Logout
   document.getElementById('btn-logout').addEventListener('click', async () => {
     await supabaseClient.auth.signOut();
+    window.location.reload();
   });
 }
 

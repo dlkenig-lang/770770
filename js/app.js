@@ -169,23 +169,29 @@ async function onAuthStateChange(session) {
 
   if (session) {
     console.time('[LOAD] total');
+
+    // Show app shell immediately — don't wait for DB
+    AppState.currentUser = session.user;
+    loadingEl.classList.add('hidden');
+    authEl.style.display = 'none';
+    appEl.classList.remove('hidden');
+    showView('dashboard');
+
+    // Load profile
     console.time('[LOAD] profile');
-    const profile = await loadCurrentProfile(session.user.id);
+    let profile = await loadCurrentProfile(session.user.id);
     console.timeEnd('[LOAD] profile');
+
     if (!profile) {
-      // Create profile if missing — ignoreDuplicates prevents overwriting an existing role
       await supabaseClient.from('profiles').upsert({
         id: session.user.id,
         email: session.user.email,
         full_name: session.user.user_metadata?.full_name || session.user.email,
         role: 'viewer',
       }, { onConflict: 'id', ignoreDuplicates: true });
-      AppState.currentProfile = await loadCurrentProfile(session.user.id);
-    } else {
-      AppState.currentProfile = profile;
+      profile = await loadCurrentProfile(session.user.id);
     }
-
-    AppState.currentUser = session.user;
+    AppState.currentProfile = profile;
 
     // Update navbar
     document.getElementById('nav-user-name').textContent = AppState.currentProfile?.full_name || '';
@@ -196,13 +202,7 @@ async function onAuthStateChange(session) {
 
     applyRoleVisibility();
 
-    // Show app
-    loadingEl.classList.add('hidden');
-    authEl.style.display = 'none';
-    appEl.classList.remove('hidden');
-
     // Load dashboard
-    showView('dashboard');
     console.time('[LOAD] dashboard');
     await loadDashboard();
     console.timeEnd('[LOAD] dashboard');
@@ -225,8 +225,9 @@ async function init() {
   initSignatureModal();
   initPodDetailButtons();
 
-  // Listen for auth changes — Supabase fires INITIAL_SESSION immediately on load,
-  // so no need for a separate getSession() call (which would double all queries).
+  // Listen for auth changes.
+  // IMPORTANT: Only reinitialize on INITIAL_SESSION and SIGNED_IN/SIGNED_OUT.
+  // TOKEN_REFRESHED fires every ~60s and must NOT trigger a full reload.
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (event === 'INITIAL_SESSION') {
       if (!session) {
@@ -235,9 +236,12 @@ async function init() {
       } else {
         await onAuthStateChange(session);
       }
-    } else {
+    } else if (event === 'SIGNED_IN') {
       await onAuthStateChange(session);
+    } else if (event === 'SIGNED_OUT') {
+      await onAuthStateChange(null);
     }
+    // TOKEN_REFRESHED and other events: ignore — no UI reinit needed
   });
 }
 

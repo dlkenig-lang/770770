@@ -129,13 +129,15 @@ async function openProject(projectId) {
 
   showView('project-detail');
   activateTab('pods');
-  await loadPodsTab(projectId);
-  await loadGroupsTab(projectId);
-  await loadProjectDetailsTab(project);
-  await loadPlansTab(projectId);
 
-  // Setup filter dropdowns
-  await setupPodFilters(projectId);
+  // Run all tab loads in parallel instead of sequentially
+  await Promise.all([
+    loadPodsTab(projectId),
+    loadGroupsTab(projectId),
+    loadProjectDetailsTab(project),
+    loadPlansTab(projectId),
+    setupPodFilters(projectId),
+  ]);
 }
 
 // ---- PODS TAB ----
@@ -390,8 +392,11 @@ async function loadPlansTab(projectId) {
 
 // ---- SETUP FILTERS ----
 async function setupPodFilters(projectId) {
-  const { data: groups } = await supabaseClient.from('production_groups').select('id, name').eq('project_id', projectId);
-  const { data: types } = await supabaseClient.from('project_types').select('id, type_number').eq('project_id', projectId).order('type_number');
+  // Run both queries in parallel
+  const [{ data: groups }, { data: types }] = await Promise.all([
+    supabaseClient.from('production_groups').select('id, name').eq('project_id', projectId),
+    supabaseClient.from('project_types').select('id, type_number').eq('project_id', projectId).order('type_number'),
+  ]);
 
   const groupSel = document.getElementById('filter-group');
   const typeSel = document.getElementById('filter-type');

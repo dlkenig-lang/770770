@@ -553,28 +553,27 @@ async function createProject() {
     console.log('[createProject] Step 1: inserting project');
     console.log('[createProject] currentProfile:', AppState.currentProfile);
     console.log('[createProject] payload:', { name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile?.id });
-    // Step 1a: Insert using direct REST API call (more reliable in WebContainer environments)
-    console.log('[createProject] Step 1a: insert via REST');
-    const payload = { name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile.id };
+    // Step 1a: Insert project with timeout resilience.
+    // In bolt.new, the service worker can drop the response channel even if the DB succeeded.
+    console.log('[createProject] Step 1a: inserting project');
+    const insertPayload = { name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile.id };
 
-    const session = (await supabaseClient.auth.getSession()).data.session;
-    const restResp = await fetch(`${SUPABASE_URL}/rest/v1/projects`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${session.access_token}`,
-        'Prefer': 'return=minimal',
-      },
-      body: JSON.stringify(payload),
-    });
-    console.log('[createProject] Step 1a status:', restResp.status);
-    if (!restResp.ok) {
-      const errBody = await restResp.text();
-      throw new Error(`שלב 1 – insert: ${restResp.status} ${errBody}`);
+    let insertConfirmed = false;
+    try {
+      const result = await Promise.race([
+        supabaseClient.from('projects').insert(insertPayload),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 12000)),
+      ]);
+      const { error: insertErr } = result || {};
+      if (insertErr) throw new Error('שלב 1 – insert: ' + insertErr.message);
+      insertConfirmed = true;
+      console.log('[createProject] Step 1a: insert confirmed');
+    } catch (e) {
+      if (e.message !== '__timeout__') throw e;
+      console.warn('[createProject] Step 1a: insert timed out — checking DB...');
     }
 
-    // Step 1b: Fetch the newly created project
+    // Step 1b: Fetch the newly created project (works even after timeout)
     console.log('[createProject] Step 1b: fetching project by code');
     const { data: project, error: projErr } = await supabaseClient
       .from('projects')
@@ -584,9 +583,10 @@ async function createProject() {
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
-    console.log('[createProject] Step 1b result:', { project, projErr });
+    console.log('[createProject] Step 1b result:', { project, projErr, insertConfirmed });
 
-    if (projErr) throw new Error('שלב 1 – פרויקט: ' + projErr.message);
+    if (projErr && !insertConfirmed) throw new Error('שגיאה ביצירת פרויקט: ' + projErr.message);
+    if (!project) throw new Error('הפרויקט לא נמצא לאחר יצירה — נסה שוב');
     console.log('[createProject] Step 1 OK, project id:', project.id);
 
     // Step 2: Insert types and directions, create pods

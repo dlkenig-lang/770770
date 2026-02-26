@@ -548,12 +548,25 @@ async function createProject() {
     console.log('[createProject] Step 1: inserting project');
     console.log('[createProject] currentProfile:', AppState.currentProfile);
     console.log('[createProject] payload:', { name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile?.id });
-    const insertResult = await supabaseClient
+    // Step 1a: Insert only (no select) to avoid RLS select blocking
+    console.log('[createProject] Step 1a: insert only');
+    const { error: insertErr } = await supabaseClient
       .from('projects')
-      .insert({ name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile.id })
-      .select().single();
-    console.log('[createProject] Step 1 raw result:', insertResult);
-    const { data: project, error: projErr } = insertResult;
+      .insert({ name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile.id });
+    console.log('[createProject] Step 1a insertErr:', insertErr);
+    if (insertErr) throw new Error('שלב 1 – insert: ' + insertErr.message);
+
+    // Step 1b: Fetch the newly created project
+    console.log('[createProject] Step 1b: fetching project by code');
+    const { data: project, error: projErr } = await supabaseClient
+      .from('projects')
+      .select()
+      .eq('code', code)
+      .eq('created_by', AppState.currentProfile.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    console.log('[createProject] Step 1b result:', { project, projErr });
 
     if (projErr) throw new Error('שלב 1 – פרויקט: ' + projErr.message);
     console.log('[createProject] Step 1 OK, project id:', project.id);

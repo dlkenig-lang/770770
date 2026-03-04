@@ -503,6 +503,11 @@ table tbody tr:hover { background: #f8fafc; }
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 20px; border-top: 1px solid var(--border); background: #fafafa;
 }
+.qc-admin-actions {
+  display: flex; gap: 8px; justify-content: flex-end;
+  padding: 8px 20px 12px;
+  background: #fafafa; border-top: 1px dashed var(--border);
+}
 
 /* ===== POD DETAIL ===== */
 .pod-info-bar {

@@ -110,6 +110,16 @@ function renderActiveStage() {
           ? `<button class="btn btn-primary btn-stage-nav" data-idx="${_activeStageIdx + 1}">שלב הבא ←</button>`
           : '<div></div>'}
       </div>
+      ${isAdminOrPM() ? `
+        <div class="qc-admin-actions">
+          <button class="btn btn-ghost btn-sm btn-edit-stage" data-stage-id="${stage.id}">
+            ✏️ עריכת טופס
+          </button>
+          <button class="btn btn-ghost btn-sm btn-clear-stage" data-stage-id="${stage.id}">
+            🗑 ניקוי טופס
+          </button>
+        </div>
+      ` : ''}
     </div>
   `;
 
@@ -154,9 +164,12 @@ function renderActiveStage() {
     });
   }
 
-  // Clear stage (admin/PM only, shown after sign-off)
+  // Admin actions (always visible to admin/PM)
   content.querySelectorAll('.btn-clear-stage').forEach(btn => {
     btn.addEventListener('click', () => clearStage(btn.dataset.stageId));
+  });
+  content.querySelectorAll('.btn-edit-stage').forEach(btn => {
+    btn.addEventListener('click', () => editStage(btn.dataset.stageId));
   });
 
   // Navigation buttons
@@ -241,11 +254,6 @@ function renderInspectorSection(stage) {
         <div class="text-sm mt-2" style="color:${stage.status === 'completed' ? 'var(--success)' : 'var(--danger)'}">
           ✓ השלב ${stage.status === 'completed' ? 'הושלם' : 'נכשל'} ואושר
         </div>
-        ${isAdminOrPM() ? `
-          <button class="btn btn-ghost btn-sm btn-clear-stage" data-stage-id="${stage.id}" style="margin-top:8px">
-            🗑 נקה שלב ואפשר עריכה מחדש
-          </button>
-        ` : ''}
       </div>
     `;
   }
@@ -289,6 +297,29 @@ async function clearStage(stageId) {
   }).eq('id', stageId);
 
   showToast('השלב נוקה — ניתן להזין נתונים מחדש', 'success');
+  await updatePodStatus(_qcPodId);
+  await loadQCStages(_qcPodId);
+}
+
+// ---- EDIT STAGE (unlock without clearing data) ----
+async function editStage(stageId) {
+  const stage = _qcStages.find(s => s.id === stageId);
+  if (!stage) return;
+  if (stage.status !== 'completed' && stage.status !== 'failed') {
+    showToast('השלב כבר פתוח לעריכה', 'success');
+    return;
+  }
+  if (!confirm('האם לפתוח את השלב לעריכה מחדש? הנתונים שהוזנו יישמרו, אך האישור והחתימה יוסרו.')) return;
+
+  await supabaseClient.from('qc_stages').update({
+    status: 'in_progress',
+    inspector_name: null,
+    inspector_signature: null,
+    inspection_date: null,
+    completed_at: null,
+  }).eq('id', stageId);
+
+  showToast('השלב פתוח לעריכה — הנתונים נשמרו', 'success');
   await updatePodStatus(_qcPodId);
   await loadQCStages(_qcPodId);
 }

@@ -261,12 +261,18 @@ function initProfileModal() {
 
     const btn = document.getElementById('profile-modal-save');
     setLoading(btn, true);
-    const { error } = await supabaseClient.from('profiles')
-      .update({ full_name: newName }).eq('id', AppState.currentProfile.id);
-    setLoading(btn, false);
+    let error;
+    try {
+      ({ error } = await supabaseClient.from('profiles')
+        .update({ full_name: newName }).eq('id', AppState.currentProfile.id));
+    } catch (e) {
+      error = e;
+    } finally {
+      setLoading(btn, false);
+    }
 
     if (error) {
-      errEl.textContent = 'שגיאה בשמירה';
+      errEl.textContent = 'שגיאה בשמירה: ' + (error.message || error);
       errEl.classList.remove('hidden');
       return;
     }

@@ -39,7 +39,9 @@
       <span class="brand-text">בקרת איכות פודים</span>
     </div>
     <div class="navbar-menu">
-      <span id="nav-user-name" class="nav-user"></span>
+      <button class="btn btn-ghost btn-sm nav-user-btn" id="btn-edit-profile" title="ערוך שם תצוגה">
+        <span id="nav-user-name" class="nav-user"></span> ✏️
+      </button>
       <span id="nav-user-role" class="nav-role-badge"></span>
       <button class="btn btn-ghost btn-sm" id="btn-logout">התנתק</button>
     </div>
@@ -358,6 +360,27 @@
           <button class="btn btn-primary" id="btn-submit-comment">שלח הערה</button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Profile Modal -->
+<div id="profile-modal" class="modal-overlay hidden">
+  <div class="modal-container modal-sm">
+    <div class="modal-header">
+      <h2>עריכת שם תצוגה</h2>
+      <button class="modal-close" id="profile-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">שם תצוגה</label>
+        <input type="text" id="profile-display-name" class="form-control" placeholder="הכנס שם מלא" />
+      </div>
+      <div id="profile-modal-error" class="alert alert-danger hidden"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="profile-modal-cancel">ביטול</button>
+      <button class="btn btn-primary" id="profile-modal-save">שמור</button>
     </div>
   </div>
 </div>

@@ -232,12 +232,59 @@ async function onAuthStateChange(session) {
   }
 }
 
+// ---- PROFILE MODAL ----
+function initProfileModal() {
+  const modal = document.getElementById('profile-modal');
+  const nameInput = document.getElementById('profile-display-name');
+  const errEl = document.getElementById('profile-modal-error');
+
+  document.getElementById('btn-edit-profile').addEventListener('click', () => {
+    nameInput.value = AppState.currentProfile?.full_name || '';
+    errEl.classList.add('hidden');
+    modal.classList.remove('hidden');
+    nameInput.focus();
+  });
+
+  const closeModal = () => modal.classList.add('hidden');
+  document.getElementById('profile-modal-close').addEventListener('click', closeModal);
+  document.getElementById('profile-modal-cancel').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+  document.getElementById('profile-modal-save').addEventListener('click', async () => {
+    const newName = nameInput.value.trim();
+    errEl.classList.add('hidden');
+    if (!newName) {
+      errEl.textContent = 'יש להזין שם תצוגה';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    const btn = document.getElementById('profile-modal-save');
+    setLoading(btn, true);
+    const { error } = await supabaseClient.from('profiles')
+      .update({ full_name: newName }).eq('id', AppState.currentProfile.id);
+    setLoading(btn, false);
+
+    if (error) {
+      errEl.textContent = 'שגיאה בשמירה';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    AppState.currentProfile.full_name = newName;
+    document.getElementById('nav-user-name').textContent = newName;
+    closeModal();
+    showToast('שם תצוגה עודכן', 'success');
+  });
+}
+
 // ---- INIT ----
 async function init() {
   // Auth
   initAuth();
   initSignatureModal();
   initPodDetailButtons();
+  initProfileModal();
 
   // Listen for auth changes.
   // IMPORTANT: Only reinitialize on INITIAL_SESSION and SIGNED_IN/SIGNED_OUT.

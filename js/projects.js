@@ -107,14 +107,14 @@ function renderProjectCard(p) {
           <div class="project-stat-value">${completed}</div>
           <div class="project-stat-label">הושלמו</div>
         </div>
-        <div class="project-stat" style="flex:1">
-          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-            <div class="progress-bar-outer" style="width:100%;flex:1">
-              <div class="progress-bar-inner ${pct===100?'full':''}" style="width:${pct}%"></div>
-            </div>
-            <span style="font-size:12px;font-weight:600;color:var(--text-muted)">${pct}%</span>
-          </div>
-          <div class="project-stat-label">התקדמות</div>
+      </div>
+      <div class="card-progress-section">
+        <div class="card-progress-header">
+          <span class="card-progress-label">התקדמות</span>
+          <span class="card-progress-pct ${pct===100?'pct-done':''}">${pct}%</span>
+        </div>
+        <div class="progress-bar-outer progress-bar-lg">
+          <div class="progress-bar-inner ${pct===100?'full':''}" style="width:${pct}%"></div>
         </div>
       </div>
     </div>
@@ -278,12 +278,13 @@ function renderPodCard(pod) {
           <span class="pod-card-meta-value">${pod.production_groups?.name ? escHtml(pod.production_groups.name) : '—'}</span>
         </div>
       </div>
-      <div class="pod-card-progress">
-        <div class="pod-card-progress-bar">
-          <div class="progress-bar-outer" style="flex:1">
-            <div class="progress-bar-inner ${pct===100?'full':''}" style="width:${pct}%"></div>
-          </div>
-          <span class="text-sm text-muted">${completedStages}/6 שלבים</span>
+      <div class="card-progress-section">
+        <div class="card-progress-header">
+          <span class="card-progress-label">${completedStages}/6 שלבים</span>
+          <span class="card-progress-pct ${pct===100?'pct-done':''}">${pct}%</span>
+        </div>
+        <div class="progress-bar-outer progress-bar-lg">
+          <div class="progress-bar-inner ${pct===100?'full':''}" style="width:${pct}%"></div>
         </div>
       </div>
       <div class="pod-card-actions">

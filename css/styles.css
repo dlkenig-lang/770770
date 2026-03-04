@@ -615,8 +615,9 @@ table tbody tr:hover { background: #f8fafc; }
 .pod-card-meta-value {
   font-size: 13px; font-weight: 600; color: var(--text);
 }
-.pod-card-progress { display: flex; flex-direction: column; gap: 4px; }
-.pod-card-progress-bar { display: flex; align-items: center; gap: 8px; }
+.pod-card .card-progress-section {
+  padding-top: 10px; border-top: 1px solid var(--border);
+}
 .pod-card-actions {
   display: flex; gap: 6px; flex-wrap: wrap;
   padding-top: 8px; border-top: 1px solid var(--border);
@@ -766,12 +767,27 @@ table tbody tr:hover { background: #f8fafc; }
   border-radius: 100px; overflow: hidden;
   width: 100px;
 }
+.progress-bar-lg { width: 100%; height: 10px; }
 .progress-bar-inner {
   height: 100%; border-radius: 100px;
   background: var(--primary);
-  transition: width 0.3s;
+  transition: width 0.4s ease;
 }
 .progress-bar-inner.full { background: var(--success); }
+
+/* ===== CARD PROGRESS SECTION ===== */
+.card-progress-section {
+  margin-top: 4px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.card-progress-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-progress-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.card-progress-pct {
+  font-size: 14px; font-weight: 800; color: var(--primary);
+}
+.card-progress-pct.pct-done { color: var(--success); }
 
 /* ===== UTILITY ===== */
 .flex { display: flex; }

@@ -408,6 +408,102 @@ table tbody tr:hover { background: #f8fafc; }
 .status-failed { background: var(--danger-light); color: var(--danger); }
 .status-passed { background: var(--success-light); color: var(--success); }
 
+/* ===== QC STAGES - TABBED DESIGN ===== */
+.qc-stage-tabs {
+  display: flex; gap: 0; flex-wrap: nowrap; overflow-x: auto;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 16px;
+}
+.qc-tab-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 10px 18px; border: none; background: none;
+  cursor: pointer; border-bottom: 3px solid transparent;
+  margin-bottom: -2px; transition: all var(--transition);
+  font-family: inherit; min-width: 90px; white-space: nowrap;
+  flex-shrink: 0;
+}
+.qc-tab-btn:hover { background: var(--bg); }
+.qc-tab-btn.active { border-bottom-color: var(--primary); background: var(--primary-light); }
+.qc-tab-letter { font-size: 20px; font-weight: 800; color: var(--text); line-height: 1; }
+.qc-tab-btn.active .qc-tab-letter { color: var(--primary); }
+.qc-tab-name { font-size: 10px; color: var(--text-muted); text-align: center; max-width: 80px; white-space: normal; line-height: 1.2; }
+.qc-tab-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.qc-dot-pending { background: var(--secondary); }
+.qc-dot-in_progress { background: var(--warning); }
+.qc-dot-completed { background: var(--success); }
+.qc-dot-failed { background: var(--danger); }
+
+/* Stage Panel */
+.qc-stage-panel { background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
+.qc-stage-panel-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid var(--border);
+}
+.qc-stage-panel-title { font-size: 16px; font-weight: 700; }
+.qc-stage-panel-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+.qc-pipe-type-bar {
+  padding: 8px 20px; font-size: 13px; color: var(--text-muted);
+  border-bottom: 1px solid var(--border); background: #fafafa;
+}
+
+/* QC Items Table */
+.qc-items-table-wrapper { overflow-x: auto; }
+.qc-items-table { width: 100%; border-collapse: collapse; }
+.qc-items-table thead { background: #f8fafc; }
+.qc-items-table th {
+  padding: 10px 12px; text-align: right;
+  font-size: 12px; font-weight: 600; color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.qc-items-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+.qc-table-row.qc-row-passed { background: #f0fdf4; }
+.qc-table-row.qc-row-failed { background: #fef2f2; }
+.qc-table-row.qc-row-pending { background: white; }
+.qc-row-num { color: var(--text-muted); font-weight: 600; font-size: 12px; text-align: center; }
+.qc-row-label-text { font-weight: 500; }
+.qc-row-instruction { font-size: 11px; color: var(--text-muted); font-style: italic; margin-top: 3px; }
+.qc-row-check { text-align: center; }
+.qc-check-btn {
+  width: 36px; height: 36px; border-radius: 50%; border: 2px solid;
+  cursor: pointer; font-size: 16px; font-weight: 700; background: white;
+  transition: all var(--transition); display: inline-flex; align-items: center; justify-content: center;
+}
+.qc-pass-btn { border-color: var(--success); color: var(--success); }
+.qc-pass-btn.active, .qc-pass-btn:hover { background: var(--success); color: white; }
+.qc-fail-btn { border-color: var(--danger); color: var(--danger); }
+.qc-fail-btn.active, .qc-fail-btn:hover { background: var(--danger); color: white; }
+.qc-check-badge { font-size: 18px; font-weight: 800; }
+.qc-pass-badge { color: var(--success); }
+.qc-fail-badge { color: var(--danger); }
+.qc-row-notes textarea.qc-notes-inline {
+  width: 100%; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 5px 8px; font-size: 12px; resize: none; font-family: inherit; direction: rtl;
+}
+.qc-time-inline { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+.qc-time-inline label { font-size: 11px; color: var(--text-muted); }
+.qc-time-input { padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }
+
+/* Inspector bar */
+.qc-inspector-bar {
+  padding: 16px 20px; border-top: 2px dashed var(--border); background: #fafafa;
+}
+.qc-inspector-signed { background: var(--success-light); border-top-color: var(--success); }
+.qc-inspector-info-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.qc-inspector-fields { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+.qc-inspector-field label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500; }
+.qc-stage-warnings { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.qc-warning-msg {
+  font-size: 12px; color: var(--danger);
+  background: var(--danger-light); padding: 6px 12px; border-radius: var(--radius);
+}
+
+/* Nav row */
+.qc-stage-nav-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-top: 1px solid var(--border); background: #fafafa;
+}
+
 /* ===== POD DETAIL ===== */
 .pod-info-bar {
   background: white;
@@ -419,115 +515,6 @@ table tbody tr:hover { background: #f8fafc; }
 }
 .pod-code-title { font-family: monospace; font-size: 20px; }
 
-/* ===== QC STAGES ===== */
-.qc-stages-container { display: flex; flex-direction: column; gap: 16px; }
-.qc-stage-card {
-  background: white;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-  border: 2px solid transparent;
-  transition: border-color var(--transition);
-}
-.qc-stage-card.stage-completed { border-color: var(--success); }
-.qc-stage-card.stage-failed { border-color: var(--danger); }
-.qc-stage-card.stage-in_progress { border-color: var(--warning); }
-
-.stage-header {
-  display: flex; align-items: center;
-  padding: 16px 20px;
-  cursor: pointer;
-  gap: 12px;
-  background: #f8fafc;
-  border-bottom: 1px solid var(--border);
-  user-select: none;
-}
-.stage-number {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  background: var(--primary); color: white;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 14px; flex-shrink: 0;
-}
-.stage-completed .stage-number { background: var(--success); }
-.stage-failed .stage-number { background: var(--danger); }
-.stage-in_progress .stage-number { background: var(--warning); }
-
-.stage-title { font-size: 15px; font-weight: 600; flex: 1; }
-.stage-progress { font-size: 12px; color: var(--text-muted); }
-.stage-toggle { margin-right: auto; color: var(--text-muted); transition: transform 0.2s; }
-.stage-expanded .stage-toggle { transform: rotate(180deg); }
-
-.stage-body { padding: 20px; }
-.stage-inspector-info {
-  display: flex; gap: 16px; flex-wrap: wrap;
-  padding: 12px 16px;
-  background: var(--success-light);
-  border-radius: var(--radius);
-  margin-bottom: 16px;
-  font-size: 13px;
-}
-.stage-inspector-info .info-item { display: flex; gap: 6px; }
-
-/* ===== QC ITEMS ===== */
-.qc-items-list { display: flex; flex-direction: column; gap: 8px; }
-.qc-item {
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 16px;
-  transition: all var(--transition);
-  background: #fafafa;
-}
-.qc-item.item-passed { border-color: var(--success); background: var(--success-light); }
-.qc-item.item-failed { border-color: var(--danger); background: var(--danger-light); }
-.qc-item-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.qc-item-label {
-  flex: 1; font-size: 14px; font-weight: 500; min-width: 150px;
-}
-.qc-item-instruction {
-  font-size: 12px; color: var(--text-muted);
-  font-style: italic; margin-top: 4px;
-}
-.qc-item-controls {
-  display: flex; gap: 6px; align-items: center;
-}
-.qc-status-btn {
-  padding: 5px 14px; border-radius: 100px;
-  font-size: 12px; font-weight: 600;
-  border: 1.5px solid; cursor: pointer;
-  transition: all var(--transition);
-  font-family: inherit;
-}
-.qc-btn-pass {
-  border-color: var(--success); color: var(--success); background: white;
-}
-.qc-btn-pass.active, .qc-btn-pass:hover { background: var(--success); color: white; }
-.qc-btn-fail {
-  border-color: var(--danger); color: var(--danger); background: white;
-}
-.qc-btn-fail.active, .qc-btn-fail:hover { background: var(--danger); color: white; }
-
-.qc-item-notes {
-  margin-top: 8px;
-}
-.qc-item-notes textarea {
-  width: 100%; padding: 7px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 13px; resize: none;
-  font-family: inherit; direction: rtl;
-}
-.qc-time-fields {
-  display: flex; gap: 10px; align-items: center; margin-top: 8px;
-  flex-wrap: wrap;
-}
-.qc-time-fields label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
-.qc-time-fields input {
-  width: 120px; padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 13px; font-family: inherit;
-}
 
 /* ===== STAGE COMPLETION ===== */
 .stage-complete-section {
@@ -874,5 +861,5 @@ table tbody tr:hover { background: #f8fafc; }
 @media print {
   .navbar, .sidebar, .btn, .filter-bar { display: none !important; }
   .main-content { margin: 0; padding: 0; }
-  .qc-stage-card { break-inside: avoid; }
+  .qc-stage-panel { break-inside: avoid; }
 }

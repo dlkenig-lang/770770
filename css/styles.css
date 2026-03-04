@@ -543,11 +543,12 @@ table tbody tr:hover { background: #f8fafc; }
 
 /* ===== PODS STATS STRIP ===== */
 .pods-stats-strip {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 20px;
 }
+.pods-stats-strip .pods-stat-card { flex: 1; min-width: 80px; }
 .pods-stat-card {
   background: white;
   border-radius: var(--radius-lg);
@@ -788,6 +789,26 @@ table tbody tr:hover { background: #f8fafc; }
   font-size: 14px; font-weight: 800; color: var(--primary);
 }
 .card-progress-pct.pct-done { color: var(--success); }
+
+/* ===== PAGE PROGRESS BAR (project & pod pages) ===== */
+.page-progress-bar {
+  padding: 10px 16px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.pods-stats-strip .page-progress-bar {
+  padding: 0; background: transparent; border: none;
+  margin-top: 8px;
+}
+.page-progress-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.page-progress-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.page-progress-pct {
+  font-size: 20px; font-weight: 800; color: var(--primary); line-height: 1;
+}
+.page-progress-pct.pct-done { color: var(--success); }
 
 /* ===== UTILITY ===== */
 .flex { display: flex; }

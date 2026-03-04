@@ -226,6 +226,15 @@ async function loadPodsTab(projectId, filters = {}) {
         <div class="pods-stat-value">${failed}</div>
         <div class="pods-stat-label">נכשלו</div>
       </div>
+      <div class="page-progress-bar" style="flex-basis:100%">
+        <div class="page-progress-header">
+          <span class="page-progress-label">התקדמות פרויקט</span>
+          <span class="page-progress-pct ${total>0&&done===total?'pct-done':''}">${total>0?Math.round(done/total*100):0}%</span>
+        </div>
+        <div class="progress-bar-outer progress-bar-lg">
+          <div class="progress-bar-inner ${total>0&&done===total?'full':''}" style="width:${total>0?Math.round(done/total*100):0}%"></div>
+        </div>
+      </div>
     `;
   }
 

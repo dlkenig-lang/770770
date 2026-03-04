@@ -32,6 +32,22 @@ async function loadQCStages(podId) {
 }
 
 function renderQCTabsUI() {
+  const completedStages = _qcStages.filter(s => s.status === 'completed').length;
+  const totalStages = _qcStages.length;
+  const pct = totalStages > 0 ? Math.round(completedStages / totalStages * 100) : 0;
+  const podProgressEl = document.getElementById('pod-progress-bar');
+  if (podProgressEl) {
+    podProgressEl.innerHTML = `
+      <div class="page-progress-header">
+        <span class="page-progress-label">התקדמות פוד &mdash; ${completedStages}/${totalStages} שלבים</span>
+        <span class="page-progress-pct ${pct===100?'pct-done':''}">${pct}%</span>
+      </div>
+      <div class="progress-bar-outer progress-bar-lg">
+        <div class="progress-bar-inner ${pct===100?'full':''}" style="width:${pct}%"></div>
+      </div>
+    `;
+  }
+
   const container = document.getElementById('qc-stages-container');
   container.innerHTML = `
     <div class="qc-stage-tabs" id="qc-stage-tabs">

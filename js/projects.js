@@ -203,26 +203,7 @@ async function loadPodsTab(projectId, filters = {}) {
     return;
   }
 
-  container.innerHTML = `
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>קוד פוד</th>
-            <th>טיפוס</th>
-            <th>כיוון</th>
-            <th>קבוצה</th>
-            <th>סטטוס</th>
-            <th>התקדמות</th>
-            <th>פעולות</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${filtered.map(pod => renderPodRow(pod)).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
+  container.innerHTML = `<div class="pods-grid">${filtered.map(pod => renderPodCard(pod)).join('')}</div>`;
 
   container.querySelectorAll('.btn-open-pod').forEach(btn => {
     btn.addEventListener('click', () => openPod(btn.dataset.podId));
@@ -237,36 +218,47 @@ async function loadPodsTab(projectId, filters = {}) {
   }
 }
 
-function renderPodRow(pod) {
+function renderPodCard(pod) {
   const stages = pod.qc_stages || [];
   const completedStages = stages.filter(s => s.status === 'completed').length;
-  const failedStages = stages.filter(s => s.status === 'failed').length;
   const pct = Math.round(completedStages / 6 * 100);
   const statusCls = `status-${pod.status}`;
+  const dirLabel = pod.type_directions?.direction === 'R' ? 'ימין' : pod.type_directions?.direction === 'L' ? 'שמאל' : (pod.type_directions?.direction || '');
 
   return `
-    <tr>
-      <td><strong style="font-family:monospace">${escHtml(pod.pod_code)}</strong></td>
-      <td>T${pod.project_types?.type_number || ''}</td>
-      <td>${pod.type_directions?.direction || ''}</td>
-      <td>${pod.production_groups?.name ? escHtml(pod.production_groups.name) : '<span class="text-muted">—</span>'}</td>
-      <td><span class="status-badge ${statusCls}">${STATUS_LABELS[pod.status] || pod.status}</span></td>
-      <td>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="progress-bar-outer">
+    <div class="pod-card">
+      <div class="pod-card-header">
+        <div class="pod-card-code">${escHtml(pod.pod_code)}</div>
+        <span class="status-badge ${statusCls}">${STATUS_LABELS[pod.status] || pod.status}</span>
+      </div>
+      <div class="pod-card-meta">
+        <div class="pod-card-meta-item">
+          <span class="pod-card-meta-label">טיפוס</span>
+          <span class="pod-card-meta-value">T${pod.project_types?.type_number || '—'}</span>
+        </div>
+        <div class="pod-card-meta-item">
+          <span class="pod-card-meta-label">כיוון</span>
+          <span class="pod-card-meta-value">${dirLabel || '—'}</span>
+        </div>
+        <div class="pod-card-meta-item">
+          <span class="pod-card-meta-label">קבוצה</span>
+          <span class="pod-card-meta-value">${pod.production_groups?.name ? escHtml(pod.production_groups.name) : '—'}</span>
+        </div>
+      </div>
+      <div class="pod-card-progress">
+        <div class="pod-card-progress-bar">
+          <div class="progress-bar-outer" style="flex:1">
             <div class="progress-bar-inner ${pct===100?'full':''}" style="width:${pct}%"></div>
           </div>
-          <span class="text-sm text-muted">${completedStages}/6</span>
+          <span class="text-sm text-muted">${completedStages}/6 שלבים</span>
         </div>
-      </td>
-      <td>
-        <div class="table-actions">
-          <button class="btn btn-primary btn-sm btn-open-pod" data-pod-id="${pod.id}">פתח</button>
-          <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}">🔲</button>
-          ${isAdminOrPM() ? `<button class="btn btn-danger btn-sm btn-delete-pod" data-pod-id="${pod.id}">🗑</button>` : ''}
-        </div>
-      </td>
-    </tr>
+      </div>
+      <div class="pod-card-actions">
+        <button class="btn btn-primary btn-sm btn-open-pod" data-pod-id="${pod.id}">פתח</button>
+        <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}">🔲 ברקוד</button>
+        ${isAdminOrPM() ? `<button class="btn btn-danger btn-sm btn-delete-pod" data-pod-id="${pod.id}">🗑</button>` : ''}
+      </div>
+    </div>
   `;
 }
 

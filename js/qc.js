@@ -280,7 +280,8 @@ function renderInspectorSection(stage) {
         <div class="qc-inspector-field">
           <label>שם הבודק</label>
           <input type="text" id="qc-inspector-name-${stage.id}" class="form-control"
-            style="max-width:220px" placeholder="שם מלא" value="${escHtml(stage.inspector_name || '')}" />
+            style="max-width:220px" readonly
+            value="${escHtml(stage.inspector_name || AppState.currentProfile?.full_name || '')}" />
         </div>
         <div class="qc-inspector-field" style="align-self:flex-end">
           <button class="btn btn-primary btn-complete-stage"
@@ -480,7 +481,10 @@ function showSignatureModal(podId, stageId, stageNum, stages, stageItems, inspec
   modal.classList.remove('hidden');
 
   const nameEl = document.getElementById('sig-inspector-name');
-  if (nameEl) nameEl.value = inspectorName;
+  if (nameEl) {
+    nameEl.value = AppState.currentProfile?.full_name || inspectorName;
+    nameEl.readOnly = true;
+  }
 
   const dateInput = document.getElementById('sig-date');
   dateInput.value = new Date().toISOString().split('T')[0];

@@ -154,6 +154,11 @@ function renderActiveStage() {
     });
   }
 
+  // Clear stage (admin/PM only, shown after sign-off)
+  content.querySelectorAll('.btn-clear-stage').forEach(btn => {
+    btn.addEventListener('click', () => clearStage(btn.dataset.stageId));
+  });
+
   // Navigation buttons
   content.querySelectorAll('.btn-stage-nav').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -236,6 +241,11 @@ function renderInspectorSection(stage) {
         <div class="text-sm mt-2" style="color:${stage.status === 'completed' ? 'var(--success)' : 'var(--danger)'}">
           ✓ השלב ${stage.status === 'completed' ? 'הושלם' : 'נכשל'} ואושר
         </div>
+        ${isAdminOrPM() ? `
+          <button class="btn btn-ghost btn-sm btn-clear-stage" data-stage-id="${stage.id}" style="margin-top:8px">
+            🗑 נקה שלב ואפשר עריכה מחדש
+          </button>
+        ` : ''}
       </div>
     `;
   }
@@ -258,6 +268,29 @@ function renderInspectorSection(stage) {
       <div id="qc-stage-warnings-${stage.id}" class="qc-stage-warnings"></div>
     </div>
   `;
+}
+
+// ---- CLEAR STAGE ----
+async function clearStage(stageId) {
+  if (!confirm('האם לנקות את השלב ולאפשר עריכה מחדש? כל הנתונים שהוזנו יימחקו.')) return;
+
+  // Reset all items for this stage
+  await supabaseClient.from('qc_items').update({
+    status: 'pending', notes: null, time_entry_1: null, time_entry_2: null, value_entry: null,
+  }).eq('stage_id', stageId);
+
+  // Reset the stage itself
+  await supabaseClient.from('qc_stages').update({
+    status: 'pending',
+    inspector_name: null,
+    inspector_signature: null,
+    inspection_date: null,
+    completed_at: null,
+  }).eq('id', stageId);
+
+  showToast('השלב נוקה — ניתן להזין נתונים מחדש', 'success');
+  await updatePodStatus(_qcPodId);
+  await loadQCStages(_qcPodId);
 }
 
 // ---- ENSURE STAGES ----

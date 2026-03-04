@@ -549,6 +549,38 @@ table tbody tr:hover { background: #f8fafc; }
   border-radius: 4px;
 }
 
+/* ===== PODS STATS STRIP ===== */
+.pods-stats-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.pods-stat-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 16px 20px;
+  display: flex; flex-direction: column; gap: 4px;
+  border-top: 4px solid var(--border);
+}
+.pods-stat-value {
+  font-size: 28px; font-weight: 800; line-height: 1;
+}
+.pods-stat-label {
+  font-size: 12px; color: var(--text-muted); font-weight: 500;
+}
+.pods-stat-total   { border-top-color: var(--primary); }
+.pods-stat-total .pods-stat-value { color: var(--primary); }
+.pods-stat-pending { border-top-color: var(--secondary); }
+.pods-stat-pending .pods-stat-value { color: var(--secondary); }
+.pods-stat-inprogress { border-top-color: var(--warning); }
+.pods-stat-inprogress .pods-stat-value { color: var(--warning); }
+.pods-stat-completed { border-top-color: var(--success); }
+.pods-stat-completed .pods-stat-value { color: var(--success); }
+.pods-stat-failed  { border-top-color: var(--danger); }
+.pods-stat-failed .pods-stat-value { color: var(--danger); }
+
 /* ===== PODS GRID ===== */
 .pods-grid {
   display: grid;
@@ -834,6 +866,7 @@ table tbody tr:hover { background: #f8fafc; }
   .form-row-3 { grid-template-columns: 1fr; }
   .projects-grid { grid-template-columns: 1fr; }
   .pods-grid { grid-template-columns: 1fr 1fr; }
+  .pods-stats-strip { grid-template-columns: repeat(3, 1fr); }
   .filter-bar { flex-direction: column; }
   .filter-select { width: 100%; }
 }

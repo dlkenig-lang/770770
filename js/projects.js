@@ -192,9 +192,42 @@ async function loadPodsTab(projectId, filters = {}) {
 
   const { data: pods } = await query;
 
-  let filtered = pods || [];
+  const allPods = pods || [];
+  let filtered = allPods;
   if (filters.type_number) filtered = filtered.filter(p => p.project_types?.type_number == filters.type_number);
   if (filters.direction) filtered = filtered.filter(p => p.type_directions?.direction === filters.direction);
+
+  // Update stats strip (always based on full list, not filtered)
+  const statsEl = document.getElementById('project-pods-stats');
+  if (statsEl) {
+    const total    = allPods.length;
+    const pending  = allPods.filter(p => p.status === 'pending').length;
+    const inProg   = allPods.filter(p => p.status === 'in_progress').length;
+    const done     = allPods.filter(p => p.status === 'completed').length;
+    const failed   = allPods.filter(p => p.status === 'failed').length;
+    statsEl.innerHTML = `
+      <div class="pods-stat-card pods-stat-total">
+        <div class="pods-stat-value">${total}</div>
+        <div class="pods-stat-label">סה"כ פודים</div>
+      </div>
+      <div class="pods-stat-card pods-stat-pending">
+        <div class="pods-stat-value">${pending}</div>
+        <div class="pods-stat-label">ממתינים</div>
+      </div>
+      <div class="pods-stat-card pods-stat-inprogress">
+        <div class="pods-stat-value">${inProg}</div>
+        <div class="pods-stat-label">בתהליך</div>
+      </div>
+      <div class="pods-stat-card pods-stat-completed">
+        <div class="pods-stat-value">${done}</div>
+        <div class="pods-stat-label">הושלמו</div>
+      </div>
+      <div class="pods-stat-card pods-stat-failed">
+        <div class="pods-stat-value">${failed}</div>
+        <div class="pods-stat-label">נכשלו</div>
+      </div>
+    `;
+  }
 
   const container = document.getElementById('pods-table-container');
 

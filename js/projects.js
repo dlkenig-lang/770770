@@ -259,7 +259,7 @@ function renderPodCard(pod) {
   const dirLabel = pod.type_directions?.direction === 'R' ? 'ימין' : pod.type_directions?.direction === 'L' ? 'שמאל' : (pod.type_directions?.direction || '');
 
   return `
-    <div class="pod-card">
+    <div class="pod-card pod-card-clickable btn-open-pod" data-pod-id="${pod.id}">
       <div class="pod-card-header">
         <div class="pod-card-code">${escHtml(pod.pod_code)}</div>
         <span class="status-badge ${statusCls}">${STATUS_LABELS[pod.status] || pod.status}</span>
@@ -287,7 +287,6 @@ function renderPodCard(pod) {
         </div>
       </div>
       <div class="pod-card-actions">
-        <button class="btn btn-primary btn-sm btn-open-pod" data-pod-id="${pod.id}">פתח</button>
         <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}">🔲 ברקוד</button>
         ${isAdminOrPM() ? `<button class="btn btn-danger btn-sm btn-delete-pod" data-pod-id="${pod.id}">🗑</button>` : ''}
       </div>

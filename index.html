@@ -192,8 +192,8 @@
       </div>
       <form id="form-login" class="auth-form">
         <div class="form-group">
-          <label>אימייל</label>
-          <input type="email" id="login-email" class="form-control" placeholder="your@email.com" required />
+          <label>אימייל או שם משתמש</label>
+          <input type="text" id="login-email" class="form-control" placeholder="your@email.com" required autocomplete="username" />
         </div>
         <div class="form-group">
           <label>סיסמה</label>
@@ -223,6 +223,11 @@
         <div class="form-group">
           <label>שם מלא</label>
           <input type="text" id="reg-name" class="form-control" placeholder="ישראל ישראלי" required />
+        </div>
+        <div class="form-group">
+          <label>שם משתמש</label>
+          <input type="text" id="reg-username" class="form-control" placeholder="username123" required autocomplete="username" />
+          <small class="form-hint">ישמש לזיהוי בהערות ובדיקות QC</small>
         </div>
         <div class="form-group">
           <label>אימייל</label>

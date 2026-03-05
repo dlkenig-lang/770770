@@ -79,13 +79,14 @@ async function loadUsersView() {
       <table>
         <thead>
           <tr>
-            <th>שם</th><th>אימייל</th><th>תפקיד</th><th>פעיל</th><th>נוצר ב</th><th>פעולות</th>
+            <th>שם</th><th>שם משתמש</th><th>אימייל</th><th>תפקיד</th><th>פעיל</th><th>נוצר ב</th><th>פעולות</th>
           </tr>
         </thead>
         <tbody>
           ${users.map(u => `
             <tr>
               <td>${escHtml(u.full_name)}</td>
+              <td><code>${escHtml(u.username || '—')}</code></td>
               <td>${escHtml(u.email)}</td>
               <td>
                 <select class="role-select" data-user-id="${u.id}" ${u.id === AppState.currentProfile?.id ? 'disabled' : ''}>
@@ -193,6 +194,7 @@ async function onAuthStateChange(session) {
             id: session.user.id,
             email: session.user.email,
             full_name: session.user.user_metadata?.full_name || session.user.email,
+            username: session.user.user_metadata?.username || session.user.email.split('@')[0],
             role: 'viewer',
           }, { onConflict: 'id', ignoreDuplicates: true }),
           new Promise(resolve => setTimeout(() => resolve(null), 4000)),

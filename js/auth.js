@@ -40,7 +40,14 @@ function initAuth() {
     setLoading(btn, true);
 
     try {
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      let loginEmail = email;
+      if (\!email.includes('@')) {
+        const { data: emailData, error: rpcErr } = await supabaseClient
+          .rpc('get_email_by_username', { p_username: email });
+        if (rpcErr || \!emailData) throw new Error('שם משתמש לא נמצא');
+        loginEmail = emailData;
+      }
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email: loginEmail, password });
       if (error) throw error;
     } catch (err) {
       errEl.textContent = translateAuthError(err.message);
@@ -54,6 +61,7 @@ function initAuth() {
   document.getElementById('form-register').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fullName = document.getElementById('reg-name').value.trim();
+    const username = document.getElementById('reg-username').value.trim().toLowerCase();
     const email = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
     const password2 = document.getElementById('reg-password2').value;
@@ -81,7 +89,7 @@ function initAuth() {
 
       const { data, error } = await supabaseClient.auth.signUp({
         email, password,
-        options: { data: { full_name: fullName, role: 'viewer' } }
+        options: { data: { full_name: fullName, username: username, role: 'viewer' } }
       });
       if (error) throw error;
       sucEl.textContent = 'נרשמת בהצלחה! בדוק את האימייל שלך לאישור.';
@@ -122,15 +130,14 @@ function initAuth() {
     }
   });
 
-  // Logout — use timeout so reload always happens even if signOut hangs (bolt.new service worker)
+  // Logout — scope:local clears session instantly without server round-trip
   document.getElementById('btn-logout').addEventListener('click', async () => {
     try {
-      await Promise.race([
-        supabaseClient.auth.signOut(),
-        new Promise(resolve => setTimeout(resolve, 3000)),
-      ]);
+      await supabaseClient.auth.signOut({ scope: 'local' });
+    } catch (e) {
+      console.warn('signOut error:', e);
     } finally {
-      window.location.reload();
+      window.location.href = window.location.pathname + '?t=' + Date.now();
     }
   });
 }

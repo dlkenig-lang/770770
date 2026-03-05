@@ -233,17 +233,26 @@ async function onAuthStateChange(session) {
         console.warn('[LOAD] profile upsert failed:', e);
       }
     }
-    // Fallback: if profile still null, synthesise minimal object from session metadata
+    // Fallback: if profile still null, use localStorage cached profile (preserves role)
     if (!profile) {
-      profile = {
-        id: session.user.id,
-        email: session.user.email,
-        full_name: session.user.user_metadata?.full_name || session.user.email,
-        username: session.user.user_metadata?.username || session.user.email.split('@')[0],
-        role: session.user.user_metadata?.role || 'viewer',
-        is_active: true,
-      };
-      console.warn('[LOAD] using metadata fallback for profile');
+      const cached = localStorage.getItem('modu_profile_' + session.user.id);
+      if (cached) {
+        try { profile = JSON.parse(cached); } catch (e) {}
+      }
+      if (!profile) {
+        profile = {
+          id: session.user.id,
+          email: session.user.email,
+          full_name: session.user.user_metadata?.full_name || session.user.email,
+          username: session.user.user_metadata?.username || session.user.email.split('@')[0],
+          role: 'viewer',
+          is_active: true,
+        };
+      }
+      console.warn('[LOAD] using cached/fallback profile, role=' + profile.role);
+    } else {
+      // Cache the successfully loaded profile for future fallback
+      try { localStorage.setItem('modu_profile_' + session.user.id, JSON.stringify(profile)); } catch (e) {}
     }
     AppState.currentProfile = profile;
 

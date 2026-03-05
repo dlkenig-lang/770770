@@ -126,7 +126,7 @@ function renderActiveStage() {
           ? `<button class="btn btn-primary btn-stage-nav" data-idx="${_activeStageIdx + 1}">שלב הבא ←</button>`
           : '<div></div>'}
       </div>
-      ${isAdminOrPM() ? `
+      ${canEdit() ? `
         <div class="qc-admin-actions">
           <button class="btn btn-ghost btn-sm btn-edit-stage" data-stage-id="${stage.id}">
             ✏️ עריכת טופס

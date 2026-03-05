@@ -140,9 +140,10 @@ async function loadComments(podId) {
         ${c.is_resolved ? '<span style="color:var(--success);font-size:12px">✓ טופל</span>' : ''}
       </div>
       <div class="comment-content">${escHtml(c.content)}</div>
-      ${c.is_flagged && !c.is_resolved && canEdit() ? `
+      ${(c.is_flagged && !c.is_resolved && canEdit()) || isAdmin() ? `
         <div class="comment-actions">
-          <button class="btn btn-success btn-sm btn-resolve-comment" data-comment-id="${c.id}">✓ סמן כטופל</button>
+          ${c.is_flagged && !c.is_resolved && canEdit() ? `<button class="btn btn-success btn-sm btn-resolve-comment" data-comment-id="${c.id}">✓ סמן כטופל</button>` : ''}
+          ${isAdmin() ? `<button class="btn btn-danger btn-sm btn-delete-comment" data-comment-id="${c.id}">🗑 מחק</button>` : ''}
         </div>
       ` : ''}
     </div>
@@ -151,6 +152,17 @@ async function loadComments(podId) {
   list.querySelectorAll('.btn-resolve-comment').forEach(btn => {
     btn.addEventListener('click', () => resolveComment(btn.dataset.commentId, podId));
   });
+  list.querySelectorAll('.btn-delete-comment').forEach(btn => {
+    btn.addEventListener('click', () => deleteComment(btn.dataset.commentId, podId));
+  });
+}
+
+async function deleteComment(commentId, podId) {
+  if (!confirm('האם למחוק הערה זו לצמיתות?')) return;
+  const { error } = await supabaseClient.from('comments').delete().eq('id', commentId);
+  if (error) { showToast('שגיאה במחיקת הערה', 'error'); return; }
+  showToast('הערה נמחקה', 'success');
+  await loadComments(podId);
 }
 
 async function resolveComment(commentId, podId) {

@@ -295,19 +295,25 @@ async function init() {
   initProfileModal();
 
   // Listen for auth changes.
-  // IMPORTANT: Only reinitialize on INITIAL_SESSION and SIGNED_IN/SIGNED_OUT.
-  // TOKEN_REFRESHED fires every ~60s and must NOT trigger a full reload.
+  // Guard against double-firing: Supabase can emit both INITIAL_SESSION and
+  // SIGNED_IN on the same page load. We only initialize once per user session.
+  let _initializedUserId = null;
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (event === 'INITIAL_SESSION') {
       if (!session) {
         document.getElementById('loading-screen').classList.add('hidden');
         document.getElementById('auth-screen').style.display = 'flex';
       } else {
+        _initializedUserId = session.user.id;
         await onAuthStateChange(session);
       }
     } else if (event === 'SIGNED_IN') {
+      // Skip if we already initialized for this exact user (avoids double-init)
+      if (session?.user?.id && session.user.id === _initializedUserId) return;
+      _initializedUserId = session?.user?.id ?? null;
       await onAuthStateChange(session);
     } else if (event === 'SIGNED_OUT') {
+      _initializedUserId = null;
       await onAuthStateChange(null);
     }
     // TOKEN_REFRESHED and other events: ignore — no UI reinit needed

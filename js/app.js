@@ -233,6 +233,18 @@ async function onAuthStateChange(session) {
         console.warn('[LOAD] profile upsert failed:', e);
       }
     }
+    // Fallback: if profile still null, synthesise minimal object from session metadata
+    if (!profile) {
+      profile = {
+        id: session.user.id,
+        email: session.user.email,
+        full_name: session.user.user_metadata?.full_name || session.user.email,
+        username: session.user.user_metadata?.username || session.user.email.split('@')[0],
+        role: session.user.user_metadata?.role || 'viewer',
+        is_active: true,
+      };
+      console.warn('[LOAD] using metadata fallback for profile');
+    }
     AppState.currentProfile = profile;
 
     // Update navbar

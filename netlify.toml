@@ -1,3 +1,25 @@
 [build]
 publish = "."
 command = "echo 'Static site - no build needed'"
+
+# HTML — always revalidate so users always get the latest version after deploy
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+
+# JS & CSS — no-cache so each deploy gets fresh files immediately
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"

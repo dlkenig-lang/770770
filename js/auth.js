@@ -80,6 +80,15 @@ function initAuth() {
 
     setLoading(btn, true);
     try {
+      // Check if username is already taken before hitting signUp
+      const { data: existingEmail } = await supabaseClient
+        .rpc('get_email_by_username', { p_username: username });
+      if (existingEmail) {
+        errEl.textContent = 'שם המשתמש כבר תפוס, אנא בחר שם אחר';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
       const pwnedCount = await checkPasswordPwned(password);
       if (pwnedCount > 0) {
         errEl.textContent = `הסיסמה נמצאה ${pwnedCount.toLocaleString()} פעמים בדליפות מידע ידועות. אנא בחר סיסמה אחרת.`;
@@ -158,6 +167,7 @@ function translateAuthError(msg) {
     'Password should be at least 6 characters': 'הסיסמה חייבת להיות לפחות 6 תווים',
     'Unable to validate email address: invalid format': 'כתובת האימייל אינה תקינה',
     'For security purposes, you can only request this after': 'לצרכי אבטחה, יש להמתין מספר שניות לפני בקשה חדשה',
+    'Database error saving new user': 'שגיאה ביצירת המשתמש — ייתכן ששם המשתמש או האימייל כבר קיימים במערכת',
   };
   for (const [key, val] of Object.entries(map)) {
     if (msg.includes(key)) return val;

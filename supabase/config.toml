@@ -1,0 +1,4 @@
+project_id = "qiibgzypiljjwjqebyxo"
+
+[auth.password]
+hibp_enabled = true

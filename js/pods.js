@@ -129,7 +129,7 @@ async function loadComments(podId) {
     <div class="comment-item ${c.is_flagged ? 'flagged' : ''} ${c.is_resolved ? 'resolved' : ''}">
       <div class="comment-header">
         ${c.is_flagged ? '<span class="comment-flag-icon">🚩</span>' : ''}
-        <span class="comment-author">${escHtml(c.profiles?.username || c.profiles?.full_name || 'משתמש')}</span>
+        <span class="comment-author">${escHtml(c.profiles?.full_name || c.profiles?.username || 'משתמש')}</span>
         <span class="nav-role-badge" style="background:var(--primary-light);color:var(--primary)">${ROLE_LABELS[c.profiles?.role] || ''}</span>
         <span class="comment-time">${formatDateTime(c.created_at)}</span>
         ${c.is_resolved ? '<span style="color:var(--success);font-size:12px">✓ טופל</span>' : ''}

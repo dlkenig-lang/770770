@@ -482,7 +482,7 @@ function showSignatureModal(podId, stageId, stageNum, stages, stageItems, inspec
 
   const nameEl = document.getElementById('sig-inspector-name');
   if (nameEl) {
-    nameEl.value = AppState.currentProfile?.full_name || AppState.currentProfile?.username || inspectorName;
+    nameEl.value = AppState.currentProfile?.full_name?.trim() || AppState.currentProfile?.username || inspectorName;
     nameEl.readOnly = true;
   }
 

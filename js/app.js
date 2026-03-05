@@ -116,9 +116,14 @@ async function loadUsersView() {
   // Role change
   container.querySelectorAll('.role-select').forEach(sel => {
     sel.addEventListener('change', async () => {
-      const { error } = await supabaseClient.from('profiles')
-        .update({ role: sel.value }).eq('id', sel.dataset.userId);
-      if (error) { showToast('שגיאה', 'error'); return; }
+      const prevValue = sel.dataset.prevValue || sel.querySelector('option[selected]')?.value;
+      const { data, error } = await supabaseClient.from('profiles')
+        .update({ role: sel.value }).eq('id', sel.dataset.userId).select('id');
+      if (error || !data?.length) {
+        showToast('שגיאה בעדכון תפקיד — אין הרשאה', 'error');
+        sel.value = prevValue || sel.value;
+        return;
+      }
       showToast('תפקיד עודכן', 'success');
       // Refresh navbar if current user's role was changed
       if (sel.dataset.userId === AppState.currentProfile?.id) {

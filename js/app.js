@@ -117,8 +117,21 @@ async function loadUsersView() {
   container.querySelectorAll('.role-select').forEach(sel => {
     sel.addEventListener('change', async () => {
       const prevValue = sel.dataset.prevValue || sel.querySelector('option[selected]')?.value;
+      const newRole = sel.value;
+
+      // Enforce single-occupancy roles
+      if (newRole === 'project_manager' || newRole === 'inspector') {
+        const conflict = [...container.querySelectorAll('.role-select')]
+          .find(s => s !== sel && s.value === newRole);
+        if (conflict) {
+          showToast(`כבר קיים ${ROLE_LABELS[newRole]} — ניתן להגדיר רק אחד`, 'error');
+          sel.value = prevValue || '';
+          return;
+        }
+      }
+
       const { data, error } = await supabaseClient.from('profiles')
-        .update({ role: sel.value }).eq('id', sel.dataset.userId).select('id');
+        .update({ role: newRole }).eq('id', sel.dataset.userId).select('id');
       if (error || !data?.length) {
         showToast('שגיאה בעדכון תפקיד — אין הרשאה', 'error');
         sel.value = prevValue || sel.value;

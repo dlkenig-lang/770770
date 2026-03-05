@@ -72,6 +72,13 @@ function initAuth() {
 
     setLoading(btn, true);
     try {
+      const pwnedCount = await checkPasswordPwned(password);
+      if (pwnedCount > 0) {
+        errEl.textContent = `הסיסמה נמצאה ${pwnedCount.toLocaleString()} פעמים בדליפות מידע ידועות. אנא בחר סיסמה אחרת.`;
+        errEl.classList.remove('hidden');
+        return;
+      }
+
       const { data, error } = await supabaseClient.auth.signUp({
         email, password,
         options: { data: { full_name: fullName, role: 'viewer' } }
@@ -146,6 +153,28 @@ function translateAuthError(msg) {
     if (msg.includes(key)) return val;
   }
   return msg || 'אירעה שגיאה';
+}
+
+async function checkPasswordPwned(password) {
+  try {
+    const encoder = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest('SHA-1', encoder.encode(password));
+    const hashHex = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    const prefix = hashHex.slice(0, 5);
+    const suffix = hashHex.slice(5);
+
+    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+      headers: { 'Add-Padding': 'true' }
+    });
+    if (!res.ok) return 0; // אם ה-API לא זמין - לא לחסום
+
+    const text = await res.text();
+    const match = text.split('\n').find(line => line.startsWith(suffix));
+    return match ? parseInt(match.split(':')[1], 10) : 0;
+  } catch {
+    return 0; // שגיאת רשת - לא לחסום
+  }
 }
 
 async function loadCurrentProfile(userId) {

@@ -159,8 +159,17 @@ async function loadComments(podId) {
 
 async function deleteComment(commentId, podId) {
   if (!confirm('האם למחוק הערה זו לצמיתות?')) return;
-  const { error } = await supabaseClient.from('comments').delete().eq('id', commentId);
-  if (error) { showToast('שגיאה במחיקת הערה', 'error'); return; }
+  const { error, count } = await supabaseClient
+    .from('comments').delete({ count: 'exact' }).eq('id', commentId);
+  if (error) {
+    console.error('deleteComment error:', error);
+    showToast('שגיאה במחיקת הערה: ' + (error.message || error.code || ''), 'error');
+    return;
+  }
+  if (count === 0) {
+    showToast('המחיקה נחסמה — יש להפעיל את מדיניות RLS ב-Supabase', 'error');
+    return;
+  }
   showToast('הערה נמחקה', 'success');
   await loadComments(podId);
 }

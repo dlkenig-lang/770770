@@ -130,14 +130,17 @@ function initAuth() {
     }
   });
 
-  // Logout — scope:local clears session instantly without server round-trip
+  // Logout
   document.getElementById('btn-logout').addEventListener('click', async () => {
     try {
-      await supabaseClient.auth.signOut({ scope: 'local' });
+      await Promise.race([
+        supabaseClient.auth.signOut(),
+        new Promise(resolve => setTimeout(resolve, 3000)),
+      ]);
     } catch (e) {
       console.warn('signOut error:', e);
     } finally {
-      window.location.href = window.location.pathname + '?t=' + Date.now();
+      window.location.reload();
     }
   });
 }

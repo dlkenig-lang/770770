@@ -113,22 +113,29 @@ async function loadUsersView() {
     </div>
   `;
 
+  const SINGLE_ROLES = ['project_manager', 'inspector'];
+
+  function updateSingleRoleOptions() {
+    const allSelects = [...container.querySelectorAll('.role-select')];
+    const takenRoles = new Set(allSelects.map(s => s.value).filter(v => SINGLE_ROLES.includes(v)));
+    allSelects.forEach(sel => {
+      SINGLE_ROLES.forEach(role => {
+        const opt = sel.querySelector(`option[value="${role}"]`);
+        if (!opt) return;
+        const takenByOther = takenRoles.has(role) && sel.value !== role;
+        opt.disabled = takenByOther;
+        opt.style.color = takenByOther ? '#aaa' : '';
+      });
+    });
+  }
+
+  updateSingleRoleOptions();
+
   // Role change
   container.querySelectorAll('.role-select').forEach(sel => {
     sel.addEventListener('change', async () => {
       const prevValue = sel.dataset.prevValue || sel.querySelector('option[selected]')?.value;
       const newRole = sel.value;
-
-      // Enforce single-occupancy roles
-      if (newRole === 'project_manager' || newRole === 'inspector') {
-        const conflict = [...container.querySelectorAll('.role-select')]
-          .find(s => s !== sel && s.value === newRole);
-        if (conflict) {
-          showToast(`כבר קיים ${ROLE_LABELS[newRole]} — ניתן להגדיר רק אחד`, 'error');
-          sel.value = prevValue || '';
-          return;
-        }
-      }
 
       const { data, error } = await supabaseClient.from('profiles')
         .update({ role: newRole }).eq('id', sel.dataset.userId).select('id');
@@ -138,6 +145,7 @@ async function loadUsersView() {
         return;
       }
       showToast('תפקיד עודכן', 'success');
+      updateSingleRoleOptions();
       // Refresh navbar if current user's role was changed
       if (sel.dataset.userId === AppState.currentProfile?.id) {
         AppState.currentProfile.role = sel.value;

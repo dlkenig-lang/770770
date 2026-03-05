@@ -112,7 +112,7 @@ async function showCommentsModal(podId) {
 }
 
 async function loadComments(podId) {
-  const { data: comments } = await supabaseClient
+  const { data: comments, error: commentsErr } = await supabaseClient
     .from('comments')
     .select('*, profiles(full_name, username, role)')
     .eq('pod_id', podId)
@@ -120,6 +120,11 @@ async function loadComments(podId) {
 
   const list = document.getElementById('comments-list');
 
+  if (commentsErr) {
+    console.error('loadComments error:', commentsErr);
+    list.innerHTML = '<div class="empty-state" style="padding:24px"><div class="empty-state-text">שגיאה בטעינת הערות</div></div>';
+    return;
+  }
   if (!comments || comments.length === 0) {
     list.innerHTML = '<div class="empty-state" style="padding:24px"><div class="empty-state-text">אין הערות עדיין</div></div>';
     return;
@@ -199,7 +204,7 @@ function initPodDetailButtons() {
       content: text,
       is_flagged: flagged,
     });
-    if (error) { showToast('שגיאה בשליחת הערה', 'error'); return; }
+    if (error) { console.error('comment insert error:', error); showToast('שגיאה בשליחת הערה: ' + (error.message || error.code || ''), 'error'); return; }
     document.getElementById('new-comment-text').value = '';
     document.getElementById('comment-flag-cb').checked = false;
     showToast('הערה נוספה', 'success');

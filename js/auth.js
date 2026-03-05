@@ -90,8 +90,8 @@ function initAuth() {
       }
 
       const pwnedCount = await checkPasswordPwned(password);
-      if (pwnedCount > 0) {
-        errEl.textContent = `הסיסמה נמצאה ${pwnedCount.toLocaleString()} פעמים בדליפות מידע ידועות. אנא בחר סיסמה אחרת.`;
+      if (pwnedCount > 5) {
+        errEl.textContent = `הסיסמה נמצאה ${pwnedCount.toLocaleString()} פעמים בדליפות מידע. אנא בחר סיסמה חזקה יותר — שלב אותיות גדולות וקטנות, מספרים וסימנים (למשל: Abc@2024).`;
         errEl.classList.remove('hidden');
         return;
       }

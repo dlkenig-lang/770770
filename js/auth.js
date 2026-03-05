@@ -41,10 +41,10 @@ function initAuth() {
 
     try {
       let loginEmail = email;
-      if (\!email.includes('@')) {
+      if (!email.includes('@')) {
         const { data: emailData, error: rpcErr } = await supabaseClient
           .rpc('get_email_by_username', { p_username: email });
-        if (rpcErr || \!emailData) throw new Error('שם משתמש לא נמצא');
+        if (rpcErr || !emailData) throw new Error('שם משתמש לא נמצא');
         loginEmail = emailData;
       }
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email: loginEmail, password });

@@ -139,6 +139,39 @@ function initAuth() {
     }
   });
 
+  // Reset password form (arrived from email link)
+  document.getElementById('form-reset').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = document.getElementById('reset-password').value;
+    const password2 = document.getElementById('reset-password2').value;
+    const errEl = document.getElementById('reset-error');
+    const sucEl = document.getElementById('reset-success');
+    const btn = e.submitter;
+
+    errEl.classList.add('hidden');
+    sucEl.classList.add('hidden');
+
+    if (password !== password2) {
+      errEl.textContent = 'הסיסמאות אינן תואמות';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    setLoading(btn, true);
+    try {
+      const { error } = await supabaseClient.auth.updateUser({ password });
+      if (error) throw error;
+      sucEl.textContent = 'הסיסמה עודכנה בהצלחה! מיד תועבר למערכת...';
+      sucEl.classList.remove('hidden');
+      e.target.reset();
+    } catch (err) {
+      errEl.textContent = translateAuthError(err.message);
+      errEl.classList.remove('hidden');
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+
   // Logout
   document.getElementById('btn-logout').addEventListener('click', async () => {
     try {

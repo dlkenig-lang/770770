@@ -299,6 +299,12 @@ async function init() {
   // SIGNED_IN on the same page load. We only initialize once per user session.
   let _initializedUserId = null;
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      document.getElementById('loading-screen').classList.add('hidden');
+      document.getElementById('auth-screen').style.display = 'flex';
+      showAuthPanel('reset');
+      return;
+    }
     if (event === 'INITIAL_SESSION') {
       if (!session) {
         document.getElementById('loading-screen').classList.add('hidden');

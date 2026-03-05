@@ -278,6 +278,35 @@
       </div>
     </div>
   </div>
+
+  <!-- Reset Password (arrived from email link) -->
+  <div id="auth-reset" class="auth-panel">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <img src="images/logo.svg" alt="Modusystems" class="auth-logo-img" />
+        <p>הגדרת סיסמה חדשה</p>
+      </div>
+      <form id="form-reset" class="auth-form">
+        <div class="form-group">
+          <label>סיסמה חדשה</label>
+          <div class="input-password-wrapper">
+            <input type="password" id="reset-password" class="form-control" placeholder="לפחות 6 תווים" required minlength="6" />
+            <button type="button" class="btn-show-pass" data-target="reset-password">👁</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>אימות סיסמה</label>
+          <div class="input-password-wrapper">
+            <input type="password" id="reset-password2" class="form-control" placeholder="חזור על הסיסמה" required />
+            <button type="button" class="btn-show-pass" data-target="reset-password2">👁</button>
+          </div>
+        </div>
+        <div id="reset-error" class="error-msg hidden"></div>
+        <div id="reset-success" class="success-msg hidden"></div>
+        <button type="submit" class="btn btn-primary btn-full">שמור סיסמה חדשה</button>
+      </form>
+    </div>
+  </div>
 </div>
 
 <!-- ========== MODALS ========== -->

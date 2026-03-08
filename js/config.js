@@ -49,7 +49,7 @@ const STATUS_LABELS = {
 
 function canEdit() {
   const role = AppState.currentProfile?.role;
-  return role === ROLES.ADMIN || role === ROLES.PM || role === ROLES.INSPECTOR;
+  return role === ROLES.ADMIN || role === ROLES.INSPECTOR;
 }
 
 function isAdmin() {

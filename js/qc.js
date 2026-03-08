@@ -508,10 +508,11 @@ function sendShareEmail() {
     return;
   }
 
-  const stageUrl = `${window.location.origin}${window.location.pathname}?pod=${_qcPodId}&stage=${stageIdx}`;
+  // Use pod-only URL (no & in query string) so email clients detect it as a hyperlink
+  const podUrl = `${window.location.origin}${window.location.pathname}?pod=${_qcPodId}`;
   const subject = encodeURIComponent(`שיתוף: ${stageName}`);
   const body = encodeURIComponent(
-    `שלום,\n\nשותף איתך עמוד בדיקה: ${stageName}\n\nקישור לעמוד:\n${stageUrl}` +
+    `שלום,\n\nשותף איתך עמוד בדיקה: ${stageName}\n\n${podUrl}` +
     (note ? `\n\nהערה: ${note}` : '') +
     `\n\n-- נשלח מאפליקציית בקרת האיכות`
   );

@@ -511,6 +511,15 @@ table tbody tr:hover { background: #f8fafc; }
   border-radius: 50%; width: 17px; height: 17px; font-size: 9px;
   cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
 }
+#img-lightbox {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; cursor: zoom-out;
+}
+#img-lightbox img {
+  max-width: 90vw; max-height: 90vh; border-radius: 6px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
 .qc-time-inline { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
 .qc-time-inline label { font-size: 11px; color: var(--text-muted); }
 .qc-time-input { padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }

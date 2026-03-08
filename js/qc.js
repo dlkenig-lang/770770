@@ -190,7 +190,7 @@ function renderActiveStage() {
 
   // Image thumbnails — clickable for all roles
   content.querySelectorAll('.qc-img-thumb').forEach(img => {
-    img.addEventListener('click', () => window.open(img.dataset.url, '_blank'));
+    img.addEventListener('click', () => openImageLightbox(img.dataset.url));
   });
 
   // Admin actions (always visible to admin/PM)
@@ -449,6 +449,18 @@ async function saveItemField(field, fieldName, value, podId) {
   if (itemId) {
     await supabaseClient.from('qc_items').update({ [fieldName]: value }).eq('id', itemId);
   }
+}
+
+// ---- IMAGE LIGHTBOX ----
+function openImageLightbox(url) {
+  const existing = document.getElementById('img-lightbox');
+  if (existing) existing.remove();
+
+  const lb = document.createElement('div');
+  lb.id = 'img-lightbox';
+  lb.innerHTML = `<img src="${url}" alt="תמונה" />`;
+  lb.addEventListener('click', () => lb.remove());
+  document.body.appendChild(lb);
 }
 
 // ---- QC IMAGE UPLOAD / DELETE ----

@@ -299,11 +299,8 @@ function initPodDetailButtons() {
     await loadComments(currentCommentsModal.podId);
   });
 
-  // PDF & Excel buttons
+  // PDF button
   document.getElementById('btn-pod-pdf')?.addEventListener('click', () => {
     if (AppState.currentPod) generatePodPDF(AppState.currentPod);
-  });
-  document.getElementById('btn-pod-excel')?.addEventListener('click', () => {
-    if (AppState.currentProject) generateProjectExcel(AppState.currentProject.id, AppState.currentProject.name);
   });
 }

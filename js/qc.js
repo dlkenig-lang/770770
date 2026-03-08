@@ -164,6 +164,18 @@ function renderActiveStage() {
       f.addEventListener('change', () => saveItemField(f, 'value_entry', f.value, _qcPodId))
     );
 
+    content.querySelectorAll('.qc-img-input').forEach(input => {
+      input.addEventListener('change', () => uploadQcImage(input));
+    });
+
+    content.querySelectorAll('.qc-img-del').forEach(btn => {
+      btn.addEventListener('click', () => deleteQcImage(btn));
+    });
+
+    content.querySelectorAll('.qc-img-thumb').forEach(img => {
+      img.addEventListener('click', () => window.open(img.dataset.url, '_blank'));
+    });
+
     content.querySelectorAll('.btn-complete-stage').forEach(btn => {
       btn.addEventListener('click', () => {
         const nameEl = document.getElementById(`qc-inspector-name-${btn.dataset.stageId}`);
@@ -206,6 +218,8 @@ function renderQCTableRow(itemDef, rowIdx, stage, items, readonly) {
   const time2 = item?.time_entry_2 || '';
   const val = item?.value_entry || '';
   const itemId = item?.id || '';
+  const imageUrl = item?.image_url || '';
+  const imagePath = item?.image_storage_path || '';
 
   return `
     <tr class="qc-table-row qc-row-${status}" id="qc-row-${itemDef.key}-${stage.id}">
@@ -252,7 +266,23 @@ function renderQCTableRow(itemDef, rowIdx, stage, items, readonly) {
           <textarea class="qc-notes-inline" rows="1" placeholder="הערות..."
             data-stage-id="${stage.id}" data-item-key="${itemDef.key}" data-item-id="${itemId}"
           >${escHtml(notes)}</textarea>
-        ` : (notes ? `<span class="text-sm text-muted">${escHtml(notes)}</span>` : '')}
+          <div class="qc-img-row">
+            <label class="btn-img-upload" title="הוסף תמונה">
+              📷
+              <input type="file" accept="image/*" class="qc-img-input" hidden
+                data-item-id="${itemId}" data-stage-id="${stage.id}" data-item-key="${itemDef.key}" />
+            </label>
+            ${imageUrl ? `
+              <div class="qc-img-thumb-wrap">
+                <img src="${imageUrl}" class="qc-img-thumb" alt="תמונה" data-url="${escHtml(imageUrl)}" />
+                <button type="button" class="qc-img-del" data-item-id="${itemId}" data-storage-path="${escHtml(imagePath)}">✕</button>
+              </div>
+            ` : ''}
+          </div>
+        ` : `
+          ${notes ? `<span class="text-sm text-muted">${escHtml(notes)}</span>` : ''}
+          ${imageUrl ? `<img src="${imageUrl}" class="qc-img-thumb qc-img-thumb--readonly" alt="תמונה" data-url="${escHtml(imageUrl)}" style="margin-top:4px;display:block" />` : ''}
+        `}
       </td>
     </tr>
   `;
@@ -418,6 +448,53 @@ async function saveItemField(field, fieldName, value, podId) {
   if (itemId) {
     await supabaseClient.from('qc_items').update({ [fieldName]: value }).eq('id', itemId);
   }
+}
+
+// ---- QC IMAGE UPLOAD / DELETE ----
+async function uploadQcImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const itemId = input.dataset.itemId;
+  if (!itemId) { showToast('שמור את הפריט תחילה', 'error'); return; }
+  if (file.size > 10 * 1024 * 1024) { showToast('הקובץ גדול מ-10MB', 'error'); return; }
+
+  showToast('מעלה תמונה...', 'info');
+  const ext = file.name.split('.').pop() || 'jpg';
+  const storagePath = `${itemId}/${Date.now()}.${ext}`;
+
+  const { error: upErr } = await supabaseClient.storage.from('qc-images').upload(storagePath, file);
+  if (upErr) { showToast('שגיאה בהעלאה: ' + upErr.message, 'error'); return; }
+
+  const { data: { publicUrl } } = supabaseClient.storage.from('qc-images').getPublicUrl(storagePath);
+  await supabaseClient.from('qc_items').update({ image_url: publicUrl, image_storage_path: storagePath }).eq('id', itemId);
+
+  // Update UI
+  const row = input.closest('.qc-img-row');
+  row.querySelector('.qc-img-thumb-wrap')?.remove();
+  const wrap = document.createElement('div');
+  wrap.className = 'qc-img-thumb-wrap';
+  wrap.innerHTML = `
+    <img src="${publicUrl}" class="qc-img-thumb" alt="תמונה" data-url="${publicUrl}" />
+    <button type="button" class="qc-img-del" data-item-id="${itemId}" data-storage-path="${storagePath}">✕</button>
+  `;
+  wrap.querySelector('.qc-img-thumb').addEventListener('click', (e) => window.open(e.target.dataset.url, '_blank'));
+  wrap.querySelector('.qc-img-del').addEventListener('click', (e) => deleteQcImage(e.currentTarget));
+  row.appendChild(wrap);
+
+  input.value = '';
+  showToast('תמונה הועלתה', 'success');
+}
+
+async function deleteQcImage(btn) {
+  if (!confirm('למחוק את התמונה?')) return;
+  const itemId = btn.dataset.itemId;
+  const storagePath = btn.dataset.storagePath;
+
+  await supabaseClient.from('qc_items').update({ image_url: null, image_storage_path: null }).eq('id', itemId);
+  if (storagePath) await supabaseClient.storage.from('qc-images').remove([storagePath]);
+
+  btn.closest('.qc-img-thumb-wrap').remove();
+  showToast('תמונה נמחקה', 'success');
 }
 
 // ---- UPDATE STAGE STATUS ----

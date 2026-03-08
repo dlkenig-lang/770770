@@ -122,26 +122,11 @@ async function generatePodPDF(pod) {
     const filename = `QC_${pod.pod_code}_${new Date().toISOString().split('T')[0]}.pdf`;
     const pdfBlob = doc.output('blob');
 
-    if (window.showSaveFilePicker) {
-      try {
-        const fileHandle = await window.showSaveFilePicker({
-          suggestedName: filename,
-          types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
-        });
-        const writable = await fileHandle.createWritable();
-        await writable.write(pdfBlob);
-        await writable.close();
-        showToast('PDF נשמר בהצלחה', 'success');
-      } catch (e) {
-        if (e.name !== 'AbortError') showToast('שגיאה בשמירת PDF: ' + e.message, 'error');
-      }
-    } else {
-      const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; a.click();
-      URL.revokeObjectURL(url);
-      showToast('PDF נוצר ונשמר', 'success');
-    }
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    showToast('PDF נוצר ונשמר', 'success');
   } catch (err) {
     showToast('שגיאה ביצירת PDF: ' + err.message, 'error');
   } finally {

@@ -427,7 +427,7 @@ async function loadProjectDetailsTab(project) {
 async function loadPlansTab(projectId) {
   const [{ data: types }, { data: plans }] = await Promise.all([
     supabaseClient.from('project_types').select('id, type_number, dimensions').eq('project_id', projectId).order('type_number'),
-    supabaseClient.from('type_plans').select('*').eq('project_id', projectId).order('uploaded_at'),
+    supabaseClient.from('type_plans').select('*, uploader:profiles!uploaded_by(full_name, username)').eq('project_id', projectId).order('uploaded_at'),
   ]);
 
   const container = document.getElementById('plans-list');
@@ -460,6 +460,7 @@ async function loadPlansTab(projectId) {
               ${typePlans.map(p => `
                 <div class="plan-file-row">
                   <a href="${escHtml(p.file_url)}" target="_blank" class="plan-file-link">📄 ${escHtml(p.file_name)}</a>
+                  <span class="plan-file-meta">${escHtml(p.uploader?.full_name || p.uploader?.username || '')} · ${formatDate(p.uploaded_at)}</span>
                   ${canEdit ? `<button class="btn btn-ghost btn-sm btn-delete-plan" data-plan-id="${p.id}" data-storage-path="${escHtml(p.storage_path)}">🗑️</button>` : ''}
                 </div>
               `).join('')}

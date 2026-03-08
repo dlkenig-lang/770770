@@ -901,6 +901,7 @@ table tbody tr:hover { background: #f8fafc; }
 .plan-file-row { display: flex; align-items: center; gap: 8px; background: var(--bg); border-radius: var(--radius); padding: 6px 10px; }
 .plan-file-link { font-size: 13px; color: var(--primary); text-decoration: none; flex: 1; }
 .plan-file-link:hover { text-decoration: underline; }
+.plan-file-meta { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 .directions-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .direction-item {
   border: 1.5px solid var(--border);

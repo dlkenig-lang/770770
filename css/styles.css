@@ -382,6 +382,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   margin-bottom: 16px;
 }
 .filter-select { width: auto; min-width: 150px; }
+#btn-print-all-barcodes { margin-right: auto; white-space: nowrap; }
 
 /* ===== TABLE ===== */
 .table-wrapper {

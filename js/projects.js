@@ -903,3 +903,59 @@ function escHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+function printAllBarcodes() {
+  // Collect pod codes from the currently rendered cards
+  const cards = document.querySelectorAll('#pods-table-container .btn-pod-barcode-tbl');
+  if (cards.length === 0) {
+    showToast('אין פודים להדפסה לפי הסינון הנוכחי', 'error');
+    return;
+  }
+
+  const codes = Array.from(cards).map(btn => btn.dataset.podCode).filter(Boolean);
+  if (codes.length === 0) {
+    showToast('לא נמצאו קודי ברקוד', 'error');
+    return;
+  }
+
+  const barcodeItems = codes.map(code => `
+    <div class="barcode-item">
+      <svg class="bc" data-code="${code}"></svg>
+      <div class="bc-label">${code}</div>
+    </div>
+  `).join('');
+
+  const printWin = window.open('', '_blank');
+  printWin.document.write(`<!DOCTYPE html>
+<html dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>ברקודים - ${AppState.currentProject?.name || ''}</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #fff; }
+    h2 { text-align: center; padding: 12px; font-size: 16px; border-bottom: 1px solid #ccc; }
+    .grid { display: flex; flex-wrap: wrap; gap: 12px; padding: 16px; justify-content: flex-start; }
+    .barcode-item { display: flex; flex-direction: column; align-items: center; border: 1px solid #ddd; border-radius: 6px; padding: 8px 12px; break-inside: avoid; }
+    .bc-label { font-size: 13px; font-weight: bold; margin-top: 4px; letter-spacing: 1px; }
+    @media print {
+      body { margin: 0; }
+      h2 { font-size: 13px; }
+      .grid { gap: 8px; padding: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <h2>ברקודים — ${escHtml(AppState.currentProject?.name || '')} (${codes.length} פודים)</h2>
+  <div class="grid">${barcodeItems}</div>
+  <script>
+    document.querySelectorAll('svg.bc').forEach(svg => {
+      JsBarcode(svg, svg.dataset.code, { format:'CODE128', width:2, height:60, displayValue:false, margin:6 });
+    });
+    window.onload = () => { window.print(); };
+  <\/script>
+</body>
+</html>`);
+  printWin.document.close();
+}

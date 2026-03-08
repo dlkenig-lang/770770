@@ -181,6 +181,9 @@ document.getElementById('btn-new-project')?.addEventListener('click', showNewPro
 document.getElementById('btn-add-pod')?.addEventListener('click', () => {
   if (AppState.currentProject) showAddPodModal(AppState.currentProject.id);
 });
+document.getElementById('btn-print-all-barcodes')?.addEventListener('click', () => {
+  printAllBarcodes();
+});
 document.getElementById('btn-add-group')?.addEventListener('click', () => {
   if (AppState.currentProject) showGroupModal(AppState.currentProject.id);
 });

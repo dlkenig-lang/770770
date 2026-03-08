@@ -434,7 +434,6 @@ async function loadProjectDetailsTab(project) {
             <input type="url" id="det-onedrive" class="form-control" value="${escHtml(project.onedrive_folder_url || '')}" placeholder="https://onedrive.live.com/..." />
             <div class="form-hint">הדבק כאן את הקישור לתיקיית OneDrive של הפרויקט לשמירת PDF</div>
           </div>
-          <button class="btn btn-primary" id="btn-save-project-details">שמור שינויים</button>
         ` : `
           <div class="form-row">
             <div class="info-item"><div class="info-label">שם</div><div class="info-value">${escHtml(project.name)}</div></div>
@@ -448,6 +447,7 @@ async function loadProjectDetailsTab(project) {
       </div>
     </div>
     ${typesSection}
+    ${isAdminOrPM() ? `<button class="btn btn-primary" id="btn-save-project-details" style="margin-top:8px">שמור שינויים</button>` : ''}
   `;
 
   if (isAdminOrPM()) {

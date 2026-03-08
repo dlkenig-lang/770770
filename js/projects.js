@@ -422,11 +422,10 @@ async function loadProjectDetailsTab(project) {
 
 // ---- PLANS TAB ----
 async function loadPlansTab(projectId) {
-  const { data: types } = await supabaseClient
-    .from('project_types')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('type_number', { ascending: true });
+  const [{ data: types }, { data: plans }] = await Promise.all([
+    supabaseClient.from('project_types').select('id, type_number, dimensions').eq('project_id', projectId).order('type_number'),
+    supabaseClient.from('type_plans').select('*').eq('project_id', projectId).order('uploaded_at'),
+  ]);
 
   const container = document.getElementById('plans-list');
 
@@ -436,30 +435,35 @@ async function loadPlansTab(projectId) {
   }
 
   const canEdit = isAdminOrPM();
+  const plansByType = {};
+  (plans || []).forEach(p => {
+    if (!plansByType[p.type_id]) plansByType[p.type_id] = [];
+    plansByType[p.type_id].push(p);
+  });
 
   container.innerHTML = `
     <div class="types-list">
-      ${types.map(t => `
+      ${types.map(t => {
+        const typePlans = plansByType[t.id] || [];
+        return `
         <div class="type-item" data-type-id="${t.id}">
           <div class="type-item-header">
             <div class="type-badge">T${t.type_number}</div>
             <span class="text-muted">מידות: ${escHtml(t.dimensions || '—')}</span>
+            ${canEdit ? `<label class="btn btn-primary btn-sm plan-upload-label" style="margin-right:auto">📤 הוסף PDF<input type="file" accept="application/pdf" class="plan-file-input" data-type-id="${t.id}" style="display:none"></label>` : ''}
           </div>
-          <div class="plan-row">
-            ${t.architectural_plan_url ? `
-              <a href="${escHtml(t.architectural_plan_url)}" target="_blank" class="btn btn-secondary btn-sm">
-                📄 פתח תוכנית
-              </a>
-              <span class="plan-filename">${escHtml(t.architectural_plan_name || '')}</span>
-              ${canEdit ? `<button class="btn btn-danger btn-sm btn-delete-plan" data-type-id="${t.id}" data-plan-name="${escHtml(t.architectural_plan_name || '')}">🗑️ מחק</button>` : ''}
-              ${canEdit ? `<label class="btn btn-secondary btn-sm plan-upload-label" title="החלף קובץ">🔄 החלף<input type="file" accept="application/pdf" class="plan-file-input" data-type-id="${t.id}" style="display:none"></label>` : ''}
-            ` : `
-              <span class="text-muted text-sm">אין תוכנית מועלית</span>
-              ${canEdit ? `<label class="btn btn-primary btn-sm plan-upload-label">📤 העלה PDF<input type="file" accept="application/pdf" class="plan-file-input" data-type-id="${t.id}" style="display:none"></label>` : ''}
-            `}
-          </div>
-        </div>
-      `).join('')}
+          ${typePlans.length > 0 ? `
+            <div class="plans-files-list">
+              ${typePlans.map(p => `
+                <div class="plan-file-row">
+                  <a href="${escHtml(p.file_url)}" target="_blank" class="plan-file-link">📄 ${escHtml(p.file_name)}</a>
+                  ${canEdit ? `<button class="btn btn-ghost btn-sm btn-delete-plan" data-plan-id="${p.id}" data-storage-path="${escHtml(p.storage_path)}">🗑️</button>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          ` : '<div class="text-muted text-sm" style="margin-top:4px">אין תוכניות מועלות</div>'}
+        </div>`;
+      }).join('')}
     </div>
   `;
 
@@ -467,11 +471,12 @@ async function loadPlansTab(projectId) {
     input.addEventListener('change', e => {
       const file = e.target.files[0];
       if (file) uploadPlan(e.target.dataset.typeId, file, projectId);
+      e.target.value = '';
     });
   });
 
   container.querySelectorAll('.btn-delete-plan').forEach(btn => {
-    btn.addEventListener('click', () => deletePlan(btn.dataset.typeId, btn.dataset.planName, projectId));
+    btn.addEventListener('click', () => deletePlan(btn.dataset.planId, btn.dataset.storagePath, projectId));
   });
 }
 
@@ -480,16 +485,20 @@ async function uploadPlan(typeId, file, projectId) {
   if (file.size > 20 * 1024 * 1024) { showToast('גודל הקובץ המקסימלי הוא 20MB', 'error'); return; }
 
   showToast('מעלה קובץ...', 'info');
-  const path = `${projectId}/${typeId}/${Date.now()}_${file.name}`;
-  const { error: upErr } = await supabaseClient.storage.from('plans').upload(path, file, { upsert: true });
+  const storagePath = `${projectId}/${typeId}/${Date.now()}_${file.name}`;
+  const { error: upErr } = await supabaseClient.storage.from('plans').upload(storagePath, file);
   if (upErr) { showToast('שגיאה בהעלאה: ' + upErr.message, 'error'); return; }
 
-  const { data: { publicUrl } } = supabaseClient.storage.from('plans').getPublicUrl(path);
+  const { data: { publicUrl } } = supabaseClient.storage.from('plans').getPublicUrl(storagePath);
 
-  const { error: dbErr } = await supabaseClient
-    .from('project_types')
-    .update({ architectural_plan_url: publicUrl, architectural_plan_name: file.name })
-    .eq('id', typeId);
+  const { error: dbErr } = await supabaseClient.from('type_plans').insert({
+    type_id: typeId,
+    project_id: projectId,
+    file_name: file.name,
+    file_url: publicUrl,
+    storage_path: storagePath,
+    uploaded_by: (await supabaseClient.auth.getUser()).data.user?.id,
+  });
 
   if (dbErr) { showToast('שגיאה בשמירה: ' + dbErr.message, 'error'); return; }
 
@@ -497,15 +506,13 @@ async function uploadPlan(typeId, file, projectId) {
   await loadPlansTab(projectId);
 }
 
-async function deletePlan(typeId, planName, projectId) {
-  if (!confirm('האם למחוק את התוכנית?')) return;
+async function deletePlan(planId, storagePath, projectId) {
+  if (!confirm('האם למחוק תוכנית זו?')) return;
 
-  const { error: dbErr } = await supabaseClient
-    .from('project_types')
-    .update({ architectural_plan_url: null, architectural_plan_name: null })
-    .eq('id', typeId);
-
+  const { error: dbErr } = await supabaseClient.from('type_plans').delete().eq('id', planId);
   if (dbErr) { showToast('שגיאה במחיקה: ' + dbErr.message, 'error'); return; }
+
+  if (storagePath) await supabaseClient.storage.from('plans').remove([storagePath]);
 
   showToast('התוכנית נמחקה', 'success');
   await loadPlansTab(projectId);

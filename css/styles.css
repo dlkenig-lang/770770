@@ -887,6 +887,10 @@ table tbody tr:hover { background: #f8fafc; }
 .plan-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .plan-filename { font-size: 13px; color: var(--text-muted); flex: 1; }
 .plan-upload-label { cursor: pointer; }
+.plans-files-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.plan-file-row { display: flex; align-items: center; gap: 8px; background: var(--bg); border-radius: var(--radius); padding: 6px 10px; }
+.plan-file-link { font-size: 13px; color: var(--primary); text-decoration: none; flex: 1; }
+.plan-file-link:hover { text-decoration: underline; }
 .directions-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .direction-item {
   border: 1.5px solid var(--border);

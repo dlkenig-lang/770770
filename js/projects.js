@@ -918,16 +918,25 @@ function printAllBarcodes() {
     return;
   }
 
-  // Generate SVGs in current window where JsBarcode is already loaded
+  // Use a hidden container to let JsBarcode render into real DOM nodes
+  const scratch = document.createElement('div');
+  scratch.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+  document.body.appendChild(scratch);
+
   const barcodeItems = codes.map(code => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    scratch.appendChild(svg);
     try {
       JsBarcode(svg, code, { format: 'CODE128', width: 2, height: 60, displayValue: false, margin: 6 });
     } catch (e) {
-      svg.innerHTML = `<text x="0" y="20" fill="red">שגיאה</text>`;
+      console.error('JsBarcode error for', code, e);
     }
-    return `<div class="barcode-item">${svg.outerHTML}<div class="bc-label">${escHtml(code)}</div></div>`;
+    const svgHtml = svg.outerHTML;
+    scratch.removeChild(svg);
+    return `<div class="barcode-item">${svgHtml}<div class="bc-label">${escHtml(code)}</div></div>`;
   }).join('');
+
+  document.body.removeChild(scratch);
 
   const printWin = window.open('', '_blank');
   printWin.document.write(`<!DOCTYPE html>
@@ -948,8 +957,9 @@ function printAllBarcodes() {
 <body>
   <h2>ברקודים — ${escHtml(AppState.currentProject?.name || '')} (${codes.length} פודים)</h2>
   <div class="grid">${barcodeItems}</div>
-  <script>window.onload = () => window.print();<\/script>
 </body>
 </html>`);
   printWin.document.close();
+  // Call print from parent after the child document is ready
+  setTimeout(() => printWin.print(), 300);
 }

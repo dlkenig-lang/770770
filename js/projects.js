@@ -268,6 +268,13 @@ async function loadPodsTab(projectId, filters = {}) {
         e.stopPropagation();
         const groupId = e.target.value || null;
         const podId = e.target.dataset.podId;
+        // Update dot color
+        const dot = container.querySelector(`.pod-group-color-dot[data-pod-id="${podId}"]`);
+        if (dot) {
+          const color = e.target.selectedOptions[0]?.dataset.color || '';
+          dot.style.background = color || 'transparent';
+          dot.style.border = color ? 'none' : '1px solid var(--border)';
+        }
         const { error } = await supabaseClient.from('pods').update({ group_id: groupId }).eq('id', podId);
         if (error) { showToast('שגיאה בשמירת קבוצה', 'error'); return; }
         showToast('הקבוצה עודכנה', 'success');
@@ -302,12 +309,17 @@ function renderPodCard(pod, groups = []) {
         </div>
         <div class="pod-card-meta-item">
           <span class="pod-card-meta-label">קבוצה</span>
-          ${isAdminOrPM() && groups.length ? `
-            <select class="pod-card-group-select" data-pod-id="${pod.id}" style="font-size:12px;border:1px solid var(--border);border-radius:4px;padding:1px 4px;background:var(--bg);color:var(--text);cursor:pointer;max-width:110px">
-              <option value="">ללא קבוצה</option>
-              ${groups.map(g => `<option value="${g.id}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
-            </select>
-          ` : `<span class="pod-card-meta-value">${pod.production_groups?.name ? escHtml(pod.production_groups.name) : '—'}</span>`}
+          ${isAdminOrPM() && groups.length ? (() => {
+            const selIdx = groups.findIndex(g => g.id === pod.group_id);
+            const dotColor = selIdx >= 0 ? GROUP_COLORS[selIdx % GROUP_COLORS.length] : 'transparent';
+            return `<div style="display:flex;align-items:center;gap:4px">
+              <span class="pod-group-color-dot" data-pod-id="${pod.id}" style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:${dotColor};${selIdx < 0 ? 'border:1px solid var(--border)' : ''}"></span>
+              <select class="pod-card-group-select" data-pod-id="${pod.id}" style="font-size:12px;border:1px solid var(--border);border-radius:4px;padding:1px 4px;background:var(--bg);color:var(--text);cursor:pointer;max-width:110px">
+                <option value="" data-color="">ללא קבוצה</option>
+                ${groups.map((g, i) => `<option value="${g.id}" data-color="${GROUP_COLORS[i % GROUP_COLORS.length]}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
+              </select>
+            </div>`;
+          })() : `<span class="pod-card-meta-value">${pod.production_groups?.name ? escHtml(pod.production_groups.name) : '—'}</span>`}
         </div>
       </div>
       <div class="card-progress-section">

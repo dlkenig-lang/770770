@@ -39,13 +39,17 @@ async function openPod(podId) {
   statusEl.textContent = STATUS_LABELS[pod.status] || pod.status;
   statusEl.className = `status-badge status-${pod.status}`;
 
+  const selGroupIdx = groups.findIndex(g => g.id === pod.group_id);
+  const dotColor = selGroupIdx >= 0 ? GROUP_COLORS[selGroupIdx % GROUP_COLORS.length] : '';
+
   const groupCell = isAdminOrPM() ? `
     <div class="info-item">
       <div class="info-label">קבוצה</div>
-      <div class="info-value">
+      <div class="info-value" style="display:flex;align-items:center;gap:6px">
+        <span id="pod-group-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${dotColor || 'transparent'};${dotColor ? '' : 'border:1px solid var(--border)'}"></span>
         <select id="pod-group-select" class="form-control" style="font-size:13px;padding:2px 6px;height:auto;min-width:120px">
-          <option value="">ללא קבוצה</option>
-          ${groups.map(g => `<option value="${g.id}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
+          <option value="" data-color="">ללא קבוצה</option>
+          ${groups.map((g, i) => `<option value="${g.id}" data-color="${GROUP_COLORS[i % GROUP_COLORS.length]}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -83,6 +87,12 @@ async function openPod(podId) {
   // Group assignment change handler
   document.getElementById('pod-group-select')?.addEventListener('change', async (e) => {
     const groupId = e.target.value || null;
+    const color = e.target.selectedOptions[0]?.dataset.color || '';
+    const dot = document.getElementById('pod-group-dot');
+    if (dot) {
+      dot.style.background = color || 'transparent';
+      dot.style.border = color ? 'none' : '1px solid var(--border)';
+    }
     const { error: updErr } = await supabaseClient
       .from('pods')
       .update({ group_id: groupId })

@@ -549,6 +549,19 @@ table tbody tr:hover { background: #f8fafc; }
   background: #fafafa; border-top: 1px dashed var(--border);
 }
 
+.qc-share-row {
+  display: flex; justify-content: center;
+  padding: 10px 20px 14px;
+  border-top: 1px solid var(--border);
+}
+.share-stage-name {
+  font-weight: 600; margin-bottom: 12px; color: var(--text-primary);
+}
+.modal-footer {
+  display: flex; gap: 8px; justify-content: flex-end;
+  padding: 12px 20px; border-top: 1px solid var(--border);
+}
+
 /* ===== POD DETAIL ===== */
 .pod-info-bar {
   background: white;

@@ -136,6 +136,11 @@ function renderActiveStage() {
           </button>
         </div>
       ` : ''}
+      <div class="qc-share-row">
+        <button class="btn btn-ghost btn-sm btn-share-stage" data-stage-idx="${_activeStageIdx}">
+          ✉️ שיתוף עמוד שלב
+        </button>
+      </div>
     </div>
   `;
 
@@ -199,6 +204,11 @@ function renderActiveStage() {
   });
   content.querySelectorAll('.btn-edit-stage').forEach(btn => {
     btn.addEventListener('click', () => editStage(btn.dataset.stageId));
+  });
+
+  // Share button
+  content.querySelectorAll('.btn-share-stage').forEach(btn => {
+    btn.addEventListener('click', () => openShareStageModal(parseInt(btn.dataset.stageIdx)));
   });
 
   // Navigation buttons
@@ -449,6 +459,65 @@ async function saveItemField(field, fieldName, value, podId) {
   if (itemId) {
     await supabaseClient.from('qc_items').update({ [fieldName]: value }).eq('id', itemId);
   }
+}
+
+// ---- SHARE STAGE MODAL ----
+async function openShareStageModal(stageIdx) {
+  const stage = _qcStages[stageIdx];
+  const stageRef = QC_STAGES[stageIdx];
+  const letter = STAGE_LETTERS[stageIdx] || (stageIdx + 1);
+  const stageName = `שלב ${letter} – ${stage?.stage_name || stageRef?.name || ''}`;
+
+  // Fetch active users with email
+  const { data: users } = await supabaseClient
+    .from('profiles')
+    .select('id, full_name, username, email')
+    .eq('is_active', true)
+    .order('full_name', { ascending: true });
+
+  const modal = document.getElementById('share-stage-modal');
+  document.getElementById('share-stage-title').textContent = stageName;
+
+  const sel = document.getElementById('share-user-select');
+  sel.innerHTML = '<option value="">בחר משתמש...</option>';
+  (users || []).forEach(u => {
+    if (!u.email) return;
+    const opt = document.createElement('option');
+    opt.value = u.email;
+    opt.textContent = `${u.full_name || u.username} (${u.email})`;
+    sel.appendChild(opt);
+  });
+
+  document.getElementById('share-note-text').value = '';
+
+  // Store stage info for send action
+  modal.dataset.stageIdx = stageIdx;
+  modal.dataset.stageName = stageName;
+  modal.classList.remove('hidden');
+}
+
+function sendShareEmail() {
+  const modal = document.getElementById('share-stage-modal');
+  const toEmail = document.getElementById('share-user-select').value;
+  const note = document.getElementById('share-note-text').value.trim();
+  const stageName = modal.dataset.stageName;
+  const stageIdx = modal.dataset.stageIdx;
+
+  if (!toEmail) {
+    alert('יש לבחור משתמש');
+    return;
+  }
+
+  const stageUrl = `${window.location.origin}${window.location.pathname}?pod=${_qcPodId}&stage=${stageIdx}`;
+  const subject = encodeURIComponent(`שיתוף: ${stageName}`);
+  const body = encodeURIComponent(
+    `שלום,\n\nשותף איתך עמוד בדיקה: ${stageName}\n\nקישור: ${stageUrl}` +
+    (note ? `\n\nהערה: ${note}` : '') +
+    `\n\n-- נשלח מאפליקציית בקרת האיכות`
+  );
+
+  window.location.href = `mailto:${toEmail}?subject=${subject}&body=${body}`;
+  modal.classList.add('hidden');
 }
 
 // ---- IMAGE LIGHTBOX ----

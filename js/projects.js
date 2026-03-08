@@ -351,6 +351,56 @@ async function loadGroupsTab(projectId) {
 // ---- PROJECT DETAILS TAB ----
 async function loadProjectDetailsTab(project) {
   const container = document.getElementById('project-details-form');
+
+  const { data: types } = await supabaseClient
+    .from('project_types')
+    .select('id, type_number, dimensions')
+    .eq('project_id', project.id)
+    .order('type_number');
+
+  function parseDims(str) {
+    const parts = (str || '').split(/[xX×]/);
+    return { l: (parts[0] || '').trim(), w: (parts[1] || '').trim(), h: (parts[2] || '').trim() };
+  }
+
+  const typesSection = isAdminOrPM() && types?.length ? `
+    <div class="card" style="margin-top:16px">
+      <div class="card-body">
+        <div style="font-weight:600;margin-bottom:12px;font-size:15px">מידות לפי טיפוס</div>
+        ${types.map(t => {
+          const d = parseDims(t.dimensions);
+          return `
+          <div class="det-type-row" style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+            <div class="type-badge" style="flex-shrink:0">T${t.type_number}</div>
+            <div class="form-group" style="margin:0;flex:1;min-width:80px">
+              <label style="font-size:11px">אורך</label>
+              <input type="text" class="form-control det-dim-l" data-type-id="${t.id}" value="${escHtml(d.l)}" placeholder="אורך" />
+            </div>
+            <div class="form-group" style="margin:0;flex:1;min-width:80px">
+              <label style="font-size:11px">רוחב</label>
+              <input type="text" class="form-control det-dim-w" data-type-id="${t.id}" value="${escHtml(d.w)}" placeholder="רוחב" />
+            </div>
+            <div class="form-group" style="margin:0;flex:1;min-width:80px">
+              <label style="font-size:11px">גובה</label>
+              <input type="text" class="form-control det-dim-h" data-type-id="${t.id}" value="${escHtml(d.h)}" placeholder="גובה" />
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  ` : (!isAdminOrPM() && types?.length ? `
+    <div class="card" style="margin-top:16px">
+      <div class="card-body">
+        <div style="font-weight:600;margin-bottom:12px;font-size:15px">מידות לפי טיפוס</div>
+        ${types.map(t => `
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+            <div class="type-badge" style="flex-shrink:0">T${t.type_number}</div>
+            <span class="text-muted" style="font-size:13px">${escHtml(t.dimensions || '—')}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+  ` : '');
+
   container.innerHTML = `
     <div class="card">
       <div class="card-body">
@@ -397,23 +447,37 @@ async function loadProjectDetailsTab(project) {
         `}
       </div>
     </div>
+    ${typesSection}
   `;
 
   if (isAdminOrPM()) {
     document.getElementById('btn-save-project-details')?.addEventListener('click', async () => {
       const btn = document.getElementById('btn-save-project-details');
       setLoading(btn, true);
-      const { error } = await supabaseClient.from('projects').update({
+
+      const projectUpdate = supabaseClient.from('projects').update({
         name: document.getElementById('det-name').value.trim(),
         code: document.getElementById('det-code').value.trim().toUpperCase(),
         location: document.getElementById('det-location').value.trim(),
         pipe_type: document.getElementById('det-pipe').value || null,
         onedrive_folder_url: document.getElementById('det-onedrive').value.trim() || null,
       }).eq('id', project.id);
+
+      const typeUpdates = (types || []).map(t => {
+        const l = container.querySelector(`.det-dim-l[data-type-id="${t.id}"]`)?.value.trim() || '';
+        const w = container.querySelector(`.det-dim-w[data-type-id="${t.id}"]`)?.value.trim() || '';
+        const h = container.querySelector(`.det-dim-h[data-type-id="${t.id}"]`)?.value.trim() || '';
+        const dims = [l, w, h].filter(Boolean).join('x') || null;
+        return supabaseClient.from('project_types').update({ dimensions: dims }).eq('id', t.id);
+      });
+
+      const results = await Promise.all([projectUpdate, ...typeUpdates]);
       setLoading(btn, false);
-      if (error) { showToast('שגיאה בשמירה', 'error'); return; }
+
+      const firstError = results.find(r => r.error);
+      if (firstError) { showToast('שגיאה בשמירה', 'error'); return; }
+
       showToast('הפרטים עודכנו', 'success');
-      // Refresh
       AppState.currentProject = { ...AppState.currentProject,
         name: document.getElementById('det-name').value.trim(),
         code: document.getElementById('det-code').value.trim().toUpperCase(),
@@ -640,8 +704,16 @@ function renderTypeInputs() {
         <div style="font-weight:600;margin-bottom:10px;color:var(--primary)">טיפוס T${i}</div>
         <div class="form-row">
           <div class="form-group">
-            <label>מידות</label>
-            <input type="text" id="np-type${i}-dims" class="form-control" placeholder="אורך x רוחב x גובה" />
+            <label>אורך</label>
+            <input type="text" id="np-type${i}-dim-l" class="form-control" placeholder="אורך" />
+          </div>
+          <div class="form-group">
+            <label>רוחב</label>
+            <input type="text" id="np-type${i}-dim-w" class="form-control" placeholder="רוחב" />
+          </div>
+          <div class="form-group">
+            <label>גובה</label>
+            <input type="text" id="np-type${i}-dim-h" class="form-control" placeholder="גובה" />
           </div>
         </div>
         <div class="form-group">
@@ -741,7 +813,10 @@ async function createProject() {
     // Step 2: Insert types and directions, create pods
     for (let i = 1; i <= typeCount; i++) {
       setBtnStep(`שומר טיפוס ${i}/${typeCount}...`);
-      const dims = document.getElementById(`np-type${i}-dims`)?.value.trim();
+      const dimL = document.getElementById(`np-type${i}-dim-l`)?.value.trim() || '';
+      const dimW = document.getElementById(`np-type${i}-dim-w`)?.value.trim() || '';
+      const dimH = document.getElementById(`np-type${i}-dim-h`)?.value.trim() || '';
+      const dims = [dimL, dimW, dimH].filter(Boolean).join('x') || null;
       console.log(`[createProject] Step 2: inserting type ${i}`);
       const { data: typeData, error: typeErr } = await supabaseClient
         .from('project_types')

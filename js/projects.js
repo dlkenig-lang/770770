@@ -843,6 +843,7 @@ async function createProject() {
     console.log('[createProject] Step 1 OK, project id:', project.id);
 
     // Step 2: Insert types and directions, create pods
+    let globalSerial = 0;
     for (let i = 1; i <= typeCount; i++) {
       setBtnStep(`שומר טיפוס ${i}/${typeCount}...`);
       const dimL = document.getElementById(`np-type${i}-dim-l`)?.value.trim() || '';
@@ -874,12 +875,13 @@ async function createProject() {
         setBtnStep(`יוצר פודים...`);
         const podsToInsert = [];
         for (let s = 1; s <= podCount; s++) {
+          globalSerial++;
           podsToInsert.push({
             project_id: project.id,
             type_id: typeData.id,
             direction_id: dirData.id,
             serial_number: s,
-            pod_code: generatePodCode(code, dateReceived, i, dir, s),
+            pod_code: generatePodCode(code, dateReceived, i, dir, globalSerial),
             status: 'pending',
           });
         }

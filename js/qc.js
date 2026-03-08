@@ -510,9 +510,10 @@ function sendShareEmail() {
 
   // Use pod-only URL (no & in query string) so email clients detect it as a hyperlink
   const podUrl = `${window.location.origin}${window.location.pathname}?pod=${_qcPodId}`;
-  const subject = encodeURIComponent(`שיתוף: ${stageName}`);
+  const podCode = AppState.currentPod?.pod_code || '';
+  const subject = encodeURIComponent(`שיתוף: ${stageName}${podCode ? ` [${podCode}]` : ''}`);
   const body = encodeURIComponent(
-    `שלום,\n\nשותף איתך עמוד בדיקה: ${stageName}\n\n${podUrl}` +
+    `שלום,\n\nשותף איתך עמוד בדיקה: ${stageName}${podCode ? `\nפוד: ${podCode}` : ''}\n\n${podUrl}` +
     (note ? `\n\nהערה: ${note}` : '') +
     `\n\n-- נשלח מאפליקציית בקרת האיכות`
   );

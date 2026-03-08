@@ -191,7 +191,11 @@ async function loadPodsTab(projectId, filters = {}) {
   if (filters.group_id) query = query.eq('group_id', filters.group_id);
   if (filters.status) query = query.eq('status', filters.status);
 
-  const { data: pods } = await query;
+  const [{ data: pods }, { data: projectGroups }] = await Promise.all([
+    query,
+    supabaseClient.from('production_groups').select('id, name').eq('project_id', projectId).order('name'),
+  ]);
+  const allGroups = projectGroups || [];
 
   const allPods = pods || [];
   let filtered = allPods;
@@ -246,7 +250,7 @@ async function loadPodsTab(projectId, filters = {}) {
     return;
   }
 
-  container.innerHTML = `<div class="pods-grid">${filtered.map(pod => renderPodCard(pod)).join('')}</div>`;
+  container.innerHTML = `<div class="pods-grid">${filtered.map(pod => renderPodCard(pod, allGroups)).join('')}</div>`;
 
   container.querySelectorAll('.btn-open-pod').forEach(btn => {
     btn.addEventListener('click', () => openPod(btn.dataset.podId));
@@ -258,10 +262,21 @@ async function loadPodsTab(projectId, filters = {}) {
     container.querySelectorAll('.btn-delete-pod').forEach(btn => {
       btn.addEventListener('click', (e) => { e.stopPropagation(); deletePod(btn.dataset.podId); });
     });
+    container.querySelectorAll('.pod-card-group-select').forEach(sel => {
+      sel.addEventListener('click', (e) => e.stopPropagation());
+      sel.addEventListener('change', async (e) => {
+        e.stopPropagation();
+        const groupId = e.target.value || null;
+        const podId = e.target.dataset.podId;
+        const { error } = await supabaseClient.from('pods').update({ group_id: groupId }).eq('id', podId);
+        if (error) { showToast('שגיאה בשמירת קבוצה', 'error'); return; }
+        showToast('הקבוצה עודכנה', 'success');
+      });
+    });
   }
 }
 
-function renderPodCard(pod) {
+function renderPodCard(pod, groups = []) {
   const stages = pod.qc_stages || [];
   const completedStages = stages.filter(s => s.status === 'completed').length;
   const pct = Math.round(completedStages / 6 * 100);
@@ -287,7 +302,12 @@ function renderPodCard(pod) {
         </div>
         <div class="pod-card-meta-item">
           <span class="pod-card-meta-label">קבוצה</span>
-          <span class="pod-card-meta-value">${pod.production_groups?.name ? escHtml(pod.production_groups.name) : '—'}</span>
+          ${isAdminOrPM() && groups.length ? `
+            <select class="pod-card-group-select" data-pod-id="${pod.id}" style="font-size:12px;border:1px solid var(--border);border-radius:4px;padding:1px 4px;background:var(--bg);color:var(--text);cursor:pointer;max-width:110px">
+              <option value="">ללא קבוצה</option>
+              ${groups.map(g => `<option value="${g.id}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
+            </select>
+          ` : `<span class="pod-card-meta-value">${pod.production_groups?.name ? escHtml(pod.production_groups.name) : '—'}</span>`}
         </div>
       </div>
       <div class="card-progress-section">

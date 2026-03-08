@@ -58,6 +58,29 @@ async function openPod(podId) {
   `;
 
   showView('pod-detail');
+
+  // Show unresolved comments banner
+  const { data: unresolvedComments } = await supabaseClient
+    .from('comments')
+    .select('id')
+    .eq('pod_id', podId)
+    .eq('is_flagged', true)
+    .eq('is_resolved', false);
+  const unresolvedCount = unresolvedComments?.length || 0;
+  let bannerEl = document.getElementById('pod-unresolved-banner');
+  if (!bannerEl) {
+    bannerEl = document.createElement('div');
+    bannerEl.id = 'pod-unresolved-banner';
+    document.getElementById('pod-info-bar').insertAdjacentElement('afterend', bannerEl);
+  }
+  if (unresolvedCount > 0) {
+    bannerEl.className = 'pod-unresolved-banner';
+    bannerEl.innerHTML = `⚠️ לפוד זה יש <strong>${unresolvedCount}</strong> הערות שלא טופלו — <button class="btn btn-sm btn-ghost" onclick="showCommentsModal('${podId}')">לטיפול</button>`;
+  } else {
+    bannerEl.className = '';
+    bannerEl.innerHTML = '';
+  }
+
   await loadQCStages(podId);
 }
 

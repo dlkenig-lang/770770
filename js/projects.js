@@ -933,15 +933,21 @@ function printAllBarcodes() {
   const css = `
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:monospace;background:#fff;padding:16px}
-    h2{text-align:center;padding:12px;font-size:16px;border-bottom:1px solid #ccc;margin-bottom:16px}
+    .toolbar{display:flex;align-items:center;gap:16px;padding:12px;border-bottom:1px solid #ccc;margin-bottom:16px}
+    .toolbar h2{font-size:16px;flex:1;text-align:center}
+    .btn-print{background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-size:14px;cursor:pointer;white-space:nowrap}
+    .btn-print:hover{background:#1d4ed8}
     .grid{display:flex;flex-wrap:wrap;gap:12px}
     .barcode-item{display:flex;flex-direction:column;align-items:center;border:1px solid #ddd;border-radius:6px;padding:8px 12px;break-inside:avoid}
     .bc-label{font-size:13px;font-weight:bold;margin-top:4px;letter-spacing:1px}
-    @media print{body{padding:8px}.grid{gap:8px}}
+    @media print{.toolbar{display:none}.grid{gap:8px}body{padding:8px}}
   `;
   const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">
     <title>ברקודים</title><style>${css}</style></head><body>
-    <h2>ברקודים — ${escHtml(AppState.currentProject?.name || '')} (${codes.length} פודים)</h2>
+    <div class="toolbar">
+      <h2>ברקודים — ${escHtml(AppState.currentProject?.name || '')} (${codes.length} פודים)</h2>
+      <button class="btn-print" onclick="window.print()">🖨️ הדפס</button>
+    </div>
     <div class="grid">${barcodeItems}</div>
     </body></html>`;
 

@@ -435,26 +435,80 @@ async function loadPlansTab(projectId) {
     return;
   }
 
+  const canEdit = isAdminOrPM();
+
   container.innerHTML = `
     <div class="types-list">
       ${types.map(t => `
-        <div class="type-item">
+        <div class="type-item" data-type-id="${t.id}">
           <div class="type-item-header">
             <div class="type-badge">T${t.type_number}</div>
             <span class="text-muted">מידות: ${escHtml(t.dimensions || '—')}</span>
           </div>
-          ${t.architectural_plan_url ? `
-            <div>
+          <div class="plan-row">
+            ${t.architectural_plan_url ? `
               <a href="${escHtml(t.architectural_plan_url)}" target="_blank" class="btn btn-secondary btn-sm">
-                📐 פתח תוכנית אדריכלית
+                📄 פתח תוכנית
               </a>
-              <span class="text-sm text-muted" style="margin-right:8px">${escHtml(t.architectural_plan_name || '')}</span>
-            </div>
-          ` : '<div class="text-muted text-sm">אין תוכנית אדריכלית מועלית</div>'}
+              <span class="plan-filename">${escHtml(t.architectural_plan_name || '')}</span>
+              ${canEdit ? `<button class="btn btn-danger btn-sm btn-delete-plan" data-type-id="${t.id}" data-plan-name="${escHtml(t.architectural_plan_name || '')}">🗑️ מחק</button>` : ''}
+              ${canEdit ? `<label class="btn btn-secondary btn-sm plan-upload-label" title="החלף קובץ">🔄 החלף<input type="file" accept="application/pdf" class="plan-file-input" data-type-id="${t.id}" style="display:none"></label>` : ''}
+            ` : `
+              <span class="text-muted text-sm">אין תוכנית מועלית</span>
+              ${canEdit ? `<label class="btn btn-primary btn-sm plan-upload-label">📤 העלה PDF<input type="file" accept="application/pdf" class="plan-file-input" data-type-id="${t.id}" style="display:none"></label>` : ''}
+            `}
+          </div>
         </div>
       `).join('')}
     </div>
   `;
+
+  container.querySelectorAll('.plan-file-input').forEach(input => {
+    input.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) uploadPlan(e.target.dataset.typeId, file, projectId);
+    });
+  });
+
+  container.querySelectorAll('.btn-delete-plan').forEach(btn => {
+    btn.addEventListener('click', () => deletePlan(btn.dataset.typeId, btn.dataset.planName, projectId));
+  });
+}
+
+async function uploadPlan(typeId, file, projectId) {
+  if (file.type !== 'application/pdf') { showToast('יש להעלות קובץ PDF בלבד', 'error'); return; }
+  if (file.size > 20 * 1024 * 1024) { showToast('גודל הקובץ המקסימלי הוא 20MB', 'error'); return; }
+
+  showToast('מעלה קובץ...', 'info');
+  const path = `${projectId}/${typeId}/${Date.now()}_${file.name}`;
+  const { error: upErr } = await supabaseClient.storage.from('plans').upload(path, file, { upsert: true });
+  if (upErr) { showToast('שגיאה בהעלאה: ' + upErr.message, 'error'); return; }
+
+  const { data: { publicUrl } } = supabaseClient.storage.from('plans').getPublicUrl(path);
+
+  const { error: dbErr } = await supabaseClient
+    .from('project_types')
+    .update({ architectural_plan_url: publicUrl, architectural_plan_name: file.name })
+    .eq('id', typeId);
+
+  if (dbErr) { showToast('שגיאה בשמירה: ' + dbErr.message, 'error'); return; }
+
+  showToast('התוכנית הועלתה בהצלחה', 'success');
+  await loadPlansTab(projectId);
+}
+
+async function deletePlan(typeId, planName, projectId) {
+  if (!confirm('האם למחוק את התוכנית?')) return;
+
+  const { error: dbErr } = await supabaseClient
+    .from('project_types')
+    .update({ architectural_plan_url: null, architectural_plan_name: null })
+    .eq('id', typeId);
+
+  if (dbErr) { showToast('שגיאה במחיקה: ' + dbErr.message, 'error'); return; }
+
+  showToast('התוכנית נמחקה', 'success');
+  await loadPlansTab(projectId);
 }
 
 // ---- SETUP FILTERS ----

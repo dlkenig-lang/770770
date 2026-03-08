@@ -884,6 +884,9 @@ table tbody tr:hover { background: #f8fafc; }
   padding: 4px 12px; border-radius: 100px;
   font-size: 13px; font-weight: 700;
 }
+.plan-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.plan-filename { font-size: 13px; color: var(--text-muted); flex: 1; }
+.plan-upload-label { cursor: pointer; }
 .directions-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .direction-item {
   border: 1.5px solid var(--border);

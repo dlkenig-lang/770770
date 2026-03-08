@@ -270,6 +270,15 @@ async function onAuthStateChange(session) {
     await loadDashboard();
     console.timeEnd('[LOAD] dashboard');
     console.timeEnd('[LOAD] total');
+
+    // Handle ?pod= deep link (e.g. from shared email)
+    const urlParams = new URLSearchParams(window.location.search);
+    const deepPodId = urlParams.get('pod');
+    if (deepPodId) {
+      // Clean URL without reloading
+      window.history.replaceState({}, '', window.location.pathname);
+      await openPod(deepPodId);
+    }
   } else {
     AppState.currentUser = null;
     AppState.currentProfile = null;

@@ -246,7 +246,7 @@ async function loadPodsTab(projectId, filters = {}) {
   const container = document.getElementById('pods-table-container');
 
   if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">אין פודים. לחץ "+ הוסף פוד" להוספה</div></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">אין פודים בפרויקט זה</div></div>';
     return;
   }
 

@@ -918,20 +918,23 @@ function printAllBarcodes() {
     return;
   }
 
-  const barcodeItems = codes.map(code => `
-    <div class="barcode-item">
-      <svg class="bc" data-code="${code}"></svg>
-      <div class="bc-label">${code}</div>
-    </div>
-  `).join('');
+  // Generate SVGs in current window where JsBarcode is already loaded
+  const barcodeItems = codes.map(code => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    try {
+      JsBarcode(svg, code, { format: 'CODE128', width: 2, height: 60, displayValue: false, margin: 6 });
+    } catch (e) {
+      svg.innerHTML = `<text x="0" y="20" fill="red">שגיאה</text>`;
+    }
+    return `<div class="barcode-item">${svg.outerHTML}<div class="bc-label">${escHtml(code)}</div></div>`;
+  }).join('');
 
   const printWin = window.open('', '_blank');
   printWin.document.write(`<!DOCTYPE html>
 <html dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>ברקודים - ${AppState.currentProject?.name || ''}</title>
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+  <title>ברקודים - ${escHtml(AppState.currentProject?.name || '')}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: monospace; background: #fff; }
@@ -939,22 +942,13 @@ function printAllBarcodes() {
     .grid { display: flex; flex-wrap: wrap; gap: 12px; padding: 16px; justify-content: flex-start; }
     .barcode-item { display: flex; flex-direction: column; align-items: center; border: 1px solid #ddd; border-radius: 6px; padding: 8px 12px; break-inside: avoid; }
     .bc-label { font-size: 13px; font-weight: bold; margin-top: 4px; letter-spacing: 1px; }
-    @media print {
-      body { margin: 0; }
-      h2 { font-size: 13px; }
-      .grid { gap: 8px; padding: 8px; }
-    }
+    @media print { body { margin: 0; } .grid { gap: 8px; padding: 8px; } }
   </style>
 </head>
 <body>
   <h2>ברקודים — ${escHtml(AppState.currentProject?.name || '')} (${codes.length} פודים)</h2>
   <div class="grid">${barcodeItems}</div>
-  <script>
-    document.querySelectorAll('svg.bc').forEach(svg => {
-      JsBarcode(svg, svg.dataset.code, { format:'CODE128', width:2, height:60, displayValue:false, margin:6 });
-    });
-    window.onload = () => { window.print(); };
-  <\/script>
+  <script>window.onload = () => window.print();<\/script>
 </body>
 </html>`);
   printWin.document.close();

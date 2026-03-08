@@ -511,7 +511,7 @@ function sendShareEmail() {
   const stageUrl = `${window.location.origin}${window.location.pathname}?pod=${_qcPodId}&stage=${stageIdx}`;
   const subject = encodeURIComponent(`שיתוף: ${stageName}`);
   const body = encodeURIComponent(
-    `שלום,\n\nשותף איתך עמוד בדיקה: ${stageName}\n\nקישור: ${stageUrl}` +
+    `שלום,\n\nשותף איתך עמוד בדיקה: ${stageName}\n\nקישור לעמוד:\n${stageUrl}` +
     (note ? `\n\nהערה: ${note}` : '') +
     `\n\n-- נשלח מאפליקציית בקרת האיכות`
   );

@@ -183,7 +183,7 @@ async function loadPodsTab(projectId, filters = {}) {
       type_directions(direction),
       production_groups(name),
       qc_stages(stage_number, status),
-      comments(id, is_resolved, is_flagged)
+      comments(id, is_resolved)
     `)
     .eq('project_id', projectId)
     .order('pod_code', { ascending: true });
@@ -267,7 +267,7 @@ function renderPodCard(pod) {
   const pct = Math.round(completedStages / 6 * 100);
   const statusCls = `status-${pod.status}`;
   const dirLabel = pod.type_directions?.direction === 'R' ? 'ימין' : pod.type_directions?.direction === 'L' ? 'שמאל' : (pod.type_directions?.direction || '');
-  const unresolvedCount = (pod.comments || []).filter(c => c.is_flagged && !c.is_resolved).length;
+  const unresolvedCount = (pod.comments || []).filter(c => !c.is_resolved).length;
 
   return `
     <div class="pod-card pod-card-clickable btn-open-pod" data-pod-id="${pod.id}">

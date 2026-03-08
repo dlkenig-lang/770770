@@ -64,7 +64,6 @@ async function openPod(podId) {
     .from('comments')
     .select('id')
     .eq('pod_id', podId)
-    .eq('is_flagged', true)
     .eq('is_resolved', false);
   const unresolvedCount = unresolvedComments?.length || 0;
   let bannerEl = document.getElementById('pod-unresolved-banner');
@@ -163,9 +162,9 @@ async function loadComments(podId) {
         ${c.is_resolved ? '<span style="color:var(--success);font-size:12px">✓ טופל</span>' : ''}
       </div>
       <div class="comment-content">${escHtml(c.content)}</div>
-      ${(c.is_flagged && !c.is_resolved && (canEdit() || isAdminOrPM())) || isAdmin() ? `
+      ${(!c.is_resolved && (canEdit() || isAdminOrPM())) || isAdmin() ? `
         <div class="comment-actions">
-          ${c.is_flagged && !c.is_resolved && (canEdit() || isAdminOrPM()) ? `<button class="btn btn-success btn-sm btn-resolve-comment" data-comment-id="${c.id}">✓ סמן כטופל</button>` : ''}
+          ${!c.is_resolved && (canEdit() || isAdminOrPM()) ? `<button class="btn btn-success btn-sm btn-resolve-comment" data-comment-id="${c.id}">✓ סמן כטופל</button>` : ''}
           ${isAdmin() ? `<button class="btn btn-danger btn-sm btn-delete-comment" data-comment-id="${c.id}">🗑 מחק</button>` : ''}
         </div>
       ` : ''}

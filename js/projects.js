@@ -905,22 +905,16 @@ function escHtml(str) {
 }
 
 function printAllBarcodes() {
-  // Collect pod codes from the currently rendered cards
   const cards = document.querySelectorAll('#pods-table-container .btn-pod-barcode-tbl');
-  if (cards.length === 0) {
-    showToast('אין פודים להדפסה לפי הסינון הנוכחי', 'error');
-    return;
-  }
+  if (cards.length === 0) { showToast('אין פודים להדפסה לפי הסינון הנוכחי', 'error'); return; }
 
   const codes = Array.from(cards).map(btn => btn.dataset.podCode).filter(Boolean);
-  if (codes.length === 0) {
-    showToast('לא נמצאו קודי ברקוד', 'error');
-    return;
-  }
+  console.log('[printAllBarcodes] codes:', codes);
+  if (codes.length === 0) { showToast('לא נמצאו קודי ברקוד', 'error'); return; }
 
-  // Use a hidden container to let JsBarcode render into real DOM nodes
+  // Render SVGs into live DOM using a hidden scratch div
   const scratch = document.createElement('div');
-  scratch.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+  scratch.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
   document.body.appendChild(scratch);
 
   const barcodeItems = codes.map(code => {
@@ -928,38 +922,35 @@ function printAllBarcodes() {
     scratch.appendChild(svg);
     try {
       JsBarcode(svg, code, { format: 'CODE128', width: 2, height: 60, displayValue: false, margin: 6 });
-    } catch (e) {
-      console.error('JsBarcode error for', code, e);
-    }
-    const svgHtml = svg.outerHTML;
-    scratch.removeChild(svg);
-    return `<div class="barcode-item">${svgHtml}<div class="bc-label">${escHtml(code)}</div></div>`;
+    } catch (e) { console.error('JsBarcode error', code, e); }
+    const html = svg.outerHTML;
+    console.log('[printAllBarcodes] svg outerHTML length for', code, ':', html.length);
+    return `<div class="barcode-item">${html}<div class="bc-label">${escHtml(code)}</div></div>`;
   }).join('');
 
   document.body.removeChild(scratch);
 
-  const printWin = window.open('', '_blank');
-  printWin.document.write(`<!DOCTYPE html>
-<html dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <title>ברקודים - ${escHtml(AppState.currentProject?.name || '')}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: monospace; background: #fff; }
-    h2 { text-align: center; padding: 12px; font-size: 16px; border-bottom: 1px solid #ccc; }
-    .grid { display: flex; flex-wrap: wrap; gap: 12px; padding: 16px; justify-content: flex-start; }
-    .barcode-item { display: flex; flex-direction: column; align-items: center; border: 1px solid #ddd; border-radius: 6px; padding: 8px 12px; break-inside: avoid; }
-    .bc-label { font-size: 13px; font-weight: bold; margin-top: 4px; letter-spacing: 1px; }
-    @media print { body { margin: 0; } .grid { gap: 8px; padding: 8px; } }
-  </style>
-</head>
-<body>
-  <h2>ברקודים — ${escHtml(AppState.currentProject?.name || '')} (${codes.length} פודים)</h2>
-  <div class="grid">${barcodeItems}</div>
-</body>
-</html>`);
-  printWin.document.close();
-  // Call print from parent after the child document is ready
-  setTimeout(() => printWin.print(), 300);
+  const css = `
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:monospace;background:#fff;padding:16px}
+    h2{text-align:center;padding:12px;font-size:16px;border-bottom:1px solid #ccc;margin-bottom:16px}
+    .grid{display:flex;flex-wrap:wrap;gap:12px}
+    .barcode-item{display:flex;flex-direction:column;align-items:center;border:1px solid #ddd;border-radius:6px;padding:8px 12px;break-inside:avoid}
+    .bc-label{font-size:13px;font-weight:bold;margin-top:4px;letter-spacing:1px}
+    @media print{body{padding:8px}.grid{gap:8px}}
+  `;
+  const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">
+    <title>ברקודים</title><style>${css}</style></head><body>
+    <h2>ברקודים — ${escHtml(AppState.currentProject?.name || '')} (${codes.length} פודים)</h2>
+    <div class="grid">${barcodeItems}</div>
+    </body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const printWin = window.open(url, '_blank');
+  if (!printWin) { showToast('חסום חלונות קופצים — אפשר חלונות קופצים בדפדפן', 'error'); return; }
+  printWin.addEventListener('load', () => {
+    printWin.print();
+    URL.revokeObjectURL(url);
+  });
 }

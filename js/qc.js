@@ -172,10 +172,6 @@ function renderActiveStage() {
       btn.addEventListener('click', () => deleteQcImage(btn));
     });
 
-    content.querySelectorAll('.qc-img-thumb').forEach(img => {
-      img.addEventListener('click', () => window.open(img.dataset.url, '_blank'));
-    });
-
     content.querySelectorAll('.btn-complete-stage').forEach(btn => {
       btn.addEventListener('click', () => {
         const nameEl = document.getElementById(`qc-inspector-name-${btn.dataset.stageId}`);
@@ -191,6 +187,11 @@ function renderActiveStage() {
       });
     });
   }
+
+  // Image thumbnails — clickable for all roles
+  content.querySelectorAll('.qc-img-thumb').forEach(img => {
+    img.addEventListener('click', () => window.open(img.dataset.url, '_blank'));
+  });
 
   // Admin actions (always visible to admin/PM)
   content.querySelectorAll('.btn-clear-stage').forEach(btn => {

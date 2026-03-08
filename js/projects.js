@@ -487,20 +487,30 @@ async function uploadPlan(typeId, file, projectId) {
   showToast('מעלה קובץ...', 'info');
   const storagePath = `${projectId}/${typeId}/${Date.now()}_${file.name}`;
   const { error: upErr } = await supabaseClient.storage.from('plans').upload(storagePath, file);
-  if (upErr) { showToast('שגיאה בהעלאה: ' + upErr.message, 'error'); return; }
+  if (upErr) {
+    console.error('Storage upload error:', upErr);
+    showToast('שגיאה בהעלאה: ' + upErr.message, 'error');
+    return;
+  }
 
   const { data: { publicUrl } } = supabaseClient.storage.from('plans').getPublicUrl(storagePath);
 
+  const { data: { user } } = await supabaseClient.auth.getUser();
   const { error: dbErr } = await supabaseClient.from('type_plans').insert({
     type_id: typeId,
     project_id: projectId,
     file_name: file.name,
     file_url: publicUrl,
     storage_path: storagePath,
-    uploaded_by: (await supabaseClient.auth.getUser()).data.user?.id,
+    uploaded_by: user?.id,
   });
 
-  if (dbErr) { showToast('שגיאה בשמירה: ' + dbErr.message, 'error'); return; }
+  if (dbErr) {
+    console.error('DB insert error:', dbErr);
+    showToast('שגיאה בשמירה: ' + dbErr.message, 'error');
+    await supabaseClient.storage.from('plans').remove([storagePath]);
+    return;
+  }
 
   showToast('התוכנית הועלתה בהצלחה', 'success');
   await loadPlansTab(projectId);

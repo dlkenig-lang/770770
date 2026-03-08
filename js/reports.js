@@ -149,11 +149,9 @@ async function generatePodPDF(pod) {
     const filename = `QC_${pod.pod_code}_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
 
-    // OneDrive instructions
     const project = pod.projects;
     if (project?.onedrive_folder_url) {
-      showToast('PDF נוצר. פתח את OneDrive ועלה את הקובץ לתיקיית הפרויקט', 'info');
-      setTimeout(() => window.open(project.onedrive_folder_url, '_blank'), 1500);
+      showOneDriveModal(filename, project.onedrive_folder_url, project.id);
     } else {
       showToast('PDF נוצר ונשמר', 'success');
     }
@@ -162,6 +160,54 @@ async function generatePodPDF(pod) {
   } finally {
     setLoading(btn, false);
   }
+}
+
+function showOneDriveModal(filename, folderUrl, projectId) {
+  const storageKey = `onedrive_subfolders_${projectId}`;
+  const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+  const recentHtml = saved.length
+    ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px">
+        ${saved.map(s => `<button type="button" class="btn btn-ghost btn-sm onedrive-sub-chip" style="font-size:11px;padding:2px 8px">${escHtml(s)}</button>`).join('')}
+       </div>`
+    : '';
+
+  openModal('PDF נוצר — שמירה ב-OneDrive', `
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="background:var(--bg-secondary);border-radius:8px;padding:10px 14px;font-size:13px;word-break:break-all">
+        📄 <strong>${escHtml(filename)}</strong>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label style="font-size:13px">תיקיית משנה (אופציונלי)</label>
+        <input type="text" id="onedrive-subfolder" class="form-control" placeholder="לדוגמה: T1-ימין" style="margin-top:4px" />
+        ${recentHtml}
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">
+        לחץ <strong>"פתח OneDrive"</strong> — הקובץ כבר הורד למחשבך, גרור אותו לתיקייה המתאימה.
+      </div>
+    </div>
+  `, [
+    { label: 'ביטול', cls: 'btn-ghost', id: 'btn-od-cancel' },
+    { label: '📂 פתח OneDrive', cls: 'btn-primary', id: 'btn-od-open' },
+  ]);
+
+  document.querySelectorAll('.onedrive-sub-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.getElementById('onedrive-subfolder').value = chip.textContent;
+    });
+  });
+
+  document.getElementById('btn-od-cancel')?.addEventListener('click', closeModal);
+
+  document.getElementById('btn-od-open')?.addEventListener('click', () => {
+    const sub = document.getElementById('onedrive-subfolder')?.value.trim();
+    if (sub) {
+      const updated = [sub, ...saved.filter(s => s !== sub)].slice(0, 6);
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+    }
+    window.open(folderUrl, '_blank');
+    closeModal();
+  });
 }
 
 async function generateProjectExcel(projectId, projectName) {

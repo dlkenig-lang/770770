@@ -23,10 +23,38 @@ async function openPod(podId) {
 
   AppState.currentPod = pod;
 
+  // Fetch groups for group-assignment dropdown (admin/PM only)
+  let groups = [];
+  if (isAdminOrPM()) {
+    const { data: g } = await supabaseClient
+      .from('production_groups')
+      .select('id, name')
+      .eq('project_id', pod.projects.id)
+      .order('name');
+    groups = g || [];
+  }
+
   document.getElementById('pod-detail-code').textContent = pod.pod_code;
   const statusEl = document.getElementById('pod-detail-status');
   statusEl.textContent = STATUS_LABELS[pod.status] || pod.status;
   statusEl.className = `status-badge status-${pod.status}`;
+
+  const groupCell = isAdminOrPM() ? `
+    <div class="info-item">
+      <div class="info-label">קבוצה</div>
+      <div class="info-value">
+        <select id="pod-group-select" class="form-control" style="font-size:13px;padding:2px 6px;height:auto;min-width:120px">
+          <option value="">ללא קבוצה</option>
+          ${groups.map(g => `<option value="${g.id}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+  ` : `
+    <div class="info-item">
+      <div class="info-label">קבוצה</div>
+      <div class="info-value">${escHtml(pod.production_groups?.name || '—')}</div>
+    </div>
+  `;
 
   document.getElementById('pod-info-bar').innerHTML = `
     <div class="info-item">
@@ -45,17 +73,24 @@ async function openPod(podId) {
       <div class="info-label">מידות</div>
       <div class="info-value">${escHtml(pod.project_types?.dimensions || '—')}</div>
     </div>
-    ${pod.production_groups?.name ? `
-      <div class="info-item">
-        <div class="info-label">קבוצה</div>
-        <div class="info-value">${escHtml(pod.production_groups.name)}</div>
-      </div>
-    ` : ''}
+    ${groupCell}
     <div class="info-item">
       <div class="info-label">סוג צנרת</div>
       <div class="info-value">${escHtml(pod.projects?.pipe_type || '—')}</div>
     </div>
   `;
+
+  // Group assignment change handler
+  document.getElementById('pod-group-select')?.addEventListener('change', async (e) => {
+    const groupId = e.target.value || null;
+    const { error: updErr } = await supabaseClient
+      .from('pods')
+      .update({ group_id: groupId })
+      .eq('id', podId);
+    if (updErr) { showToast('שגיאה בשמירת קבוצה', 'error'); return; }
+    AppState.currentPod.group_id = groupId;
+    showToast('הקבוצה עודכנה', 'success');
+  });
 
   showView('pod-detail');
 

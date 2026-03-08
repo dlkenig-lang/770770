@@ -2,15 +2,33 @@
 // Reports Module - PDF & Excel Generation
 // =============================================
 
-function buildPDFHTML(pod, stages, stageItems) {
+function buildPDFSections(pod, stages, stageItems) {
   const stageStatusColor = s =>
     s === 'completed' ? '#16a34a' : s === 'failed' ? '#dc2626' : '#64748b';
   const itemStatusColor = s =>
     s === 'passed' ? '#16a34a' : s === 'failed' ? '#dc2626' : '#64748b';
   const itemIcon = s =>
     s === 'passed' ? '✓' : s === 'failed' ? '✗' : '○';
+  const wrap = c =>
+    `<div style="font-family:Arial,sans-serif;direction:rtl;color:#1e293b;width:794px;background:#fff;">${c}</div>`;
 
-  let stagesHTML = '';
+  const sections = [];
+
+  // Header + pod info
+  sections.push(wrap(`
+    <div style="background:#2563eb;color:#fff;padding:18px 24px;text-align:right;">
+      <div style="font-size:22px;font-weight:bold;">דוח בקרת איכות</div>
+      <div style="font-size:14px;margin-top:4px;">פוד: ${escHtml(pod.pod_code)}</div>
+      <div style="font-size:12px;margin-top:2px;opacity:0.85;">נוצר: ${formatDate(new Date().toISOString().split('T')[0])}</div>
+    </div>
+    <div style="background:#f1f5f9;padding:12px 24px;text-align:right;border-bottom:2px solid #e2e8f0;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">פרטי פוד</div>
+      <div style="font-size:12px;">פרויקט: ${escHtml(pod.projects?.name || '')} | קוד: ${escHtml(pod.pod_code)}</div>
+      <div style="font-size:12px;margin-top:3px;">טיפוס: T${escHtml(String(pod.project_types?.type_number || ''))} | כיוון: ${escHtml(pod.type_directions?.direction || '')} | צינור: ${escHtml(pod.projects?.pipe_type || '')}</div>
+    </div>
+  `));
+
+  // Each stage as its own section
   for (const stage of stages) {
     const items = stageItems[stage.id] || [];
     const stageDef = getStage(stage.stage_number);
@@ -33,8 +51,8 @@ function buildPDFHTML(pod, stages, stageItems) {
         </div>`;
     }
 
-    stagesHTML += `
-      <div class="pdf-block" style="margin-bottom:14px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
+    sections.push(wrap(`
+      <div style="margin:8px 24px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
         <div style="background:${bgColor};color:#fff;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;">
           <span style="font-size:12px;">${passed}/${items.length} עברו</span>
           <span style="font-size:13px;font-weight:bold;">${stage.stage_number}. ${escHtml(stage.stage_name)}</span>
@@ -44,37 +62,36 @@ function buildPDFHTML(pod, stages, stageItems) {
           בודק: ${escHtml(stage.inspector_name)} | תאריך: ${escHtml(formatDate(stage.inspection_date))}
         </div>` : ''}
         ${itemsHTML}
-      </div>`;
+      </div>
+    `));
   }
 
-  return `
-    <div style="font-family:Arial,sans-serif;direction:rtl;color:#1e293b;width:794px;background:#fff;padding:0;">
-      <!-- Header -->
-      <div style="background:#2563eb;color:#fff;padding:18px 24px;text-align:right;">
-        <div style="font-size:22px;font-weight:bold;">דוח בקרת איכות</div>
-        <div style="font-size:14px;margin-top:4px;">פוד: ${escHtml(pod.pod_code)}</div>
-        <div style="font-size:12px;margin-top:2px;opacity:0.85;">נוצר: ${formatDate(new Date().toISOString().split('T')[0])}</div>
-      </div>
-      <!-- Pod info -->
-      <div style="background:#f1f5f9;padding:12px 24px;text-align:right;border-bottom:2px solid #e2e8f0;">
-        <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">פרטי פוד</div>
-        <div style="font-size:12px;">פרויקט: ${escHtml(pod.projects?.name || '')} | קוד: ${escHtml(pod.pod_code)}</div>
-        <div style="font-size:12px;margin-top:3px;">טיפוס: T${escHtml(String(pod.project_types?.type_number || ''))} | כיוון: ${escHtml(pod.type_directions?.direction || '')} | צינור: ${escHtml(pod.projects?.pipe_type || '')}</div>
-      </div>
-      <!-- Stages -->
-      <div style="padding:16px 24px;">
-        ${stagesHTML}
-      </div>
-      <!-- Signatures -->
-      <div style="padding:0 24px 24px;border-top:1px solid #e2e8f0;margin:0 24px;">
-        <div style="font-size:13px;font-weight:bold;margin:14px 0 10px;text-align:right;">חתימות סיום</div>
+  // Signatures
+  sections.push(wrap(`
+    <div style="padding:8px 24px 24px;">
+      <div style="border-top:1px solid #e2e8f0;padding-top:14px;">
+        <div style="font-size:13px;font-weight:bold;margin-bottom:10px;text-align:right;">חתימות סיום</div>
         ${['בודק', 'מנהל בקרת איכות', 'מנהל פרויקט'].map(label => `
           <div style="display:flex;justify-content:space-between;margin-bottom:14px;font-size:12px;">
             <span>תאריך: ___________</span>
             <span>${escHtml(label)}: _______________________</span>
           </div>`).join('')}
       </div>
-    </div>`;
+    </div>
+  `));
+
+  return sections;
+}
+
+async function renderSection(html, scale) {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;top:0;left:-9999px;width:794px;background:#fff;';
+  el.innerHTML = html;
+  document.body.appendChild(el);
+  await new Promise(r => setTimeout(r, 30));
+  const canvas = await html2canvas(el, { scale, useCORS: true, logging: false, width: 794 });
+  document.body.removeChild(el);
+  return canvas;
 }
 
 async function generatePodPDF(pod) {
@@ -95,65 +112,36 @@ async function generatePodPDF(pod) {
       stageItems[stage.id] = items || [];
     }
 
-    // Render HTML to canvas so Hebrew text is handled by the browser
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;top:0;left:-9999px;width:794px;background:#fff;';
-    wrapper.innerHTML = buildPDFHTML(pod, stages || [], stageItems);
-    document.body.appendChild(wrapper);
-    await new Promise(r => setTimeout(r, 150));
-
-    // Measure block boundaries before capturing (scale=1 coordinates)
-    const PAGE_H_PX = Math.round(297 * 794 / 210); // A4 height in source pixels (~1123px)
-    const wrapperTop = wrapper.getBoundingClientRect().top;
-    const blockBounds = Array.from(wrapper.querySelectorAll('.pdf-block')).map(el => {
-      const r = el.getBoundingClientRect();
-      return { top: Math.round(r.top - wrapperTop), bottom: Math.round(r.bottom - wrapperTop) };
-    });
-    const totalH = wrapper.scrollHeight;
-
     const SCALE = 3;
-    const canvas = await html2canvas(wrapper, { scale: SCALE, useCORS: true, logging: false, width: 794 });
-    document.body.removeChild(wrapper);
+    const PAGE_H_MM = 297;
+    const PAGE_W_MM = 210;
+    const pxToMm = PAGE_W_MM / 794;
 
-    // Build smart cut points that avoid splitting blocks
-    const cutPoints = [0];
-    let cursor = 0;
-    while (cursor < totalH) {
-      let nextCut = cursor + PAGE_H_PX;
-      if (nextCut >= totalH) break;
-      // If a block straddles the cut line, move the cut to just before that block
-      for (const b of blockBounds) {
-        if (b.top < nextCut && b.bottom > nextCut && b.top > cursor) {
-          nextCut = b.top;
-          break;
-        }
-      }
-      cutPoints.push(nextCut);
-      cursor = nextCut;
+    const sections = buildPDFSections(pod, stages || [], stageItems);
+
+    // Render all sections to canvases
+    const canvases = [];
+    for (const html of sections) {
+      canvases.push(await renderSection(html, SCALE));
     }
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = 210;
-    const pxToMm = pageW / 794;
+    let yMm = 0;
+    let firstPage = true;
 
-    for (let i = 0; i < cutPoints.length; i++) {
-      if (i > 0) doc.addPage();
-      const startPx = cutPoints[i];
-      const endPx = i + 1 < cutPoints.length ? cutPoints[i + 1] : totalH;
-      const slicePx = endPx - startPx;
+    for (const c of canvases) {
+      const hMm = (c.height / SCALE) * pxToMm;
 
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = canvas.width;
-      pageCanvas.height = Math.round(slicePx * SCALE);
-      pageCanvas.getContext('2d').drawImage(
-        canvas,
-        0, Math.round(startPx * SCALE), canvas.width, pageCanvas.height,
-        0, 0, canvas.width, pageCanvas.height
-      );
+      // Start a new page if section doesn't fit (but always keep header on first page)
+      if (!firstPage && yMm + hMm > PAGE_H_MM) {
+        doc.addPage();
+        yMm = 0;
+      }
+      firstPage = false;
 
-      const sliceH_mm = slicePx * pxToMm;
-      doc.addImage(pageCanvas.toDataURL('image/png'), 'PNG', 0, 0, pageW, sliceH_mm);
+      doc.addImage(c.toDataURL('image/png'), 'PNG', 0, yMm, PAGE_W_MM, hMm);
+      yMm += hMm;
     }
 
     const filename = `QC_${pod.pod_code}_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -171,7 +159,7 @@ async function generatePodPDF(pod) {
         showToast('PDF נשמר בהצלחה', 'success');
         return;
       } catch (e) {
-        if (e.name === 'AbortError') return; // user cancelled
+        if (e.name === 'AbortError') return;
         // SecurityError or other – fall through to direct download
       }
     }

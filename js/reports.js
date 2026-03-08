@@ -34,7 +34,7 @@ function buildPDFHTML(pod, stages, stageItems) {
     }
 
     stagesHTML += `
-      <div style="margin-bottom:14px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
+      <div class="pdf-block" style="margin-bottom:14px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
         <div style="background:${bgColor};color:#fff;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;">
           <span style="font-size:12px;">${passed}/${items.length} עברו</span>
           <span style="font-size:13px;font-weight:bold;">${stage.stage_number}. ${escHtml(stage.stage_name)}</span>
@@ -102,21 +102,58 @@ async function generatePodPDF(pod) {
     document.body.appendChild(wrapper);
     await new Promise(r => setTimeout(r, 150));
 
-    const canvas = await html2canvas(wrapper, { scale: 2, useCORS: true, logging: false, width: 794 });
+    // Measure block boundaries before capturing (scale=1 coordinates)
+    const PAGE_H_PX = Math.round(297 * 794 / 210); // A4 height in source pixels (~1123px)
+    const wrapperTop = wrapper.getBoundingClientRect().top;
+    const blockBounds = Array.from(wrapper.querySelectorAll('.pdf-block')).map(el => {
+      const r = el.getBoundingClientRect();
+      return { top: Math.round(r.top - wrapperTop), bottom: Math.round(r.bottom - wrapperTop) };
+    });
+    const totalH = wrapper.scrollHeight;
+
+    const SCALE = 3;
+    const canvas = await html2canvas(wrapper, { scale: SCALE, useCORS: true, logging: false, width: 794 });
     document.body.removeChild(wrapper);
+
+    // Build smart cut points that avoid splitting blocks
+    const cutPoints = [0];
+    let cursor = 0;
+    while (cursor < totalH) {
+      let nextCut = cursor + PAGE_H_PX;
+      if (nextCut >= totalH) break;
+      // If a block straddles the cut line, move the cut to just before that block
+      for (const b of blockBounds) {
+        if (b.top < nextCut && b.bottom > nextCut && b.top > cursor) {
+          nextCut = b.top;
+          break;
+        }
+      }
+      cutPoints.push(nextCut);
+      cursor = nextCut;
+    }
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = 210, pageH = 297;
-    const imgW = pageW;
-    const imgH = (canvas.height * imgW) / canvas.width;
-    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const pageW = 210;
+    const pxToMm = pageW / 794;
 
-    let yOffset = 0;
-    while (yOffset < imgH) {
-      if (yOffset > 0) doc.addPage();
-      doc.addImage(imgData, 'JPEG', 0, -yOffset, imgW, imgH);
-      yOffset += pageH;
+    for (let i = 0; i < cutPoints.length; i++) {
+      if (i > 0) doc.addPage();
+      const startPx = cutPoints[i];
+      const endPx = i + 1 < cutPoints.length ? cutPoints[i + 1] : totalH;
+      const slicePx = endPx - startPx;
+
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = Math.round(slicePx * SCALE);
+      pageCanvas.getContext('2d').drawImage(
+        canvas,
+        0, Math.round(startPx * SCALE), canvas.width, pageCanvas.height,
+        0, 0, canvas.width, pageCanvas.height
+      );
+
+      const sliceH_mm = slicePx * pxToMm;
+      doc.addImage(pageCanvas.toDataURL('image/png'), 'PNG', 0, 0, pageW, sliceH_mm);
     }
 
     const filename = `QC_${pod.pod_code}_${new Date().toISOString().split('T')[0]}.pdf`;

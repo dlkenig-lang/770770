@@ -2,12 +2,86 @@
 // Reports Module - PDF & Excel Generation
 // =============================================
 
+function buildPDFHTML(pod, stages, stageItems) {
+  const stageStatusColor = s =>
+    s === 'completed' ? '#16a34a' : s === 'failed' ? '#dc2626' : '#64748b';
+  const itemStatusColor = s =>
+    s === 'passed' ? '#16a34a' : s === 'failed' ? '#dc2626' : '#64748b';
+  const itemIcon = s =>
+    s === 'passed' ? '✓' : s === 'failed' ? '✗' : '○';
+
+  let stagesHTML = '';
+  for (const stage of stages) {
+    const items = stageItems[stage.id] || [];
+    const stageDef = getStage(stage.stage_number);
+    const passed = items.filter(i => i.status === 'passed').length;
+    const bgColor = stageStatusColor(stage.status);
+
+    let itemsHTML = '';
+    for (const itemDef of (stageDef?.items || [])) {
+      const item = items.find(i => i.item_key === itemDef.key);
+      const status = item?.status || 'pending';
+      const color = itemStatusColor(status);
+      itemsHTML += `
+        <div style="display:flex;align-items:flex-start;padding:5px 10px;border-bottom:1px solid #f1f5f9;">
+          <span style="color:${color};font-weight:bold;font-size:14px;min-width:20px;">${itemIcon(status)}</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;color:#1e293b;">${escHtml(itemDef.label)}</div>
+            ${item?.notes ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">הערה: ${escHtml(item.notes)}</div>` : ''}
+            ${item?.time_entry_1 ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">זמן 1: ${escHtml(item.time_entry_1)}  זמן 2: ${escHtml(item.time_entry_2 || '—')}</div>` : ''}
+          </div>
+        </div>`;
+    }
+
+    stagesHTML += `
+      <div style="margin-bottom:14px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
+        <div style="background:${bgColor};color:#fff;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;">${passed}/${items.length} עברו</span>
+          <span style="font-size:13px;font-weight:bold;">${stage.stage_number}. ${escHtml(stage.stage_name)}</span>
+        </div>
+        ${stage.inspector_name ? `
+        <div style="background:#dcfce7;padding:5px 12px;font-size:11px;color:#166534;text-align:right;">
+          בודק: ${escHtml(stage.inspector_name)} | תאריך: ${escHtml(formatDate(stage.inspection_date))}
+        </div>` : ''}
+        ${itemsHTML}
+      </div>`;
+  }
+
+  return `
+    <div style="font-family:Arial,sans-serif;direction:rtl;color:#1e293b;width:794px;background:#fff;padding:0;">
+      <!-- Header -->
+      <div style="background:#2563eb;color:#fff;padding:18px 24px;text-align:right;">
+        <div style="font-size:22px;font-weight:bold;">דוח בקרת איכות</div>
+        <div style="font-size:14px;margin-top:4px;">פוד: ${escHtml(pod.pod_code)}</div>
+        <div style="font-size:12px;margin-top:2px;opacity:0.85;">נוצר: ${formatDate(new Date().toISOString().split('T')[0])}</div>
+      </div>
+      <!-- Pod info -->
+      <div style="background:#f1f5f9;padding:12px 24px;text-align:right;border-bottom:2px solid #e2e8f0;">
+        <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">פרטי פוד</div>
+        <div style="font-size:12px;">פרויקט: ${escHtml(pod.projects?.name || '')} | קוד: ${escHtml(pod.pod_code)}</div>
+        <div style="font-size:12px;margin-top:3px;">טיפוס: T${escHtml(String(pod.project_types?.type_number || ''))} | כיוון: ${escHtml(pod.type_directions?.direction || '')} | צינור: ${escHtml(pod.projects?.pipe_type || '')}</div>
+      </div>
+      <!-- Stages -->
+      <div style="padding:16px 24px;">
+        ${stagesHTML}
+      </div>
+      <!-- Signatures -->
+      <div style="padding:0 24px 24px;border-top:1px solid #e2e8f0;margin:0 24px;">
+        <div style="font-size:13px;font-weight:bold;margin:14px 0 10px;text-align:right;">חתימות סיום</div>
+        ${['בודק', 'מנהל בקרת איכות', 'מנהל פרויקט'].map(label => `
+          <div style="display:flex;justify-content:space-between;margin-bottom:14px;font-size:12px;">
+            <span>תאריך: ___________</span>
+            <span>${escHtml(label)}: _______________________</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
 async function generatePodPDF(pod) {
   const btn = document.getElementById('btn-pod-pdf');
   setLoading(btn, true);
 
   try {
-    // Load full data
     const { data: stages } = await supabaseClient
       .from('qc_stages')
       .select('*')
@@ -21,131 +95,30 @@ async function generatePodPDF(pod) {
       stageItems[stage.id] = items || [];
     }
 
+    // Render HTML to canvas so Hebrew text is handled by the browser
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;top:0;left:-9999px;width:794px;background:#fff;';
+    wrapper.innerHTML = buildPDFHTML(pod, stages || [], stageItems);
+    document.body.appendChild(wrapper);
+    await new Promise(r => setTimeout(r, 150));
+
+    const canvas = await html2canvas(wrapper, { scale: 2, useCORS: true, logging: false, width: 794 });
+    document.body.removeChild(wrapper);
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = 210, pageH = 297;
+    const imgW = pageW;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
 
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-    const margin = 15;
-    const contentW = pageW - margin * 2;
-    let y = margin;
-
-    // ---- HEADER ----
-    doc.setFillColor(37, 99, 235);
-    doc.rect(0, 0, pageW, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Quality Control Report', pageW - margin, 15, { align: 'right' });
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Pod: ${pod.pod_code}`, pageW - margin, 26, { align: 'right' });
-    doc.setFontSize(10);
-    doc.text(`Generated: ${formatDate(new Date().toISOString().split('T')[0])}`, pageW - margin, 35, { align: 'right' });
-    y = 50;
-
-    // ---- POD INFO ----
-    doc.setTextColor(30, 41, 59);
-    doc.setFillColor(241, 245, 249);
-    doc.rect(margin, y, contentW, 28, 'F');
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Pod Information', pageW - margin, y + 8, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text([
-      `Project: ${pod.projects?.name || ''}  |  Code: ${pod.pod_code}`,
-      `Type: T${pod.project_types?.type_number || ''}  |  Direction: ${pod.type_directions?.direction || ''}  |  Pipe: ${pod.projects?.pipe_type || ''}`,
-    ], pageW - margin, y + 15, { align: 'right' });
-    y += 34;
-
-    // ---- STAGES ----
-    for (const stage of (stages || [])) {
-      if (y > pageH - 50) { doc.addPage(); y = margin; }
-
-      const items = stageItems[stage.id] || [];
-      const stageDef = getStage(stage.stage_number);
-      const passed = items.filter(i => i.status === 'passed').length;
-      const failed = items.filter(i => i.status === 'failed').length;
-
-      // Stage header
-      const stageColor = stage.status === 'completed' ? [22, 163, 74] :
-                         stage.status === 'failed' ? [220, 38, 38] : [100, 116, 139];
-      doc.setFillColor(...stageColor);
-      doc.rect(margin, y, contentW, 10, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`${stage.stage_number}. ${stage.stage_name}`, pageW - margin - 2, y + 7, { align: 'right' });
-      doc.text(`${passed}/${items.length} passed`, margin + 2, y + 7);
-      y += 12;
-
-      // Inspector info
-      if (stage.inspector_name) {
-        doc.setTextColor(30, 41, 59);
-        doc.setFillColor(220, 252, 231);
-        doc.rect(margin, y, contentW, 8, 'F');
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'italic');
-        doc.text(`Inspector: ${stage.inspector_name}  |  Date: ${formatDate(stage.inspection_date)}`, pageW - margin - 2, y + 5.5, { align: 'right' });
-        y += 10;
-      }
-
-      // Items
-      doc.setFont('helvetica', 'normal');
-      for (const itemDef of (stageDef?.items || [])) {
-        if (y > pageH - 20) { doc.addPage(); y = margin; }
-        const item = items.find(i => i.item_key === itemDef.key);
-        const status = item?.status || 'pending';
-        const icon = status === 'passed' ? '✓' : status === 'failed' ? '✗' : '○';
-        const color = status === 'passed' ? [22, 163, 74] : status === 'failed' ? [220, 38, 38] : [100, 116, 139];
-
-        doc.setTextColor(...color);
-        doc.setFontSize(9);
-        doc.text(icon, margin + 3, y + 4.5);
-        doc.setTextColor(30, 41, 59);
-        doc.text(itemDef.label, margin + 8, y + 4.5);
-
-        if (item?.notes) {
-          doc.setTextColor(100, 116, 139);
-          doc.setFontSize(8);
-          doc.text(`Note: ${item.notes}`, margin + 8, y + 8.5);
-          y += 12;
-        } else {
-          y += 7;
-        }
-        if (item?.time_entry_1) {
-          doc.setTextColor(100, 116, 139);
-          doc.setFontSize(8);
-          doc.text(`Time 1: ${item.time_entry_1}  Time 2: ${item.time_entry_2 || '—'}`, margin + 8, y);
-          y += 5;
-        }
-      }
-      y += 4;
+    let yOffset = 0;
+    while (yOffset < imgH) {
+      if (yOffset > 0) doc.addPage();
+      doc.addImage(imgData, 'JPEG', 0, -yOffset, imgW, imgH);
+      yOffset += pageH;
     }
 
-    // ---- SIGNATURE SECTION ----
-    if (y > pageH - 40) { doc.addPage(); y = margin; }
-    y += 10;
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, y, pageW - margin, y);
-    y += 8;
-    doc.setTextColor(30, 41, 59);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Final Signatures:', pageW - margin, y, { align: 'right' });
-    y += 12;
-
-    // Sign lines
-    for (const label of ['Inspector', 'QC Manager', 'Project Manager']) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text(`${label}: _______________________`, margin, y);
-      doc.text('Date: ___________', margin + 100, y);
-      y += 12;
-    }
-
-    // Save – open native Save-As dialog (fallback to auto-download)
     const filename = `QC_${pod.pod_code}_${new Date().toISOString().split('T')[0]}.pdf`;
     const pdfBlob = doc.output('blob');
 

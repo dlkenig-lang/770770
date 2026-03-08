@@ -271,6 +271,7 @@ async function onAuthStateChange(session) {
     console.timeEnd('[LOAD] dashboard');
     console.timeEnd('[LOAD] total');
 
+
     // Handle ?pod= deep link (e.g. from shared email)
     const urlParams = new URLSearchParams(window.location.search);
     const deepPodId = urlParams.get('pod');

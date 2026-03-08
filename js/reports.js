@@ -114,8 +114,9 @@ async function generatePodPDF(pod) {
 
     const SCALE = 3;
     const PAGE_H_MM = 297;
-    const PAGE_W_MM = 210;
-    const pxToMm = PAGE_W_MM / 794;
+    const MARGIN_MM = 10;
+    const CONTENT_W_MM = 210 - MARGIN_MM * 2; // 190mm
+    const pxToMm = CONTENT_W_MM / 794;
 
     const sections = buildPDFSections(pod, stages || [], stageItems);
 
@@ -127,20 +128,20 @@ async function generatePodPDF(pod) {
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    let yMm = 0;
+    let yMm = MARGIN_MM;
     let firstPage = true;
 
     for (const c of canvases) {
       const hMm = (c.height / SCALE) * pxToMm;
 
       // Start a new page if section doesn't fit (but always keep header on first page)
-      if (!firstPage && yMm + hMm > PAGE_H_MM) {
+      if (!firstPage && yMm + hMm > PAGE_H_MM - MARGIN_MM) {
         doc.addPage();
-        yMm = 0;
+        yMm = MARGIN_MM;
       }
       firstPage = false;
 
-      doc.addImage(c.toDataURL('image/png'), 'PNG', 0, yMm, PAGE_W_MM, hMm);
+      doc.addImage(c.toDataURL('image/png'), 'PNG', MARGIN_MM, yMm, CONTENT_W_MM, hMm);
       yMm += hMm;
     }
 

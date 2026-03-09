@@ -8,8 +8,8 @@ const QC_STAGES = [
     name: 'יציקת רצפת בטון',
     nameEn: 'Concrete Floor Casting',
     items: [
-      { key: 'length_dims', label: 'מידות אורך', instruction: 'סטיה תקינה של +- 2 ס"מ' },
-      { key: 'width_dims', label: 'מידות רוחב', instruction: 'סטיה תקינה של +- 2 ס"מ' },
+      { key: 'length_dims', label: 'מידות אורך', instruction: 'סטיה תקינה של ± 2 ס"מ' },
+      { key: 'width_dims', label: 'מידות רוחב', instruction: 'סטיה תקינה של ± 2 ס"מ' },
       { key: 'pipe_slope', label: 'שיפוע צינור 1.5%', instruction: null },
       { key: 'pipe_fixation', label: 'קיבוע צינור', instruction: null },
       { key: 'drainage_channel', label: 'תעלת ניקוז', instruction: 'לוודא התקנה שטוחה בתבנית' },

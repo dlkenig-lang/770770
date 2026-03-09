@@ -125,6 +125,11 @@ function renderActiveStage() {
       ${pod?.projects?.pipe_type ? `
         <div class="qc-pipe-type-bar">דגם צנרת: <strong>${escHtml(pod.projects.pipe_type)}</strong></div>
       ` : ''}
+      ${!_castingBaseApproved && stage.stage_number !== 1 ? `
+        <div class="qc-casting-block-banner">
+          🔒 שלב זה ינעל עד לאישור סעיפים 1–6 ביציקת הרצפה (שלב A)
+        </div>
+      ` : ''}
       <div class="qc-items-table-wrapper">
         <table class="qc-items-table">
           <thead>
@@ -139,8 +144,12 @@ function renderActiveStage() {
           <tbody>
             ${(stageRef?.items || []).map((itemDef, rowIdx) => {
               const castingItemKeys = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixation', 'drainage_channel', 'lifting_bolts'];
-              const lockedByCasting = _castingBaseApproved && stage.stage_number === 1 && castingItemKeys.includes(itemDef.key);
-              return renderQCTableRow(itemDef, rowIdx, stage, items, readonly || lockedByCasting);
+              const isCastingItem = castingItemKeys.includes(itemDef.key);
+              // Lock all non-casting items until casting is approved
+              const lockedPreCasting = !_castingBaseApproved && !(stage.stage_number === 1 && isCastingItem);
+              // Lock casting items 1-6 once approved
+              const lockedByCasting = _castingBaseApproved && stage.stage_number === 1 && isCastingItem;
+              return renderQCTableRow(itemDef, rowIdx, stage, items, readonly || lockedPreCasting || lockedByCasting);
             }).join('')}
           </tbody>
         </table>

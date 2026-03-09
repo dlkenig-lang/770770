@@ -51,7 +51,14 @@
       <button class="btn btn-ghost btn-sm" id="btn-scan-barcode" title="סרוק ברקוד פוד">📷 סרוק</button>
       <button class="btn btn-ghost btn-sm" id="btn-logout">התנתק</button>
     </div>
+    <!-- hamburger — mobile only -->
+    <button class="hamburger-btn" id="btn-hamburger" aria-label="תפריט">
+      <span></span><span></span><span></span>
+    </button>
   </nav>
+
+  <!-- Mobile sidebar backdrop -->
+  <div class="mobile-backdrop" id="mobile-backdrop"></div>
 
   <!-- SIDEBAR -->
   <div class="layout">
@@ -70,6 +77,10 @@
           <span class="sidebar-icon">📊</span><span>דוחות</span>
         </a>
       </nav>
+      <!-- Logout — visible only in mobile drawer -->
+      <div class="sidebar-footer">
+        <button class="btn btn-ghost btn-sm sidebar-logout-btn" id="btn-logout-mobile">🚪 התנתק</button>
+      </div>
     </aside>
 
     <!-- MAIN CONTENT -->

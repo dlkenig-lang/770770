@@ -172,8 +172,8 @@ function initAuth() {
     }
   });
 
-  // Logout
-  document.getElementById('btn-logout').addEventListener('click', async () => {
+  // Logout (desktop + mobile)
+  async function doLogout() {
     try {
       await Promise.race([
         supabaseClient.auth.signOut(),
@@ -184,6 +184,32 @@ function initAuth() {
     } finally {
       window.location.reload();
     }
+  }
+  document.getElementById('btn-logout').addEventListener('click', doLogout);
+  document.getElementById('btn-logout-mobile')?.addEventListener('click', doLogout);
+
+  // ---- MOBILE DRAWER ----
+  const sidebar    = document.getElementById('sidebar');
+  const backdrop   = document.getElementById('mobile-backdrop');
+  const hamburger  = document.getElementById('btn-hamburger');
+
+  function openDrawer() {
+    sidebar?.classList.add('open');
+    backdrop?.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeDrawer() {
+    sidebar?.classList.remove('open');
+    backdrop?.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  hamburger?.addEventListener('click', openDrawer);
+  backdrop?.addEventListener('click', closeDrawer);
+
+  // Close drawer when a nav item is tapped
+  sidebar?.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', closeDrawer);
   });
 }
 

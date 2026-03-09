@@ -135,9 +135,11 @@ function renderActiveStage() {
             </tr>
           </thead>
           <tbody>
-            ${(stageRef?.items || []).map((itemDef, rowIdx) =>
-              renderQCTableRow(itemDef, rowIdx, stage, items, readonly)
-            ).join('')}
+            ${(stageRef?.items || []).map((itemDef, rowIdx) => {
+              const castingItemKeys = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixation', 'drainage_channel', 'lifting_bolts'];
+              const lockedByCasting = _qcCastingApproved && stage.stage_number === 1 && castingItemKeys.includes(itemDef.key);
+              return renderQCTableRow(itemDef, rowIdx, stage, items, readonly || lockedByCasting);
+            }).join('')}
           </tbody>
         </table>
       </div>

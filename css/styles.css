@@ -1111,7 +1111,7 @@ table tbody tr:hover { background: #f8fafc; }
     padding-top: calc(var(--navbar-h) + 8px);
   }
   .sidebar.open { transform: translateX(0); }
-  .sidebar-footer { display: block; }
+  .sidebar-footer { display: block; padding-bottom: 70px; }
   .sidebar-user-header { display: flex; }
 
   /* Extra bottom padding so Bolt badge never covers page content */

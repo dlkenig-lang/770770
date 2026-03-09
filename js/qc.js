@@ -11,6 +11,7 @@ let _qcStages = [];
 let _qcStageItems = {};
 let _qcPodId = null;
 let _qcCastingApproved = false;
+let _castingBaseApproved = false; // never resets once set; used to lock casting items 1-6
 
 const STAGE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
@@ -30,6 +31,7 @@ async function loadQCStages(podId) {
   _qcStages.forEach((s, i) => { _qcStageItems[s.id] = results[i].data || []; });
 
   _qcCastingApproved = AppState.currentPod?.casting_approved || false;
+  if (_qcCastingApproved) _castingBaseApproved = true;
   renderQCTabsUI();
 }
 
@@ -137,7 +139,7 @@ function renderActiveStage() {
           <tbody>
             ${(stageRef?.items || []).map((itemDef, rowIdx) => {
               const castingItemKeys = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixation', 'drainage_channel', 'lifting_bolts'];
-              const lockedByCasting = _qcCastingApproved && stage.stage_number === 1 && castingItemKeys.includes(itemDef.key);
+              const lockedByCasting = _castingBaseApproved && stage.stage_number === 1 && castingItemKeys.includes(itemDef.key);
               return renderQCTableRow(itemDef, rowIdx, stage, items, readonly || lockedByCasting);
             }).join('')}
           </tbody>
@@ -478,7 +480,7 @@ async function handleItemStatusChange(btn) {
   if (cachedItem) cachedItem.status = newStatus;
 
   await updateStageStatus(stageId, _qcPodId, _qcStages);
-  await checkCastingApprovalTrigger(stageId);
+  await checkCastingApprovalTrigger(stageId, itemKey);
 
   // If one of the post-casting items (7-9) in stage A is answered, remove casting approval
   const postCastingKeys = ['segregation', 'shower_parallel', 'drainage_test'];
@@ -502,12 +504,14 @@ async function handleItemStatusChange(btn) {
 }
 
 // ---- CASTING APPROVAL TRIGGER ----
-async function checkCastingApprovalTrigger(stageId) {
-  if (_qcCastingApproved) return;
+async function checkCastingApprovalTrigger(stageId, itemKey) {
+  if (_qcCastingApproved || _castingBaseApproved) return;
   const stage = _qcStages.find(s => s.id === stageId);
   if (!stage || stage.stage_number !== 1) return;
 
   const castingItemKeys = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixation', 'drainage_channel', 'lifting_bolts'];
+  // Only trigger when a casting item (1-6) itself was saved
+  if (!castingItemKeys.includes(itemKey)) return;
   const stageItems = _qcStageItems[stageId] || [];
   const allPassed = castingItemKeys.every(key => {
     const item = stageItems.find(i => i.item_key === key);
@@ -527,6 +531,7 @@ async function checkCastingApprovalTrigger(stageId) {
   if (error) { showToast('שגיאה בשמירת אישור יציקה', 'error'); return; }
 
   _qcCastingApproved = true;
+  _castingBaseApproved = true;
   if (AppState.currentPod) AppState.currentPod.casting_approved = true;
   showToast('הפוד אושר ליציקה! 🏗️', 'success');
 

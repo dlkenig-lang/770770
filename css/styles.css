@@ -677,6 +677,15 @@ table tbody tr:hover { background: #f8fafc; }
   0%, 100% { box-shadow: 0 0 0 2px rgba(239,68,68,0.2); }
   50% { box-shadow: 0 0 0 5px rgba(239,68,68,0.05); }
 }
+.casting-approved-badge {
+  background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7;
+  border-radius: 12px; font-size: 11px; font-weight: 700;
+  padding: 2px 8px; white-space: nowrap;
+}
+.pod-card-casting-approved {
+  border-color: #6ee7b7;
+  box-shadow: 0 0 0 2px rgba(16,185,129,0.15);
+}
 /* Comments alert banner in QC view */
 .pod-comments-alert-banner {
   display: flex; align-items: center; gap: 10px;

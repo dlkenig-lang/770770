@@ -14,7 +14,6 @@ const QC_STAGES = [
       { key: 'pipe_fixation', label: 'קיבוע צינור', instruction: null },
       { key: 'drainage_channel', label: 'תעלת ניקוז', instruction: 'לוודא התקנה שטוחה בתבנית' },
       { key: 'lifting_bolts', label: 'עיגון ברגי הרמה', instruction: null },
-      { key: 'casting_approval', label: 'אישור יציקה', instruction: null },
       { key: 'drainage_test', label: 'בדיקת דלוחין עם בלון', instruction: 'יש לבצע בדיקה ב-2 זמנים: הזן שעה נוכחית ושעה אחרי 60 דקות', hasTwoTimes: true },
       { key: 'shower_parallel', label: 'מקבילות מקלחון', instruction: null },
       { key: 'segregation', label: 'סגרגציה', instruction: 'בדוק הפרדה תקינה' },

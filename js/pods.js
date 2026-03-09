@@ -40,6 +40,11 @@ async function openPod(podId) {
   statusEl.textContent = STATUS_LABELS[pod.status] || pod.status;
   statusEl.className = `status-badge status-${pod.status}`;
 
+  const castingBadge = document.getElementById('pod-casting-badge');
+  if (castingBadge) {
+    castingBadge.style.display = pod.casting_approved ? '' : 'none';
+  }
+
   const selGroupIdx = groups.findIndex(g => g.id === pod.group_id);
   const dotColor = selGroupIdx >= 0 ? GROUP_COLORS[selGroupIdx % GROUP_COLORS.length] : '';
 

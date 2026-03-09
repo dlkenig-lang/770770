@@ -10,6 +10,7 @@ let _activeStageIdx = 0;
 let _qcStages = [];
 let _qcStageItems = {};
 let _qcPodId = null;
+let _qcCastingApproved = false;
 
 const STAGE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
@@ -21,12 +22,14 @@ async function loadQCStages(podId) {
   _activeStageIdx = 0;
   _qcStages = await ensureQCStages(podId);
 
-  // Load all items in parallel
-  const results = await Promise.all(
-    _qcStages.map(s => supabaseClient.from('qc_items').select('*').eq('stage_id', s.id))
-  );
+  // Load all items and pod casting status in parallel
+  const [results, { data: podData }] = await Promise.all([
+    Promise.all(_qcStages.map(s => supabaseClient.from('qc_items').select('*').eq('stage_id', s.id))),
+    supabaseClient.from('pods').select('casting_approved').eq('id', podId).single(),
+  ]);
   _qcStageItems = {};
   _qcStages.forEach((s, i) => { _qcStageItems[s.id] = results[i].data || []; });
+  _qcCastingApproved = podData?.casting_approved || false;
 
   renderQCTabsUI();
 }
@@ -474,6 +477,40 @@ async function handleItemStatusChange(btn) {
   if (cachedItem) cachedItem.status = newStatus;
 
   await updateStageStatus(stageId, _qcPodId, _qcStages);
+  await checkCastingApprovalTrigger(stageId);
+}
+
+// ---- CASTING APPROVAL TRIGGER ----
+async function checkCastingApprovalTrigger(stageId) {
+  if (_qcCastingApproved) return;
+  const stage = _qcStages.find(s => s.id === stageId);
+  if (!stage || stage.stage_number !== 1) return;
+
+  const castingItemKeys = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixation', 'drainage_channel', 'lifting_bolts'];
+  const stageItems = _qcStageItems[stageId] || [];
+  const allPassed = castingItemKeys.every(key => {
+    const item = stageItems.find(i => i.item_key === key);
+    return item?.status === 'passed';
+  });
+
+  if (!allPassed) return;
+
+  const confirmed = confirm('כל סעיפי הבסיס 1–6 אושרו ✓\nהאם לאשר את רצפת הפוד ליציקה?');
+  if (!confirmed) return;
+
+  const { error } = await supabaseClient.from('pods').update({
+    casting_approved: true,
+    casting_approved_at: new Date().toISOString(),
+  }).eq('id', _qcPodId);
+
+  if (error) { showToast('שגיאה בשמירת אישור יציקה', 'error'); return; }
+
+  _qcCastingApproved = true;
+  showToast('הפוד אושר ליציקה! 🏗️', 'success');
+
+  // Update casting badge in pod header if visible
+  const castingBadge = document.getElementById('pod-casting-badge');
+  if (castingBadge) castingBadge.style.display = '';
 }
 
 // ---- SAVE ITEM FIELD ----

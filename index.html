@@ -125,6 +125,11 @@
               <option value="completed">הושלם</option>
               <option value="failed">נכשל</option>
             </select>
+            <select id="filter-casting" class="form-control filter-select">
+              <option value="">כל הפודים</option>
+              <option value="true">מאושרים ליציקה</option>
+              <option value="false">לא מאושרים ליציקה</option>
+            </select>
             <button class="btn btn-secondary" id="btn-print-all-barcodes" title="הדפס ברקודים לפי סינון">🖨️ הדפס ברקודים</button>
           </div>
           <div id="pods-table-container"></div>
@@ -150,6 +155,7 @@
           <div class="pod-header-info">
             <h1 id="pod-detail-code" class="pod-code-title"></h1>
             <span id="pod-detail-status" class="status-badge"></span>
+            <span id="pod-casting-badge" class="casting-approved-badge" style="display:none" title="מאושר ליציקה">🏗️ מאושר ליציקה</span>
           </div>
           <div class="header-actions">
             <button class="btn btn-secondary" id="btn-pod-comments">💬 הערות</button>

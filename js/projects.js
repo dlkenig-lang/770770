@@ -190,6 +190,8 @@ async function loadPodsTab(projectId, filters = {}) {
 
   if (filters.group_id) query = query.eq('group_id', filters.group_id);
   if (filters.status) query = query.eq('status', filters.status);
+  if (filters.casting_approved === 'true') query = query.eq('casting_approved', true);
+  if (filters.casting_approved === 'false') query = query.eq('casting_approved', false);
 
   const [{ data: pods }, { data: projectGroups }] = await Promise.all([
     query,
@@ -293,9 +295,10 @@ function renderPodCard(pod, groups = []) {
   const flaggedCount = (pod.comments || []).filter(c => !c.is_resolved && c.is_flagged).length;
 
   return `
-    <div class="pod-card pod-card-clickable btn-open-pod ${flaggedCount > 0 ? 'pod-card-has-flagged' : unresolvedCount > 0 ? 'pod-card-has-comments' : ''}" data-pod-id="${pod.id}">
+    <div class="pod-card pod-card-clickable btn-open-pod ${flaggedCount > 0 ? 'pod-card-has-flagged' : unresolvedCount > 0 ? 'pod-card-has-comments' : ''} ${pod.casting_approved ? 'pod-card-casting-approved' : ''}" data-pod-id="${pod.id}">
       <div class="pod-card-header">
         <div class="pod-card-code">${escHtml(pod.pod_code)}</div>
+        ${pod.casting_approved ? `<span class="casting-approved-badge" title="מאושר ליציקה">🏗️ מאושר ליציקה</span>` : ''}
         ${flaggedCount > 0
           ? `<span class="unresolved-badge badge-flagged" title="${flaggedCount} הערות מסומנות לטיפול">🚩 ${flaggedCount}</span>`
           : unresolvedCount > 0
@@ -645,6 +648,7 @@ async function setupPodFilters(projectId) {
   const typeSel = document.getElementById('filter-type');
   const dirSel = document.getElementById('filter-direction');
   const statusSel = document.getElementById('filter-status');
+  const castingSel = document.getElementById('filter-casting');
 
   groupSel.innerHTML = '<option value="">כל הקבוצות</option>' + (groups || []).map(g =>
     `<option value="${g.id}">${escHtml(g.name)}</option>`).join('');
@@ -664,6 +668,7 @@ async function setupPodFilters(projectId) {
       type_number: typeSel.value,
       direction: dirSel.value,
       status: statusSel.value,
+      casting_approved: castingSel?.value || '',
     });
   };
 
@@ -671,6 +676,7 @@ async function setupPodFilters(projectId) {
   typeSel.onchange = applyFilters;
   dirSel.onchange = applyFilters;
   statusSel.onchange = applyFilters;
+  if (castingSel) castingSel.onchange = applyFilters;
 }
 
 // ---- NEW PROJECT MODAL ----

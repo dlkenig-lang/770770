@@ -195,9 +195,9 @@ async function loadPodsTab(projectId, filters = {}) {
 
   const [{ data: pods }, { data: projectGroups }] = await Promise.all([
     query,
-    supabaseClient.from('production_groups').select('id, name').eq('project_id', projectId).order('name'),
+    supabaseClient.from('production_groups').select('id, name').eq('project_id', projectId),
   ]);
-  const allGroups = projectGroups || [];
+  const allGroups = sortGroupsByOption(projectGroups || []);
 
   const allPods = pods || [];
   let filtered = allPods;
@@ -349,11 +349,11 @@ function renderPodCard(pod, groups = []) {
 
 // ---- GROUPS TAB ----
 async function loadGroupsTab(projectId) {
-  const { data: groups } = await supabaseClient
+  const { data: rawGroups } = await supabaseClient
     .from('production_groups')
     .select('*')
-    .eq('project_id', projectId)
-    .order('sort_order', { ascending: true });
+    .eq('project_id', projectId);
+  const groups = sortGroupsByOption(rawGroups || []);
 
   const container = document.getElementById('groups-list');
 
@@ -639,10 +639,11 @@ async function deletePlan(planId, storagePath, projectId) {
 // ---- SETUP FILTERS ----
 async function setupPodFilters(projectId) {
   // Run both queries in parallel
-  const [{ data: groups }, { data: types }] = await Promise.all([
+  const [{ data: rawFilterGroups }, { data: types }] = await Promise.all([
     supabaseClient.from('production_groups').select('id, name').eq('project_id', projectId),
     supabaseClient.from('project_types').select('id, type_number').eq('project_id', projectId).order('type_number'),
   ]);
+  const groups = sortGroupsByOption(rawFilterGroups || []);
 
   const groupSel = document.getElementById('filter-group');
   const typeSel = document.getElementById('filter-type');
@@ -650,7 +651,7 @@ async function setupPodFilters(projectId) {
   const statusSel = document.getElementById('filter-status');
   const castingSel = document.getElementById('filter-casting');
 
-  groupSel.innerHTML = '<option value="">כל הקבוצות</option>' + (groups || []).map(g =>
+  groupSel.innerHTML = '<option value="">כל הקבוצות</option>' + groups.map(g =>
     `<option value="${g.id}">${escHtml(g.name)}</option>`).join('');
 
   typeSel.innerHTML = '<option value="">כל הטיפוסים</option>' + (types || []).map(t =>
@@ -924,13 +925,31 @@ const GROUP_NAME_OPTIONS = [
   'קבוצה תשיעית', 'קבוצה עשירית',
 ];
 
-function showGroupModal(projectId, groupId = null, name = '', date = '') {
+function sortGroupsByOption(groups) {
+  return [...groups].sort((a, b) => {
+    const ai = GROUP_NAME_OPTIONS.indexOf(a.name);
+    const bi = GROUP_NAME_OPTIONS.indexOf(b.name);
+    if (ai === -1 && bi === -1) return a.name.localeCompare(b.name, 'he');
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+}
+
+async function showGroupModal(projectId, groupId = null, name = '', date = '') {
+  let usedNames = [];
+  if (!groupId) {
+    const { data: existing } = await supabaseClient
+      .from('production_groups').select('name').eq('project_id', projectId);
+    usedNames = (existing || []).map(g => g.name);
+  }
+
   openModal(groupId ? 'עריכת קבוצה' : 'קבוצת ביצוע חדשה', `
     <div class="form-group">
       <label>שם הקבוצה</label>
       <select id="grp-name" class="form-control">
         <option value="">-- בחר קבוצה --</option>
-        ${GROUP_NAME_OPTIONS.map(opt =>
+        ${GROUP_NAME_OPTIONS.filter(opt => !usedNames.includes(opt) || opt === name).map(opt =>
           `<option value="${opt}"${opt === name ? ' selected' : ''}>${opt}</option>`
         ).join('')}
       </select>

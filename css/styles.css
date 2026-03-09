@@ -1064,9 +1064,16 @@ table tbody tr:hover { background: #f8fafc; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-  /* Hide desktop sidebar, show hamburger */
-  .hamburger-btn { display: flex; }
-  .navbar-menu #btn-logout { display: none; }
+  /* Hide ALL desktop navbar items — show only logo + hamburger */
+  .navbar-menu { display: none; }
+
+  /* Hamburger: show it and place it on the RIGHT side in RTL.
+     order:-1 means it comes first in flex order;
+     in dir=rtl, first = rightmost. */
+  .hamburger-btn {
+    display: flex;
+    order: -1;
+  }
 
   /* Sidebar becomes a slide-in drawer from right */
   .sidebar {

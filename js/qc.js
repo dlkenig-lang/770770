@@ -32,6 +32,29 @@ async function loadQCStages(podId) {
 }
 
 function renderQCTabsUI() {
+  // Comments alert banner
+  const alertEl = document.getElementById('pod-comments-alert');
+  if (alertEl) {
+    const pod = AppState.currentPod;
+    const unresolved = (pod?.comments || []).filter(c => !c.is_resolved);
+    const flagged = unresolved.filter(c => c.is_flagged);
+    if (unresolved.length > 0) {
+      const hasFlagged = flagged.length > 0;
+      alertEl.innerHTML = `
+        <div class="pod-comments-alert-banner ${hasFlagged ? 'alert-flagged' : 'alert-normal'}">
+          <span class="alert-icon">${hasFlagged ? '🚩' : '💬'}</span>
+          <span class="alert-text">
+            ${hasFlagged
+              ? `${flagged.length} הערה${flagged.length > 1 ? 'ות' : ''} מסומנת${flagged.length > 1 ? 'ות' : ''} לטיפול`
+              : `${unresolved.length} הערה${unresolved.length > 1 ? 'ות' : ''} פתוחה${unresolved.length > 1 ? 'ות' : ''}`}
+          </span>
+          <button class="btn btn-sm alert-btn" onclick="showCommentsModal('${pod.id}')">צפה בהערות</button>
+        </div>`;
+    } else {
+      alertEl.innerHTML = '';
+    }
+  }
+
   const completedStages = _qcStages.filter(s => s.status === 'completed').length;
   const totalStages = _qcStages.length;
   const pct = totalStages > 0 ? Math.round(completedStages / totalStages * 100) : 0;

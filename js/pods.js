@@ -14,7 +14,8 @@ async function openPod(podId) {
       projects(id, name, code, date_received, pipe_type, onedrive_folder_url),
       project_types(type_number, dimensions),
       type_directions(direction),
-      production_groups(name)
+      production_groups(name),
+      comments(id, is_resolved, is_flagged)
     `)
     .eq('id', podId)
     .single();

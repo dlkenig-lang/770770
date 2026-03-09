@@ -290,12 +290,17 @@ function renderPodCard(pod, groups = []) {
   const statusCls = `status-${pod.status}`;
   const dirLabel = pod.type_directions?.direction === 'R' ? 'ימין' : pod.type_directions?.direction === 'L' ? 'שמאל' : (pod.type_directions?.direction || '');
   const unresolvedCount = (pod.comments || []).filter(c => !c.is_resolved).length;
+  const flaggedCount = (pod.comments || []).filter(c => !c.is_resolved && c.is_flagged).length;
 
   return `
-    <div class="pod-card pod-card-clickable btn-open-pod" data-pod-id="${pod.id}">
+    <div class="pod-card pod-card-clickable btn-open-pod ${flaggedCount > 0 ? 'pod-card-has-flagged' : unresolvedCount > 0 ? 'pod-card-has-comments' : ''}" data-pod-id="${pod.id}">
       <div class="pod-card-header">
         <div class="pod-card-code">${escHtml(pod.pod_code)}</div>
-        ${unresolvedCount > 0 ? `<span class="unresolved-badge" title="${unresolvedCount} הערות לא טופלו">⚠️ ${unresolvedCount}</span>` : ''}
+        ${flaggedCount > 0
+          ? `<span class="unresolved-badge badge-flagged" title="${flaggedCount} הערות מסומנות לטיפול">🚩 ${flaggedCount}</span>`
+          : unresolvedCount > 0
+          ? `<span class="unresolved-badge" title="${unresolvedCount} הערות לא טופלו">💬 ${unresolvedCount}</span>`
+          : ''}
         <span class="status-badge ${statusCls}">${STATUS_LABELS[pod.status] || pod.status}</span>
       </div>
       <div class="pod-card-meta">

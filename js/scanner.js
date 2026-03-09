@@ -25,9 +25,8 @@ function openScannerModal() {
   _html5QrCode.start(
     { facingMode: 'environment' },
     {
-      fps: 10,
-      qrbox: { width: 260, height: 100 },
-      formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128]
+      fps: 15,
+      qrbox: { width: 280, height: 160 }
     },
     async (decodedText) => {
       if (!_scannerActive) return;

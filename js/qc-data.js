@@ -48,7 +48,7 @@ const QC_STAGES = [
     name: 'איטום',
     nameEn: 'Waterproofing / Sealing',
     items: [
-      { key: 'collars', label: 'קולרים', instruction: null },
+      { key: 'collars', label: 'קולרים', instruction: 'לוודא שאין בועות' },
       { key: 'corner_tapes', label: 'סרטים בפינות', instruction: null },
       { key: 'sealing_layer', label: 'שכבת איטום', instruction: null },
     ]

@@ -477,6 +477,26 @@ async function handleItemStatusChange(btn) {
 
   await updateStageStatus(stageId, _qcPodId, _qcStages);
   await checkCastingApprovalTrigger(stageId);
+
+  // If one of the post-casting items (7-9) in stage A is answered, remove casting approval
+  const postCastingKeys = ['segregation', 'shower_parallel', 'drainage_test'];
+  const stageForItem = _qcStages.find(s => s.id === stageId);
+  if (
+    _qcCastingApproved &&
+    stageForItem?.stage_number === 1 &&
+    postCastingKeys.includes(itemKey) &&
+    newStatus !== 'pending'
+  ) {
+    await supabaseClient.from('pods').update({
+      casting_approved: false,
+      casting_approved_at: null,
+    }).eq('id', _qcPodId);
+    _qcCastingApproved = false;
+    if (AppState.currentPod) AppState.currentPod.casting_approved = false;
+    const castingBadge = document.getElementById('pod-casting-badge');
+    if (castingBadge) castingBadge.style.display = 'none';
+    showToast('הפוד הוצא מרשימת מאושרי ליציקה — יש להשלים את שלב A', 'warning');
+  }
 }
 
 // ---- CASTING APPROVAL TRIGGER ----
@@ -747,6 +767,16 @@ function initSignatureModal() {
 
     const inspectorName = nameEl?.value.trim();
     const inspectionDate = dateEl?.value;
+
+    // Block B+ stages if casting_approved but stage A not completed
+    if (pendingStageCompletion.stageNum > 1) {
+      const stageA = _qcStages.find(s => s.stage_number === 1);
+      if (stageA && stageA.status !== 'completed' && _qcCastingApproved) {
+        errEl.textContent = 'לא ניתן לאשר שלב זה — יש להשלים את כל פרטי שלב A (כולל סעיפים 7–9) תחילה';
+        errEl.classList.remove('hidden');
+        return;
+      }
+    }
 
     if (!inspectorName) {
       errEl.textContent = 'יש להזין שם בודק';

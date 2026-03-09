@@ -70,7 +70,7 @@ const QC_STAGES = [
     name: 'התקנת אביזרי קצה',
     nameEn: 'Edge Accessories Installation',
     items: [
-      { key: 'horizontality', label: 'אופקיות', instruction: null },
+      { key: 'horizontality', label: 'בדיקת אופקיות כלל האביזרים', instruction: null },
       { key: 'toilet', label: 'אסלה', instruction: 'יש לבדוק גובה 39 ± 1 ס"מ' },
       { key: 'shower', label: 'מקלחון', instruction: null },
       { key: 'faucet', label: 'ברז', instruction: null },

@@ -7,7 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="images/favicon.svg">
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
   <link rel="mask-icon" href="images/safari-pinned-tab.svg" color="#3DD4CE">
-  <link rel="stylesheet" href="css/styles.css?v=34" />
+  <link rel="stylesheet" href="css/styles.css?v=35" />
   <!-- Supabase - must load synchronously before app scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <!-- JsBarcode - defer, used only when printing barcodes -->
@@ -48,7 +48,6 @@
         <span id="nav-user-name" class="nav-user"></span> ✏️
       </button>
       <span id="nav-user-role" class="nav-role-badge"></span>
-      <button class="btn btn-ghost btn-sm" id="btn-scan-barcode" title="סרוק ברקוד פוד">📷 סרוק</button>
       <button class="btn btn-ghost btn-sm" id="btn-logout">התנתק</button>
     </div>
     <!-- hamburger — mobile only -->
@@ -63,6 +62,17 @@
   <!-- SIDEBAR -->
   <div class="layout">
     <aside class="sidebar" id="sidebar">
+      <!-- Mobile drawer header: user info + scan -->
+      <div class="sidebar-user-header">
+        <div class="sidebar-user-info">
+          <button class="btn btn-ghost btn-sm sidebar-user-btn" id="btn-edit-profile-mobile" title="ערוך שם תצוגה">
+            <span id="sidebar-user-name" class="nav-user"></span> ✏️
+          </button>
+          <span id="sidebar-user-role" class="nav-role-badge"></span>
+        </div>
+        <button class="btn btn-ghost btn-sm sidebar-scan-btn" id="btn-scan-barcode" title="סרוק ברקוד פוד">📷 סרוק</button>
+      </div>
+
       <nav class="sidebar-nav">
         <a href="#" class="sidebar-item active" data-view="dashboard">
           <span class="sidebar-icon">🏠</span><span>לוח בקרה</span>
@@ -483,14 +493,14 @@
 <div id="toast-container" class="toast-container"></div>
 
 <!-- Scripts -->
-<script src="js/config.js?v=34"></script>
-<script src="js/auth.js?v=34"></script>
-<script src="js/qc-data.js?v=34"></script>
-<script src="js/projects.js?v=34"></script>
-<script src="js/pods.js?v=34"></script>
-<script src="js/qc.js?v=34"></script>
-<script src="js/reports.js?v=34"></script>
-<script src="js/scanner.js?v=34"></script>
-<script src="js/app.js?v=34"></script>
+<script src="js/config.js?v=35"></script>
+<script src="js/auth.js?v=35"></script>
+<script src="js/qc-data.js?v=35"></script>
+<script src="js/projects.js?v=35"></script>
+<script src="js/pods.js?v=35"></script>
+<script src="js/qc.js?v=35"></script>
+<script src="js/reports.js?v=35"></script>
+<script src="js/scanner.js?v=35"></script>
+<script src="js/app.js?v=35"></script>
 </body>
 </html>

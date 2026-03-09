@@ -2,6 +2,28 @@
 // Main App Module - Initialization & Routing
 // =============================================
 
+// ---- USER DISPLAY HELPER ----
+// Updates both desktop navbar AND mobile sidebar drawer
+function updateUserDisplay(profile) {
+  const name  = profile?.full_name || '';
+  const role  = profile?.role;
+  const label = ROLE_LABELS[role] || '';
+  const bg    = (ROLE_COLORS[role] || '#94a3b8') + '20';
+  const color = ROLE_COLORS[role]  || '#94a3b8';
+
+  // Desktop navbar
+  const navName = document.getElementById('nav-user-name');
+  const navRole = document.getElementById('nav-user-role');
+  if (navName) navName.textContent = name;
+  if (navRole) { navRole.textContent = label; navRole.style.background = bg; navRole.style.color = color; }
+
+  // Mobile sidebar header
+  const sbName = document.getElementById('sidebar-user-name');
+  const sbRole = document.getElementById('sidebar-user-role');
+  if (sbName) sbName.textContent = name;
+  if (sbRole) { sbRole.textContent = label; sbRole.style.background = bg; sbRole.style.color = color; }
+}
+
 // ---- MODAL HELPERS ----
 function openModal(title, bodyHtml, buttons = []) {
   document.getElementById('modal-title').textContent = title;
@@ -149,10 +171,7 @@ async function loadUsersView() {
       // Refresh navbar if current user's role was changed
       if (sel.dataset.userId === AppState.currentProfile?.id) {
         AppState.currentProfile.role = sel.value;
-        const roleEl = document.getElementById('nav-user-role');
-        roleEl.textContent = ROLE_LABELS[sel.value] || sel.value;
-        roleEl.style.background = (ROLE_COLORS[sel.value] || '#64748b') + '20';
-        roleEl.style.color = ROLE_COLORS[sel.value] || '#64748b';
+        updateUserDisplay(AppState.currentProfile);
         applyRoleVisibility();
       }
     });
@@ -221,11 +240,7 @@ async function onAuthStateChange(session) {
         if (fresh) {
           try { localStorage.setItem(cacheKey, JSON.stringify(fresh)); } catch (e) {}
           AppState.currentProfile = fresh;
-          document.getElementById('nav-user-name').textContent = fresh.full_name || '';
-          const roleEl = document.getElementById('nav-user-role');
-          roleEl.textContent = ROLE_LABELS[fresh.role] || '';
-          roleEl.style.background = ROLE_COLORS[fresh.role] + '20';
-          roleEl.style.color = ROLE_COLORS[fresh.role];
+          updateUserDisplay(fresh);
           applyRoleVisibility();
         }
       }).catch(() => {});
@@ -258,11 +273,7 @@ async function onAuthStateChange(session) {
             if (fresh) {
               try { localStorage.setItem(cacheKey, JSON.stringify(fresh)); } catch (e) {}
               AppState.currentProfile = fresh;
-              document.getElementById('nav-user-name').textContent = fresh.full_name || '';
-              const roleEl = document.getElementById('nav-user-role');
-              roleEl.textContent = ROLE_LABELS[fresh.role] || '';
-              roleEl.style.background = ROLE_COLORS[fresh.role] + '20';
-              roleEl.style.color = ROLE_COLORS[fresh.role];
+              updateUserDisplay(fresh);
               applyRoleVisibility();
             }
           }).catch(() => {});
@@ -272,13 +283,8 @@ async function onAuthStateChange(session) {
       AppState.currentProfile = profile;
     }
 
-    // Update navbar
-    document.getElementById('nav-user-name').textContent = AppState.currentProfile?.full_name || '';
-    const roleEl = document.getElementById('nav-user-role');
-    roleEl.textContent = ROLE_LABELS[AppState.currentProfile?.role] || '';
-    roleEl.style.background = ROLE_COLORS[AppState.currentProfile?.role] + '20';
-    roleEl.style.color = ROLE_COLORS[AppState.currentProfile?.role];
-
+    // Update navbar + sidebar drawer
+    updateUserDisplay(AppState.currentProfile);
     applyRoleVisibility();
 
     // Load dashboard
@@ -313,12 +319,14 @@ function initProfileModal() {
   const nameInput = document.getElementById('profile-display-name');
   const errEl = document.getElementById('profile-modal-error');
 
-  document.getElementById('btn-edit-profile').addEventListener('click', () => {
+  function openProfileModal() {
     nameInput.value = AppState.currentProfile?.full_name || '';
     errEl.classList.add('hidden');
     modal.classList.remove('hidden');
     nameInput.focus();
-  });
+  }
+  document.getElementById('btn-edit-profile').addEventListener('click', openProfileModal);
+  document.getElementById('btn-edit-profile-mobile')?.addEventListener('click', openProfileModal);
 
   const closeModal = () => modal.classList.add('hidden');
   document.getElementById('profile-modal-close').addEventListener('click', closeModal);
@@ -353,7 +361,7 @@ function initProfileModal() {
     }
 
     AppState.currentProfile.full_name = newName;
-    document.getElementById('nav-user-name').textContent = newName;
+    updateUserDisplay(AppState.currentProfile);
     closeModal();
     showToast('שם תצוגה עודכן', 'success');
   });

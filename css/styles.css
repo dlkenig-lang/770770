@@ -1047,6 +1047,29 @@ table tbody tr:hover { background: #f8fafc; }
 }
 .mobile-backdrop.open { display: block; }
 
+/* ===== SIDEBAR USER HEADER (mobile drawer only) ===== */
+.sidebar-user-header {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.sidebar-user-info {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.sidebar-user-btn {
+  font-size: 13px; padding: 4px 8px;
+  display: flex; align-items: center; gap: 4px;
+}
+.sidebar-scan-btn {
+  width: 100%; justify-content: center;
+  font-size: 14px; font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
 /* ===== SIDEBAR FOOTER (logout) ===== */
 .sidebar-footer {
   display: none;
@@ -1089,8 +1112,10 @@ table tbody tr:hover { background: #f8fafc; }
   }
   .sidebar.open { transform: translateX(0); }
   .sidebar-footer { display: block; }
+  .sidebar-user-header { display: flex; }
 
-  .main-content { margin-right: 0; padding: 16px; }
+  /* Extra bottom padding so Bolt badge never covers page content */
+  .main-content { margin-right: 0; padding: 16px 16px 80px; }
   .form-row { grid-template-columns: 1fr; }
   .form-row-3 { grid-template-columns: 1fr; }
   .projects-grid { grid-template-columns: 1fr; }

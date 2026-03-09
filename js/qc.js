@@ -29,13 +29,8 @@ async function loadQCStages(podId) {
   _qcStageItems = {};
   _qcStages.forEach((s, i) => { _qcStageItems[s.id] = results[i].data || []; });
 
-  _qcCastingApproved = false;
-  renderQCTabsUI(); // render immediately without waiting
-
-  // Fetch casting status in background — does not block render
-  supabaseClient.from('pods').select('casting_approved').eq('id', podId).single()
-    .then(({ data }) => { _qcCastingApproved = data?.casting_approved || false; })
-    .catch(() => {});
+  _qcCastingApproved = AppState.currentPod?.casting_approved || false;
+  renderQCTabsUI();
 }
 
 function renderQCTabsUI() {
@@ -510,6 +505,7 @@ async function checkCastingApprovalTrigger(stageId) {
   if (error) { showToast('שגיאה בשמירת אישור יציקה', 'error'); return; }
 
   _qcCastingApproved = true;
+  if (AppState.currentPod) AppState.currentPod.casting_approved = true;
   showToast('הפוד אושר ליציקה! 🏗️', 'success');
 
   // Update casting badge in pod header if visible

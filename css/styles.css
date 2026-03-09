@@ -1052,16 +1052,27 @@ table tbody tr:hover { background: #f8fafc; }
 
 #scanner-reader {
   width: 100%;
-  max-width: 320px;
   border-radius: var(--radius);
   overflow: hidden;
   background: #000;
-  min-height: 200px;
+  aspect-ratio: 3 / 1;
+  position: relative;
 }
 
-/* Override html5-qrcode internal styles */
+/* Override Quagga internal styles */
 #scanner-reader video {
   border-radius: var(--radius);
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  position: absolute;
+  top: 0; left: 0;
+}
+#scanner-reader canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100% !important;
+  height: 100% !important;
 }
 #scanner-reader img { display: none; }
 
@@ -1072,7 +1083,6 @@ table tbody tr:hover { background: #f8fafc; }
   padding: 8px 12px;
   border-radius: var(--radius);
   width: 100%;
-  max-width: 320px;
 }
 .scanner-status-info {
   background: var(--info-light);

@@ -204,42 +204,42 @@ async function onAuthStateChange(session) {
     appEl.classList.remove('hidden');
     showView('dashboard');
 
-    // Load profile — with 5 s timeout so a network hang never blocks the dashboard.
-    console.time('[LOAD] profile');
-    let profile = await Promise.race([
-      loadCurrentProfile(session.user.id),
-      new Promise(resolve => setTimeout(() => resolve(null), 5000)),
-    ]);
-    console.timeEnd('[LOAD] profile');
-
-    if (!profile) {
-      // Profile missing or timed-out — try upsert then re-fetch, each with timeout.
-      try {
-        await Promise.race([
-          supabaseClient.from('profiles').upsert({
-            id: session.user.id,
-            email: session.user.email,
-            full_name: session.user.user_metadata?.full_name || session.user.email,
-            username: session.user.user_metadata?.username || session.user.email.split('@')[0],
-            role: 'viewer',
-          }, { onConflict: 'id', ignoreDuplicates: true }),
-          new Promise(resolve => setTimeout(() => resolve(null), 4000)),
-        ]);
-        profile = await Promise.race([
-          loadCurrentProfile(session.user.id),
-          new Promise(resolve => setTimeout(() => resolve(null), 4000)),
-        ]);
-      } catch (e) {
-        console.warn('[LOAD] profile upsert failed:', e);
-      }
+    // Load profile: cache-first so the dashboard never waits for a slow network.
+    // 1. Use localStorage immediately if available.
+    const cacheKey = 'modu_profile_' + session.user.id;
+    let profile = null;
+    const cachedStr = localStorage.getItem(cacheKey);
+    if (cachedStr) {
+      try { profile = JSON.parse(cachedStr); } catch (e) {}
     }
-    // Fallback: if profile still null, use localStorage cached profile (preserves role)
-    if (!profile) {
-      const cached = localStorage.getItem('modu_profile_' + session.user.id);
-      if (cached) {
-        try { profile = JSON.parse(cached); } catch (e) {}
-      }
+
+    if (profile) {
+      // Set profile from cache so dashboard loads instantly.
+      AppState.currentProfile = profile;
+      // Refresh from network in background — no await, no blocking.
+      loadCurrentProfile(session.user.id).then(fresh => {
+        if (fresh) {
+          try { localStorage.setItem(cacheKey, JSON.stringify(fresh)); } catch (e) {}
+          AppState.currentProfile = fresh;
+          document.getElementById('nav-user-name').textContent = fresh.full_name || '';
+          const roleEl = document.getElementById('nav-user-role');
+          roleEl.textContent = ROLE_LABELS[fresh.role] || '';
+          roleEl.style.background = ROLE_COLORS[fresh.role] + '20';
+          roleEl.style.color = ROLE_COLORS[fresh.role];
+          applyRoleVisibility();
+        }
+      }).catch(() => {});
+    } else {
+      // No cache — first login or cleared storage. Fetch with short timeout.
+      console.time('[LOAD] profile');
+      profile = await Promise.race([
+        loadCurrentProfile(session.user.id),
+        new Promise(resolve => setTimeout(() => resolve(null), 3000)),
+      ]);
+      console.timeEnd('[LOAD] profile');
+
       if (!profile) {
+        // New user: upsert profile row then re-fetch once (background, non-blocking).
         profile = {
           id: session.user.id,
           email: session.user.email,
@@ -248,13 +248,29 @@ async function onAuthStateChange(session) {
           role: 'viewer',
           is_active: true,
         };
+        console.warn('[LOAD] no profile found, using default role=viewer');
+        supabaseClient.from('profiles').upsert({
+          id: profile.id, email: profile.email,
+          full_name: profile.full_name, username: profile.username, role: 'viewer',
+        }, { onConflict: 'id', ignoreDuplicates: true })
+          .then(() => loadCurrentProfile(session.user.id))
+          .then(fresh => {
+            if (fresh) {
+              try { localStorage.setItem(cacheKey, JSON.stringify(fresh)); } catch (e) {}
+              AppState.currentProfile = fresh;
+              document.getElementById('nav-user-name').textContent = fresh.full_name || '';
+              const roleEl = document.getElementById('nav-user-role');
+              roleEl.textContent = ROLE_LABELS[fresh.role] || '';
+              roleEl.style.background = ROLE_COLORS[fresh.role] + '20';
+              roleEl.style.color = ROLE_COLORS[fresh.role];
+              applyRoleVisibility();
+            }
+          }).catch(() => {});
+      } else {
+        try { localStorage.setItem(cacheKey, JSON.stringify(profile)); } catch (e) {}
       }
-      console.warn('[LOAD] using cached/fallback profile, role=' + profile.role);
-    } else {
-      // Cache the successfully loaded profile for future fallback
-      try { localStorage.setItem('modu_profile_' + session.user.id, JSON.stringify(profile)); } catch (e) {}
+      AppState.currentProfile = profile;
     }
-    AppState.currentProfile = profile;
 
     // Update navbar
     document.getElementById('nav-user-name').textContent = AppState.currentProfile?.full_name || '';

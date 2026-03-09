@@ -1032,3 +1032,53 @@ table tbody tr:hover { background: #f8fafc; }
   .main-content { margin: 0; padding: 0; }
   .qc-stage-panel { break-inside: avoid; }
 }
+
+/* =============================================
+   Barcode Scanner
+   ============================================= */
+.scanner-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+}
+
+.scanner-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+#scanner-reader {
+  width: 100%;
+  max-width: 320px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+  min-height: 200px;
+}
+
+/* Override html5-qrcode internal styles */
+#scanner-reader video {
+  border-radius: var(--radius);
+}
+#scanner-reader img { display: none; }
+
+.scanner-status {
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 320px;
+}
+.scanner-status-info {
+  background: var(--info-light);
+  color: var(--info);
+}
+.scanner-status-error {
+  background: var(--danger-light);
+  color: var(--danger);
+}

@@ -19,6 +19,8 @@
   <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <!-- Signature Pad - defer, used only in signature modal -->
   <script defer src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+  <!-- Html5-QrCode - defer, used only for barcode scanning -->
+  <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 
@@ -43,6 +45,7 @@
         <span id="nav-user-name" class="nav-user"></span> ✏️
       </button>
       <span id="nav-user-role" class="nav-role-badge"></span>
+      <button class="btn btn-ghost btn-sm" id="btn-scan-barcode" title="סרוק ברקוד פוד">📷 סרוק</button>
       <button class="btn btn-ghost btn-sm" id="btn-logout">התנתק</button>
     </div>
   </nav>
@@ -447,6 +450,21 @@
   </div>
 </div>
 
+<!-- Barcode Scanner Modal -->
+<div id="scanner-modal" class="modal-overlay hidden">
+  <div class="modal-container modal-sm">
+    <div class="modal-header">
+      <h2>סריקת ברקוד פוד</h2>
+      <button class="modal-close" id="scanner-modal-close">✕</button>
+    </div>
+    <div class="modal-body scanner-modal-body">
+      <p class="scanner-hint">הצב את ברקוד הפוד מול המצלמה</p>
+      <div id="scanner-reader"></div>
+      <div id="scanner-status" class="scanner-status hidden"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast Notifications -->
 <div id="toast-container" class="toast-container"></div>
 
@@ -458,6 +476,7 @@
 <script src="js/pods.js?v=32"></script>
 <script src="js/qc.js?v=32"></script>
 <script src="js/reports.js?v=32"></script>
+<script src="js/scanner.js?v=32"></script>
 <script src="js/app.js?v=32"></script>
 </body>
 </html>

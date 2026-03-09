@@ -71,10 +71,10 @@ const QC_STAGES = [
     nameEn: 'Edge Accessories Installation',
     items: [
       { key: 'horizontality', label: 'בדיקת אופקיות כלל האביזרים', instruction: null },
-      { key: 'toilet', label: 'אסלה', instruction: 'יש לבדוק גובה 39 ± 1 ס"מ' },
+      { key: 'toilet', label: 'אסלה', instruction: 'יש לבדוק גובה 39 ± 1 ס"מ | לבדוק חומר גמיש' },
       { key: 'shower', label: 'מקלחון', instruction: null },
       { key: 'faucet', label: 'ברז', instruction: null },
-      { key: 'sink', label: 'כיור', instruction: null },
+      { key: 'sink', label: 'כיור', instruction: 'לבדוק חומר גמיש' },
       { key: 'cabinet', label: 'ארון', instruction: null },
       { key: 'flush_btn', label: 'לחצן הדחה', instruction: null },
       { key: 'towel_rack', label: 'מתלה מגבות', instruction: null },
@@ -83,8 +83,6 @@ const QC_STAGES = [
       { key: 'sprayer', label: 'מזלף', instruction: null },
       { key: 'light_fixture', label: 'גוף תאורה', instruction: null },
       { key: 'vent_grille', label: 'גריל לוונטה', instruction: null },
-      { key: 'flexible_toilet', label: 'חומר גמיש אסלה', instruction: null },
-      { key: 'flexible_sink', label: 'חומר גמיש כיור', instruction: null },
     ]
   }
 ];

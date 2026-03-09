@@ -24,10 +24,10 @@ const QC_STAGES = [
     name: 'קונסטרוקציית קירות ותקרה וסגירה בגבס',
     nameEn: 'Walls, Ceiling & Drywall',
     items: [
-      { key: 'diagonals', label: 'אלכסוני קונסטרוקציה', instruction: 'בדוק שוויון אלכסונים' },
+      { key: 'diagonals', label: 'אלכסוני קונסטרוקציה', instruction: 'הבדיקה מתבצעת לאחר התקנת הקירות' },
       { key: 'lwh_dims', label: 'מידות אורך, רוחב וגובה', instruction: null },
       { key: 'door_opening', label: 'מידת פתח הדלת', instruction: null },
-      { key: 'dowel_anchor', label: 'עיגון דיבלים סמוך לניצב', instruction: 'ודא עיגון תקין סמוך לניצב' },
+      { key: 'dowel_anchor', label: 'עיגון דיבלים סמוך לניצב', instruction: null },
     ]
   },
   {

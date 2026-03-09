@@ -125,9 +125,9 @@ function renderActiveStage() {
       ${pod?.projects?.pipe_type ? `
         <div class="qc-pipe-type-bar">דגם צנרת: <strong>${escHtml(pod.projects.pipe_type)}</strong></div>
       ` : ''}
-      ${!_castingBaseApproved && stage.stage_number !== 1 ? `
+      ${!_castingBaseApproved && stage.stage_number > 1 ? `
         <div class="qc-casting-block-banner">
-          🔒 שלב זה ינעל עד לאישור סעיפים 1–6 ביציקת הרצפה (שלב A)
+          🔒 שלב זה נעול עד לאישור סעיפים 1–6 ביציקת הרצפה (שלב A)
         </div>
       ` : ''}
       <div class="qc-items-table-wrapper">

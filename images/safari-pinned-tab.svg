@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 76 101">
-  <polygon points="8,4 38,30 68,4 75,4 38,38 1,4" fill="black"/>
-  <polygon points="8,20 38,46 68,20 75,20 38,54 1,20" fill="black"/>
-  <polygon points="1,57 14,57 14,100 1,100" fill="black"/>
-  <polygon points="62,57 75,57 75,100 62,100" fill="black"/>
-  <polygon points="1,57 16,57 38,76 23,76" fill="black"/>
-  <polygon points="75,57 60,57 38,76 53,76" fill="black"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <polygon points="12,8 50,36 88,8 96,8 50,46 4,8" fill="black"/>
+  <polygon points="12,22 50,50 88,22 96,22 50,60 4,22" fill="black"/>
+  <polygon points="4,65 18,65 18,96 4,96" fill="black"/>
+  <polygon points="82,65 96,65 96,96 82,96" fill="black"/>
+  <polygon points="4,65 20,65 50,88 34,88" fill="black"/>
+  <polygon points="96,65 80,65 50,88 66,88" fill="black"/>
 </svg>

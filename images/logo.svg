@@ -1,41 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 570 118" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 128" fill="none">
 
-  <!-- ── M Icon (serves as the "M" of MODUSYSTEMS) ── -->
-  <!-- Teal chevron 1 -->
-  <polygon points="8,4 38,30 68,4 75,4 38,38 1,4" fill="#3DD4CE"/>
-  <!-- Teal chevron 2 -->
-  <polygon points="8,20 38,46 68,20 75,20 38,54 1,20" fill="#3DD4CE"/>
-  <!-- Left leg -->
-  <polygon points="1,57 14,57 14,100 1,100" fill="#1e1e1e"/>
-  <!-- Right leg -->
-  <polygon points="62,57 75,57 75,100 62,100" fill="#1e1e1e"/>
-  <!-- Left diagonal -->
-  <polygon points="1,57 16,57 38,76 23,76" fill="#1e1e1e"/>
-  <!-- Right diagonal -->
-  <polygon points="75,57 60,57 38,76 53,76" fill="#1e1e1e"/>
+  <!-- ── M Icon ── -->
+  <!-- Teal chevron – lower -->
+  <polygon points="2,28 40,56 78,28 86,28 40,64 -6,28" fill="#5CC8C4"/>
+  <!-- Teal chevron – upper -->
+  <polygon points="2,6  40,34 78,6  86,6  40,42 -6,6"  fill="#5CC8C4"/>
 
-  <!-- ── Hebrew tagline (top right) ── -->
-  <text x="568" y="24"
-        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
-        font-size="15" font-weight="400"
-        fill="#555" text-anchor="end" direction="rtl">בנייה מודולארית</text>
+  <!-- Dark M body -->
+  <!-- Left outer leg -->
+  <polygon points="0,66 14,66 14,106 0,106"   fill="#242424"/>
+  <!-- Right outer leg -->
+  <polygon points="66,66 80,66 80,106 66,106"  fill="#242424"/>
+  <!-- Left inner diagonal -->
+  <polygon points="0,66 15,66 40,84 26,84"    fill="#242424"/>
+  <!-- Right inner diagonal -->
+  <polygon points="80,66 65,66 40,84 54,84"   fill="#242424"/>
 
-  <!-- ── ODUSYSTEMS — thin/light weight ── -->
-  <text x="80" y="100"
-        font-family="'-apple-system', 'Helvetica Neue', Helvetica, Arial, sans-serif"
-        font-size="62" font-weight="300"
-        fill="#1a1a1a" letter-spacing="1">ODUSYSTEMS</text>
+  <!-- ── Hebrew tagline (top-right) ── -->
+  <text x="556" y="26"
+        font-family="'Arial Hebrew', 'Helvetica Neue', Arial, sans-serif"
+        font-size="16" font-weight="400"
+        fill="#404040" text-anchor="end" direction="rtl">בנייה מודולארית</text>
+
+  <!-- ── ODUSYSTEMS ── -->
+  <text x="88" y="104"
+        font-family="'Century Gothic', 'Futura', AppleGothic, Tahoma, sans-serif"
+        font-size="68" font-weight="400"
+        fill="#1e1e1e" letter-spacing="1">ODUSYSTEMS</text>
 
   <!-- ── LTD. ── -->
-  <text x="468" y="100"
-        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
-        font-size="21" font-weight="400"
-        fill="#444">LTD.</text>
+  <text x="483" y="104"
+        font-family="'Century Gothic', 'Futura', AppleGothic, Tahoma, sans-serif"
+        font-size="22" font-weight="400"
+        fill="#2a2a2a">LTD.</text>
 
   <!-- ── Modular Construction ── -->
-  <text x="80" y="115"
-        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
-        font-size="13" font-weight="300"
-        fill="#666" letter-spacing="0.5">Modular Construction</text>
+  <text x="88" y="122"
+        font-family="'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif"
+        font-size="16" font-weight="400"
+        fill="#555" letter-spacing="0.3">Modular Construction</text>
 
 </svg>

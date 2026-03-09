@@ -38,7 +38,8 @@ const QC_STAGES = [
       { key: 'water_pressure', label: 'בדיקת לחץ מים', instruction: 'יש לבצע בדיקה ב-2 זמנים: הזן שעה נוכחית ושעה אחרי 60 דקות. יש לסגור את כל החורים לפני הבדיקה', hasTwoTimes: true },
       { key: 'pressure_bar', label: 'לחץ בר (4 בר תקין)', instruction: 'ערך תקין: 4 בר ומעלה. מצב לא תקין: פחות מ-4 בר – יש לבצע ניתוקים', hasValue: true, unit: 'בר', minValue: 4 },
       { key: 'toilet_check', label: 'אסלה – בדיקה מדגמית', instruction: 'יש לבצע בדיקת מעקף. אסלה מדגמי לפני פס יצור חדש' },
-      { key: 'ceiling_check', label: 'תקרה', instruction: 'יש לבדוק: מגשים, פתח אוורור, מקבילות' },
+      { key: 'ceiling_check', label: 'תקרה', instruction: 'יש לבדוק: מגשים/ גבס' },
+      { key: 'vent_opening', label: 'פתח אוורור', instruction: null },
       { key: 'electrical', label: 'חשמל', instruction: 'יש לבדוק מעגלים חשמליים' },
     ]
   },

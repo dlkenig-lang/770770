@@ -58,11 +58,11 @@ const QC_STAGES = [
     name: 'התקנת קרמיקה ורובה',
     nameEn: 'Ceramic Tile & Grouting',
     items: [
-      { key: 'floor_walls', label: 'רצפה וקירות', instruction: 'יש לבדוק מישוריות ונראות' },
-      { key: 'grout_spacing', label: 'רווח הפוגות', instruction: 'יש לבדוק אחידות' },
-      { key: 'grout', label: 'רובה', instruction: 'יש לבדוק שלמות' },
-      { key: 'wall_floor_junc', label: 'מפגש קיר-רצפה', instruction: 'יש לבדוק חומר גמיש' },
-      { key: 'detail_junc', label: 'מפגש חיבור פרט', instruction: 'יש לבדוק חומר גמיש' },
+      { key: 'floor_walls', label: 'רצפה וקירות', instruction: 'לוודא מישוריות ונראות' },
+      { key: 'grout_spacing', label: 'רווח הפוגות', instruction: 'לוודא אחידות' },
+      { key: 'grout', label: 'רובה', instruction: 'לוודא שלמות' },
+      { key: 'wall_floor_junc', label: 'מפגש קיר-רצפה', instruction: 'לוודא חומר גמיש' },
+      { key: 'detail_junc', label: 'מפגש חיבור פרט', instruction: 'לוודא חומר גמיש' },
     ]
   },
   {

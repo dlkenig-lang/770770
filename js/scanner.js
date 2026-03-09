@@ -1,9 +1,9 @@
 // =============================================
-// Barcode Scanner Module
+// Barcode Scanner Module (Quagga2 / CODE128)
 // =============================================
 
-let _html5QrCode = null;
-let _scannerActive = false;
+let _quaggaRunning = false;
+let _detectedHandler = null;
 
 function openScannerModal() {
   document.getElementById('scanner-modal').classList.remove('hidden');
@@ -11,43 +11,66 @@ function openScannerModal() {
   statusEl.textContent = '';
   statusEl.className = 'scanner-status hidden';
 
-  // Wait for html5-qrcode to load (it's deferred)
-  if (typeof Html5Qrcode === 'undefined') {
+  if (typeof Quagga === 'undefined') {
     statusEl.textContent = 'הספרייה עדיין נטענת, נסה שוב עוד רגע';
     statusEl.className = 'scanner-status scanner-status-error';
     return;
   }
 
-  if (_scannerActive) return;
-  _scannerActive = true;
+  if (_quaggaRunning) return;
 
-  _html5QrCode = new Html5Qrcode('scanner-reader');
-  _html5QrCode.start(
-    { facingMode: 'environment' },
-    {
-      fps: 15,
-      qrbox: { width: 280, height: 160 }
+  const reader = document.getElementById('scanner-reader');
+  reader.innerHTML = '';
+
+  Quagga.init({
+    inputStream: {
+      type: 'LiveStream',
+      target: reader,
+      constraints: {
+        facingMode: 'environment',
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
     },
-    async (decodedText) => {
-      if (!_scannerActive) return;
-      _scannerActive = false;
-      await _onBarcodeScanned(decodedText);
-    },
-    () => { /* ignore per-frame errors */ }
-  ).catch(() => {
-    statusEl.textContent = 'לא ניתן לגשת למצלמה. ודא שהענקת הרשאת מצלמה.';
-    statusEl.className = 'scanner-status scanner-status-error';
-    _scannerActive = false;
+    locator: { patchSize: 'medium', halfSample: true },
+    numOfWorkers: 2,
+    frequency: 10,
+    decoder: { readers: ['code_128_reader'] },
+    locate: true
+  }, function (err) {
+    if (err) {
+      statusEl.textContent = 'לא ניתן לגשת למצלמה. ודא שהענקת הרשאת מצלמה.';
+      statusEl.className = 'scanner-status scanner-status-error';
+      return;
+    }
+    _quaggaRunning = true;
+    Quagga.start();
   });
+
+  // Remove previous handler if any, then register fresh
+  if (_detectedHandler) {
+    Quagga.offDetected(_detectedHandler);
+  }
+  _detectedHandler = async (result) => {
+    const code = result?.codeResult?.code;
+    if (!code || !_quaggaRunning) return;
+    // Confidence check: require at least 2 of the decodedCodes to have low error
+    const errors = result.codeResult.decodedCodes
+      .filter(c => c.error !== undefined)
+      .map(c => c.error);
+    const avgError = errors.reduce((a, b) => a + b, 0) / (errors.length || 1);
+    if (avgError > 0.25) return; // low confidence, skip
+
+    _quaggaRunning = false;
+    Quagga.stop();
+    Quagga.offDetected(_detectedHandler);
+    _detectedHandler = null;
+    await _onBarcodeScanned(code);
+  };
+  Quagga.onDetected(_detectedHandler);
 }
 
 async function _onBarcodeScanned(podCode) {
-  // Stop camera first
-  if (_html5QrCode) {
-    await _html5QrCode.stop().catch(() => {});
-    _html5QrCode = null;
-  }
-
   const statusEl = document.getElementById('scanner-status');
   statusEl.textContent = `מחפש פוד: ${podCode}…`;
   statusEl.className = 'scanner-status scanner-status-info';
@@ -61,13 +84,11 @@ async function _onBarcodeScanned(podCode) {
   if (!pod) {
     statusEl.textContent = `פוד לא נמצא: ${podCode}`;
     statusEl.className = 'scanner-status scanner-status-error';
-    // Allow retry after 2 seconds
     setTimeout(() => {
       if (!document.getElementById('scanner-modal').classList.contains('hidden')) {
-        _scannerActive = false;
         openScannerModal();
       }
-    }, 2000);
+    }, 2500);
     return;
   }
 
@@ -76,20 +97,21 @@ async function _onBarcodeScanned(podCode) {
 }
 
 function closeScannerModal() {
-  _scannerActive = false;
-  if (_html5QrCode) {
-    _html5QrCode.stop().catch(() => {});
-    _html5QrCode = null;
+  if (_quaggaRunning) {
+    Quagga.stop();
+    _quaggaRunning = false;
+  }
+  if (_detectedHandler) {
+    Quagga.offDetected(_detectedHandler);
+    _detectedHandler = null;
   }
   document.getElementById('scanner-modal').classList.add('hidden');
-  // Clear the scanner reader element so it can be reused
   const reader = document.getElementById('scanner-reader');
   if (reader) reader.innerHTML = '';
 }
 
 document.getElementById('btn-scan-barcode')?.addEventListener('click', openScannerModal);
 document.getElementById('scanner-modal-close')?.addEventListener('click', closeScannerModal);
-// Close on overlay click
 document.getElementById('scanner-modal')?.addEventListener('click', (e) => {
   if (e.target === document.getElementById('scanner-modal')) closeScannerModal();
 });

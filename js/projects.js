@@ -918,11 +918,22 @@ async function createProject() {
 }
 
 // ---- GROUP MODAL ----
+const GROUP_NAME_OPTIONS = [
+  'קבוצה ראשונה', 'קבוצה שניה', 'קבוצה שלישית', 'קבוצה רביעית',
+  'קבוצה חמישית', 'קבוצה שישית', 'קבוצה שביעית', 'קבוצה שמינית',
+  'קבוצה תשיעית', 'קבוצה עשירית',
+];
+
 function showGroupModal(projectId, groupId = null, name = '', date = '') {
   openModal(groupId ? 'עריכת קבוצה' : 'קבוצת ביצוע חדשה', `
     <div class="form-group">
       <label>שם הקבוצה</label>
-      <input type="text" id="grp-name" class="form-control" value="${escHtml(name)}" placeholder="קבוצה ראשונה" />
+      <select id="grp-name" class="form-control">
+        <option value="">-- בחר קבוצה --</option>
+        ${GROUP_NAME_OPTIONS.map(opt =>
+          `<option value="${opt}"${opt === name ? ' selected' : ''}>${opt}</option>`
+        ).join('')}
+      </select>
     </div>
     <div class="form-group">
       <label>תאריך יעד</label>

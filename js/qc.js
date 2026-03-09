@@ -22,14 +22,19 @@ async function loadQCStages(podId) {
   _activeStageIdx = 0;
   _qcStages = await ensureQCStages(podId);
 
-  // Load all items and pod casting status in parallel
-  const [results, { data: podData }] = await Promise.all([
-    Promise.all(_qcStages.map(s => supabaseClient.from('qc_items').select('*').eq('stage_id', s.id))),
-    supabaseClient.from('pods').select('casting_approved').eq('id', podId).single(),
-  ]);
+  // Load all items in parallel (casting_approved fetched separately to avoid blocking on missing column)
+  const results = await Promise.all(
+    _qcStages.map(s => supabaseClient.from('qc_items').select('*').eq('stage_id', s.id))
+  );
   _qcStageItems = {};
   _qcStages.forEach((s, i) => { _qcStageItems[s.id] = results[i].data || []; });
-  _qcCastingApproved = podData?.casting_approved || false;
+
+  // Fetch casting status independently — fail silently if column not yet migrated
+  _qcCastingApproved = false;
+  try {
+    const { data: podData } = await supabaseClient.from('pods').select('casting_approved').eq('id', podId).single();
+    _qcCastingApproved = podData?.casting_approved || false;
+  } catch (_) { /* column may not exist yet */ }
 
   renderQCTabsUI();
 }

@@ -1098,21 +1098,26 @@ table tbody tr:hover { background: #f8fafc; }
     order: -1;
   }
 
-  /* Sidebar becomes a slide-in drawer from right.
-     Using right property (not translateX) to avoid RTL/iOS Safari transform bug. */
+  /* Sidebar: slide-in drawer from the right.
+     Using left:100% / left:calc(100% - 260px) avoids all RTL+iOS Safari bugs —
+     percentages on position:fixed are always relative to the viewport width,
+     completely independent of writing direction. */
   .sidebar {
     display: flex !important;
     flex-direction: column;
+    position: fixed !important;
     width: 260px;
-    top: 0; right: -260px; bottom: 0;
-    left: auto;
+    top: 0; bottom: 0;
+    left: 100%;          /* hidden: element starts at the right viewport edge */
+    right: auto;
     transform: none;
-    transition: right 0.25s ease;
+    transition: left 0.25s ease;
     z-index: 150;
     box-shadow: -4px 0 20px rgba(0,0,0,0.15);
     padding-top: calc(var(--navbar-h) + 8px);
   }
-  .sidebar.open { right: 0; }
+  /* open: occupy the rightmost 260 px of the screen */
+  .sidebar.open { left: calc(100% - 260px); }
   .sidebar-footer { display: block; padding-bottom: 70px; }
   .sidebar-user-header { display: flex; }
 

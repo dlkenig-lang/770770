@@ -24,10 +24,12 @@ const QC_STAGES = [
     name: 'קונסטרוקציית קירות ותקרה וסגירה בגבס',
     nameEn: 'Walls, Ceiling & Drywall',
     items: [
-      { key: 'diagonals', label: 'אלכסוני קונסטרוקציה', instruction: 'הבדיקה מתבצעת לאחר התקנת הקירות' },
+      { key: 'diagonals', label: 'אלכסוני קונסטרוקציה', instruction: 'הבדיקה מתבצעת לאחר התקנת השלד' },
       { key: 'lwh_dims', label: 'מידות אורך, רוחב וגובה', instruction: null },
       { key: 'door_opening', label: 'מידת פתח הדלת', instruction: null },
       { key: 'dowel_anchor', label: 'עיגון דיבלים סמוך לניצב', instruction: null },
+      { key: 'gypsum_walls', label: 'קירות גבס', instruction: 'לוודא מיישקים וברגים כל 40 ס"מ' },
+      { key: 'ceiling_check', label: 'תקרה', instruction: 'יש לבדוק: מגשים/ גבס' },
     ]
   },
   {
@@ -35,12 +37,10 @@ const QC_STAGES = [
     name: 'הכנת מערכות אינסטלציה וחשמל',
     nameEn: 'Plumbing & Electrical Systems',
     items: [
-      { key: 'water_pressure', label: 'בדיקת לחץ מים', instruction: 'יש לבצע בדיקה ב-2 זמנים: הזן שעה נוכחית ושעה אחרי 60 דקות. יש לסגור את כל החורים לפני הבדיקה', hasTwoTimes: true },
-      { key: 'pressure_bar', label: 'לחץ בר (4 בר תקין)', instruction: 'ערך תקין: 4 בר ומעלה. מצב לא תקין: פחות מ-4 בר – יש לבצע ניתוקים', hasValue: true, unit: 'בר', minValue: 4 },
-      { key: 'toilet_check', label: 'אסלה – בדיקה מדגמית', instruction: 'יש לבצע בדיקת מעקף. אסלה מדגמי לפני פס יצור חדש' },
-      { key: 'ceiling_check', label: 'תקרה', instruction: 'יש לבדוק: מגשים/ גבס' },
-      { key: 'vent_opening', label: 'פתח אוורור', instruction: null },
-      { key: 'electrical', label: 'חשמל', instruction: 'יש לבדוק מעגלים חשמליים' },
+      { key: 'water_pressure', label: 'בדיקת דלוחין', instruction: 'יש לבצע בדיקה ב-2 זמנים: הזן שעה נוכחית ושעה אחרי 60 דקות. יש לסגור את כל החורים לפני הבדיקה', hasTwoTimes: true },
+      { key: 'pressure_bar', label: 'בדיקת לחץ מים (4 בר תקין)', instruction: 'ערך תקין: 4 בר ומעלה. מצב לא תקין: פחות מ-4 בר – יש לבצע ניתוקים', hasValue: true, unit: 'בר', minValue: 4 },
+      { key: 'toilet_check', label: 'אסלה – בדיקה מדגמית', instruction: 'יש לבצע מעקף לאסלה' },
+      { key: 'electrical', label: 'חשמל', instruction: 'לוודא נקודות, מיקום וכמויות' },
     ]
   },
   {
@@ -82,6 +82,7 @@ const QC_STAGES = [
       { key: 'shower_head', label: 'ראש טוש', instruction: null },
       { key: 'sprayer', label: 'מזלף', instruction: null },
       { key: 'light_fixture', label: 'גוף תאורה', instruction: null },
+      { key: 'vent_opening', label: 'פתח אוורור', instruction: null },
       { key: 'vent_grille', label: 'גריל לוונטה', instruction: null },
     ]
   }

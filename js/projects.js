@@ -1146,6 +1146,86 @@ async function deletePod(podId) {
   if (AppState.currentProject) await loadPodsTab(AppState.currentProject.id);
 }
 
+// ---- ARCHIVE / DELETE PROJECT ----
+function promptArchiveOrDelete() {
+  const project = AppState.currentProject;
+  if (!project) return;
+
+  openModal('פעולות על הפרויקט', `
+    <div class="archive-delete-options">
+      <div class="archive-option">
+        <div class="archive-option-icon">📦</div>
+        <div class="archive-option-body">
+          <div class="archive-option-title">העבר לארכיון</div>
+          <div class="archive-option-desc">הפרויקט יוסתר מהרשימה הפעילה אך ישמר במערכת. ניתן לשחזר בעתיד.</div>
+        </div>
+        <button class="btn btn-secondary" id="btn-confirm-archive">ארכיון</button>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+      <div class="archive-option">
+        <div class="archive-option-icon">🗑️</div>
+        <div class="archive-option-body">
+          <div class="archive-option-title" style="color:#dc2626">מחיקה לצמיתות</div>
+          <div class="archive-option-desc">מחיקה בלתי הפיכה של הפרויקט וכל הנתונים הקשורים אליו.</div>
+        </div>
+        <button class="btn btn-danger" id="btn-go-delete">מחיקה</button>
+      </div>
+    </div>
+  `, []);
+
+  document.getElementById('btn-confirm-archive').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-confirm-archive');
+    btn.disabled = true; btn.textContent = '...';
+    const { error } = await supabaseClient.from('projects').update({ is_active: false }).eq('id', project.id);
+    if (error) { showToast('שגיאה בהעברה לארכיון: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'ארכיון'; return; }
+    ProjectCache.delete(project.id);
+    closeModal();
+    showToast('הפרויקט הועבר לארכיון', 'success');
+    showView('projects');
+    await loadProjects();
+  });
+
+  document.getElementById('btn-go-delete').addEventListener('click', () => {
+    // Step 2 — require typing the project name
+    document.getElementById('modal-body').innerHTML = `
+      <p style="color:#dc2626;font-weight:600;margin-bottom:8px">⚠️ פעולה זו אינה הפיכה!</p>
+      <p style="margin-bottom:16px;font-size:14px">כדי לאשר מחיקה לצמיתות, הקלד את שם הפרויקט:</p>
+      <p style="font-weight:700;margin-bottom:10px;padding:8px;background:var(--bg);border-radius:6px;text-align:center">${escHtml(project.name)}</p>
+      <input id="delete-confirm-input" class="form-control" placeholder="הקלד שם הפרויקט לאימות" autocomplete="off" />
+      <p id="delete-confirm-error" class="error-message hidden" style="margin-top:8px">השם אינו תואם</p>
+    `;
+    document.getElementById('modal-footer').innerHTML = `
+      <button class="btn btn-ghost" id="btn-delete-back">חזרה</button>
+      <button class="btn btn-danger" id="btn-confirm-delete" disabled>מחק לצמיתות</button>
+    `;
+
+    const input = document.getElementById('delete-confirm-input');
+    const confirmBtn = document.getElementById('btn-confirm-delete');
+
+    input.addEventListener('input', () => {
+      confirmBtn.disabled = input.value.trim() !== project.name;
+    });
+
+    document.getElementById('btn-delete-back').addEventListener('click', () => promptArchiveOrDelete());
+
+    confirmBtn.addEventListener('click', async () => {
+      if (input.value.trim() !== project.name) return;
+      confirmBtn.disabled = true; confirmBtn.textContent = 'מוחק...';
+      const { error } = await supabaseClient.from('projects').delete().eq('id', project.id);
+      if (error) {
+        showToast('שגיאה במחיקה: ' + error.message, 'error');
+        confirmBtn.disabled = false; confirmBtn.textContent = 'מחק לצמיתות';
+        return;
+      }
+      ProjectCache.delete(project.id);
+      closeModal();
+      showToast('הפרויקט נמחק לצמיתות', 'success');
+      showView('projects');
+      await loadProjects();
+    });
+  });
+}
+
 function escHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

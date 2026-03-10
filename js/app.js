@@ -206,6 +206,9 @@ document.getElementById('btn-add-group')?.addEventListener('click', () => {
 document.getElementById('btn-edit-project')?.addEventListener('click', () => {
   activateTab('details');
 });
+document.getElementById('btn-project-actions')?.addEventListener('click', () => {
+  promptArchiveOrDelete();
+});
 
 // ---- AUTH STATE CHANGE ----
 async function onAuthStateChange(session) {

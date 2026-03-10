@@ -392,6 +392,22 @@ async function clearStage(stageId) {
     completed_at: null,
   }).eq('id', stageId);
 
+  // If clearing stage A, also reset casting approval
+  const clearedStage = _qcStages.find(s => s.id === stageId);
+  if (clearedStage?.stage_number === 1) {
+    await supabaseClient.from('pods').update({
+      casting_approved: false,
+      casting_approved_at: null,
+    }).eq('id', _qcPodId);
+    _qcCastingApproved = false;
+    _castingBaseApproved = false;
+    if (AppState.currentPod) {
+      AppState.currentPod.casting_approved = false;
+    }
+    const castingBadge = document.getElementById('pod-casting-badge');
+    if (castingBadge) castingBadge.style.display = 'none';
+  }
+
   showToast('השלב נוקה — ניתן להזין נתונים מחדש', 'success');
   await updatePodStatus(_qcPodId);
   await loadQCStages(_qcPodId);

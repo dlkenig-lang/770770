@@ -952,6 +952,26 @@ table tbody tr:hover { background: #f8fafc; }
 .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
 .empty-state-text { font-size: 15px; }
 
+/* ===== ARCHIVE SECTION ===== */
+.archive-section { margin-top: 32px; }
+.archive-toggle-btn {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 16px;
+  font-size: 14px; font-weight: 600; color: var(--text-muted);
+  cursor: pointer; text-align: right;
+}
+.archive-toggle-btn:hover { background: var(--bg); color: var(--text); }
+.archive-toggle-arrow { margin-right: auto; font-size: 12px; }
+.archive-grid { margin-top: 12px; }
+.archived-card { opacity: 0.75; border: 1px dashed var(--border) !important; }
+.archived-card:hover { opacity: 1; }
+.archive-badge {
+  font-size: 11px; font-weight: 600; color: #92400e;
+  background: #fef3c7; padding: 2px 8px; border-radius: 100px;
+}
+.archived-card-actions { margin-top: 12px; }
+
 /* ===== ARCHIVE / DELETE MODAL ===== */
 .archive-delete-options { display: flex; flex-direction: column; gap: 4px; }
 .archive-option {

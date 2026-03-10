@@ -77,16 +77,23 @@ async function loadDashboard() {
 
 // ---- LOAD PROJECTS LIST ----
 async function loadProjects() {
-  const list = document.getElementById('projects-list');
-  list.innerHTML = '<div class="loading-inline">טוען פרויקטים...</div>';
+  const list       = document.getElementById('projects-list');
+  const archList   = document.getElementById('archived-projects-list');
+  list.innerHTML   = '<div class="loading-inline">טוען פרויקטים...</div>';
 
-  let projects, error;
+  // Fetch active + archived in parallel
+  let active = [], archived = [], error;
   try {
-    const result = await Promise.race([
-      supabaseClient.from('projects').select('*, pods(id, status)').eq('is_active', true).order('created_at', { ascending: false }),
+    const [activeRes, archRes] = await Promise.race([
+      Promise.all([
+        supabaseClient.from('projects').select('*, pods(id, status)').eq('is_active', true).order('created_at', { ascending: false }),
+        supabaseClient.from('projects').select('*, pods(id, status)').eq('is_active', false).order('created_at', { ascending: false }),
+      ]),
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
     ]);
-    projects = result.data; error = result.error;
+    if (activeRes.error) throw activeRes.error;
+    active   = activeRes.data  || [];
+    archived = archRes.data    || [];
   } catch (e) { error = e; }
 
   if (error) {
@@ -95,16 +102,62 @@ async function loadProjects() {
     return;
   }
 
-  if (!projects || projects.length === 0) {
+  // Active projects
+  if (active.length === 0) {
     list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">אין פרויקטים עדיין. לחץ "+ פרויקט חדש" להוספה</div></div>';
-    return;
+  } else {
+    active.forEach(p => ProjectCache.set(p.id, p));
+    list.innerHTML = active.map(p => renderProjectCard(p)).join('');
+    list.querySelectorAll('.project-card').forEach(card => {
+      card.addEventListener('click', () => openProject(card.dataset.projectId));
+    });
   }
 
-  projects.forEach(p => ProjectCache.set(p.id, p));
-  list.innerHTML = projects.map(p => renderProjectCard(p)).join('');
-  list.querySelectorAll('.project-card').forEach(card => {
-    card.addEventListener('click', () => openProject(card.dataset.projectId));
-  });
+  // Archived projects
+  if (archList) {
+    if (archived.length === 0) {
+      archList.innerHTML = '<div class="empty-state" style="padding:16px"><div class="empty-state-text">אין פרויקטים בארכיון</div></div>';
+    } else {
+      archived.forEach(p => ProjectCache.set(p.id, p));
+      archList.innerHTML = archived.map(p => renderArchivedCard(p)).join('');
+      archList.querySelectorAll('.btn-restore-project').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); restoreProject(btn.dataset.projectId); });
+      });
+    }
+    // Toggle button
+    const toggleBtn = document.getElementById('btn-toggle-archive');
+    if (toggleBtn) {
+      toggleBtn.querySelector('span:last-child').textContent = archived.length ? `▸ (${archived.length})` : '▸';
+      toggleBtn.onclick = () => {
+        const open = archList.classList.toggle('hidden');
+        toggleBtn.querySelector('span:last-child').textContent = open ? `▸ (${archived.length})` : `▾ (${archived.length})`;
+      };
+    }
+  }
+}
+
+function renderArchivedCard(p) {
+  return `
+    <div class="project-card archived-card" data-project-id="${p.id}">
+      <div class="project-card-header">
+        <span class="project-code-badge">${escHtml(p.code || '')}</span>
+        <span class="archive-badge">📦 ארכיון</span>
+      </div>
+      <div class="project-card-name">${escHtml(p.name)}</div>
+      <div class="project-card-meta">
+        ${p.location ? `📍 ${escHtml(p.location)}` : ''}
+      </div>
+      <div class="archived-card-actions">
+        <button class="btn btn-secondary btn-sm btn-restore-project" data-project-id="${p.id}">♻️ שחזר לפעיל</button>
+      </div>
+    </div>`;
+}
+
+async function restoreProject(projectId) {
+  const { error } = await supabaseClient.from('projects').update({ is_active: true }).eq('id', projectId);
+  if (error) { showToast('שגיאה בשחזור הפרויקט', 'error'); return; }
+  showToast('הפרויקט שוחזר לרשימה הפעילה', 'success');
+  await loadProjects();
 }
 
 function renderProjectCard(p) {

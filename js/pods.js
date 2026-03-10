@@ -160,17 +160,38 @@ function showBarcodeModal(podCode) {
   modal.classList.remove('hidden');
 
   document.getElementById('btn-print-barcode').onclick = () => {
-    const printWin = window.open('', '_blank');
-    printWin.document.write(`
-      <html><head><title>ברקוד - ${podCode}</title>
-      <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:monospace;}</style>
-      </head><body>
-        ${display.innerHTML}
-        <div style="font-size:18px;font-weight:bold;margin-top:8px">${podCode}</div>
-      </body></html>
-    `);
-    printWin.document.close();
-    printWin.print();
+    // Re-render SVG for print with optimal dimensions
+    const scratch = document.createElement('div');
+    scratch.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
+    document.body.appendChild(scratch);
+    const psvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    scratch.appendChild(psvg);
+    try {
+      JsBarcode(psvg, podCode, { format: 'CODE128', width: 3, height: 110, displayValue: false, margin: 0 });
+    } catch (e) { /* ignore */ }
+    const svgHtml = psvg.outerHTML;
+    document.body.removeChild(scratch);
+
+    // Brother QL-700: 62mm tape, 150mm label — print landscape (150×62)
+    const css = `
+      *{box-sizing:border-box;margin:0;padding:0}
+      @page{size:150mm 62mm;margin:4mm 6mm}
+      html,body{width:150mm;height:62mm;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;font-family:monospace;background:#fff}
+      .bw{width:100%;display:flex;justify-content:center}
+      .bw svg{width:100%;height:auto;max-height:40mm}
+      .bc{font-size:13pt;font-weight:bold;letter-spacing:1.5px;margin-top:3mm;text-align:center}
+    `;
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+      <title>${podCode}</title><style>${css}</style></head><body>
+      <div class="bw">${svgHtml}</div>
+      <div class="bc">${podCode}</div>
+      </body></html>`;
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const pw = window.open(url, '_blank');
+    if (!pw) { showToast('חסום חלונות קופצים — אפשר חלונות קופצים בדפדפן', 'error'); return; }
+    pw.addEventListener('load', () => { pw.print(); URL.revokeObjectURL(url); });
   };
 }
 

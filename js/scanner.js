@@ -93,6 +93,8 @@ async function _onBarcodeScanned(podCode) {
   }
 
   closeScannerModal();
+  // Close mobile drawer if open before navigating to pod
+  document.getElementById('mobile-backdrop')?.click();
   await openPod(pod.id);
 }
 

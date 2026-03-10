@@ -193,16 +193,30 @@ function initAuth() {
   const backdrop   = document.getElementById('mobile-backdrop');
   const hamburger  = document.getElementById('btn-hamburger');
 
+  // Use window.innerWidth (physical pixels, RTL-immune) to position the drawer.
+  const DRAWER_W = 260;
+
   function openDrawer() {
-    sidebar?.classList.add('open');
+    if (!sidebar) return;
+    sidebar.style.left = (window.innerWidth - DRAWER_W) + 'px';
     backdrop?.classList.add('open');
     document.body.style.overflow = 'hidden';
   }
   function closeDrawer() {
-    sidebar?.classList.remove('open');
+    if (!sidebar) return;
+    sidebar.style.left = window.innerWidth + 'px'; // off-screen right
     backdrop?.classList.remove('open');
     document.body.style.overflow = '';
   }
+
+  // Keep drawer correctly positioned if viewport is resized (e.g. rotation)
+  window.addEventListener('resize', () => {
+    if (backdrop?.classList.contains('open')) {
+      sidebar.style.left = (window.innerWidth - DRAWER_W) + 'px';
+    } else {
+      sidebar.style.left = window.innerWidth + 'px';
+    }
+  });
 
   hamburger?.addEventListener('click', openDrawer);
   backdrop?.addEventListener('click', closeDrawer);

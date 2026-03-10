@@ -1098,17 +1098,16 @@ table tbody tr:hover { background: #f8fafc; }
     order: -1;
   }
 
-  /* Sidebar: slide-in drawer from the right.
-     Using left:100% / left:calc(100% - 260px) avoids all RTL+iOS Safari bugs —
-     percentages on position:fixed are always relative to the viewport width,
-     completely independent of writing direction. */
+  /* Sidebar drawer — position controlled entirely by JS (window.innerWidth),
+     so RTL direction never affects the calculation. CSS only sets the transition
+     and the initial off-screen fallback via 100vw. */
   .sidebar {
     display: flex !important;
     flex-direction: column;
     position: fixed !important;
     width: 260px;
     top: 0; bottom: 0;
-    left: 100%;          /* hidden: element starts at the right viewport edge */
+    left: 100vw;   /* fallback: off-screen right (overridden by JS inline style) */
     right: auto;
     transform: none;
     transition: left 0.25s ease;
@@ -1116,8 +1115,6 @@ table tbody tr:hover { background: #f8fafc; }
     box-shadow: -4px 0 20px rgba(0,0,0,0.15);
     padding-top: calc(var(--navbar-h) + 8px);
   }
-  /* open: occupy the rightmost 260 px of the screen */
-  .sidebar.open { left: calc(100% - 260px); }
   .sidebar-footer { display: block; padding-bottom: 70px; }
   .sidebar-user-header { display: flex; }
 

@@ -8,24 +8,41 @@ const ProjectCache = new Map();
 
 // ---- LOAD DASHBOARD ----
 async function loadDashboard() {
-  const { data: projects, error: dashErr } = await supabaseClient
-    .from('projects')
-    .select('*, pods(id, status)')
-    .eq('is_active', true)
-    .order('created_at', { ascending: false });
-
   const statsEl = document.getElementById('dashboard-stats');
   const projList = document.getElementById('dashboard-projects-list');
 
+  // Show loading state immediately
+  statsEl.innerHTML = '<div class="loading-inline">טוען נתונים...</div>';
+  projList.innerHTML = '<div class="loading-inline">טוען פרויקטים...</div>';
+
+  const TIMEOUT = 8000;
+  let projects, dashErr;
+  try {
+    const result = await Promise.race([
+      supabaseClient.from('projects').select('*, pods(id, status)').eq('is_active', true).order('created_at', { ascending: false }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), TIMEOUT)),
+    ]);
+    projects = result.data;
+    dashErr  = result.error;
+  } catch (e) {
+    dashErr = e;
+  }
+
   if (dashErr) {
-    projList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-text">שגיאה בטעינת פרויקטים. רענן את הדף (F5).</div></div>';
+    const msg = dashErr.message === 'timeout' ? 'הטעינה לקחה יותר מדי זמן.' : 'שגיאה בטעינת פרויקטים.';
+    statsEl.innerHTML = '';
+    projList.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">⚠️</div>
+      <div class="empty-state-text">${msg}</div>
+      <button class="btn btn-primary btn-sm" onclick="loadDashboard()" style="margin-top:12px">נסה שוב</button>
+    </div>`;
     return;
   }
 
-  const totalProjects = (projects || []).length;
-  const totalPods = (projects || []).reduce((a, p) => a + (p.pods?.length || 0), 0);
-  const completedPods = (projects || []).reduce((a, p) => a + (p.pods?.filter(pod => pod.status === 'completed').length || 0), 0);
-  const failedPods = (projects || []).reduce((a, p) => a + (p.pods?.filter(pod => pod.status === 'failed').length || 0), 0);
+  const totalProjects  = (projects || []).length;
+  const totalPods      = (projects || []).reduce((a, p) => a + (p.pods?.length || 0), 0);
+  const completedPods  = (projects || []).reduce((a, p) => a + (p.pods?.filter(pod => pod.status === 'completed').length || 0), 0);
+  const failedPods     = (projects || []).reduce((a, p) => a + (p.pods?.filter(pod => pod.status === 'failed').length || 0), 0);
 
   statsEl.innerHTML = `
     <div class="stat-card">
@@ -60,16 +77,21 @@ async function loadDashboard() {
 
 // ---- LOAD PROJECTS LIST ----
 async function loadProjects() {
-  const { data: projects, error } = await supabaseClient
-    .from('projects')
-    .select('*, pods(id, status)')
-    .eq('is_active', true)
-    .order('created_at', { ascending: false });
-
   const list = document.getElementById('projects-list');
+  list.innerHTML = '<div class="loading-inline">טוען פרויקטים...</div>';
+
+  let projects, error;
+  try {
+    const result = await Promise.race([
+      supabaseClient.from('projects').select('*, pods(id, status)').eq('is_active', true).order('created_at', { ascending: false }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+    ]);
+    projects = result.data; error = result.error;
+  } catch (e) { error = e; }
 
   if (error) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-text">שגיאה בטעינת פרויקטים. רענן את הדף (F5).</div></div>';
+    const msg = error.message === 'timeout' ? 'הטעינה לקחה יותר מדי זמן.' : 'שגיאה בטעינת פרויקטים.';
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-text">${msg}</div><button class="btn btn-primary btn-sm" onclick="loadProjects()" style="margin-top:12px">נסה שוב</button></div>`;
     return;
   }
 

@@ -305,7 +305,15 @@ async function loadPodsTab(projectId, filters = {}) {
   ]);
   const allGroups = sortGroupsByOption(projectGroups || []);
 
-  const allPods = pods || [];
+  const allPods = (pods || []).sort((a, b) => {
+    const ta = a.project_types?.type_number ?? 0;
+    const tb = b.project_types?.type_number ?? 0;
+    if (ta !== tb) return ta - tb;
+    const da = a.type_directions?.direction === 'R' ? 0 : 1;
+    const db = b.type_directions?.direction === 'R' ? 0 : 1;
+    if (da !== db) return da - db;
+    return (a.pod_code || '').localeCompare(b.pod_code || '');
+  });
   let filtered = allPods;
   if (filters.type_number) filtered = filtered.filter(p => p.project_types?.type_number == filters.type_number);
   if (filters.direction) filtered = filtered.filter(p => p.type_directions?.direction === filters.direction);

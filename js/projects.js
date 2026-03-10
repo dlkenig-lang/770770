@@ -628,7 +628,14 @@ async function loadProjectDetailsTab(project) {
 
       // If project code changed, update all pod_codes for this project
       if (codeChanged) {
-        const { data: pods } = await supabaseClient.from('pods').select('id, pod_code').eq('project_id', project.id);
+        const { data: pods, error: podsErr } = await supabaseClient
+          .from('pods').select('id, pod_code').eq('project_id', project.id);
+        if (podsErr) {
+          console.error('[save] fetch pods error:', podsErr);
+          setLoading(btn, false);
+          showToast('שגיאה בעדכון קודי פודים: ' + podsErr.message, 'error');
+          return;
+        }
         if (pods && pods.length > 0) {
           const podUpdates = pods.map(pod => {
             const updatedCode = pod.pod_code.startsWith(oldCode + '-')
@@ -636,18 +643,27 @@ async function loadProjectDetailsTab(project) {
               : pod.pod_code;
             return supabaseClient.from('pods').update({ pod_code: updatedCode }).eq('id', pod.id);
           });
-          await Promise.all(podUpdates);
+          const podResults = await Promise.all(podUpdates);
+          const podErr = podResults.find(r => r.error);
+          if (podErr) {
+            console.error('[save] pod update error:', podErr.error);
+            setLoading(btn, false);
+            showToast('שגיאה בעדכון קודי פודים: ' + podErr.error.message, 'error');
+            return;
+          }
         }
       }
 
       setLoading(btn, false);
+      const newName = document.getElementById('det-name').value.trim();
       showToast(codeChanged ? `הפרטים עודכנו, קוד הפודים עודכן ל-${newCode}` : 'הפרטים עודכנו', 'success');
-      AppState.currentProject = { ...AppState.currentProject,
-        name: document.getElementById('det-name').value.trim(),
-        code: newCode,
-      };
+      AppState.currentProject = { ...AppState.currentProject, name: newName, code: newCode };
       project.code = newCode;
-      document.getElementById('project-detail-title').textContent = AppState.currentProject.name;
+      document.getElementById('project-detail-title').textContent = newName;
+      // Refresh info bar with new code
+      document.getElementById('project-info-bar').querySelector('.info-value').textContent = newCode;
+      // Refresh pods tab so updated pod_codes are visible
+      if (codeChanged) loadPodsTab(project.id).catch(e => console.error('[save] reload pods error:', e));
     });
   }
 }

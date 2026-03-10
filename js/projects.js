@@ -123,6 +123,9 @@ async function loadProjects() {
       archList.querySelectorAll('.btn-restore-project').forEach(btn => {
         btn.addEventListener('click', (e) => { e.stopPropagation(); restoreProject(btn.dataset.projectId); });
       });
+      archList.querySelectorAll('.btn-delete-archived').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); deleteArchivedProject(btn.dataset.projectId, btn.dataset.projectName); });
+      });
     }
     // Toggle button
     const toggleBtn = document.getElementById('btn-toggle-archive');
@@ -149,8 +152,36 @@ function renderArchivedCard(p) {
       </div>
       <div class="archived-card-actions">
         <button class="btn btn-secondary btn-sm btn-restore-project" data-project-id="${p.id}">♻️ שחזר לפעיל</button>
+        <button class="btn btn-danger btn-sm btn-delete-archived" data-project-id="${p.id}" data-project-name="${escHtml(p.name)}">🗑️ מחק לצמיתות</button>
       </div>
     </div>`;
+}
+
+async function deleteArchivedProject(projectId, projectName) {
+  openModal('מחיקה לצמיתות', `
+    <p style="color:#dc2626;font-weight:600;margin-bottom:8px">⚠️ פעולה זו אינה הפיכה!</p>
+    <p style="margin-bottom:16px;font-size:14px">כדי לאשר מחיקה לצמיתות, הקלד את שם הפרויקט:</p>
+    <p style="font-weight:700;margin-bottom:10px;padding:8px;background:var(--bg);border-radius:6px;text-align:center">${escHtml(projectName)}</p>
+    <input id="delete-arch-input" class="form-control" placeholder="הקלד שם הפרויקט לאימות" autocomplete="off" />
+  `, []);
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" id="btn-arch-delete-cancel">ביטול</button>
+    <button class="btn btn-danger" id="btn-arch-delete-confirm" disabled>מחק לצמיתות</button>
+  `;
+  const input = document.getElementById('delete-arch-input');
+  const confirmBtn = document.getElementById('btn-arch-delete-confirm');
+  document.getElementById('btn-arch-delete-cancel').addEventListener('click', closeModal);
+  input.addEventListener('input', () => { confirmBtn.disabled = input.value.trim() !== projectName; });
+  confirmBtn.addEventListener('click', async () => {
+    if (input.value.trim() !== projectName) return;
+    confirmBtn.disabled = true; confirmBtn.textContent = 'מוחק...';
+    const { error } = await supabaseClient.from('projects').delete().eq('id', projectId);
+    if (error) { showToast('שגיאה במחיקה: ' + error.message, 'error'); confirmBtn.disabled = false; confirmBtn.textContent = 'מחק לצמיתות'; return; }
+    ProjectCache.delete(projectId);
+    closeModal();
+    showToast('הפרויקט נמחק לצמיתות', 'success');
+    await loadProjects();
+  });
 }
 
 async function restoreProject(projectId) {

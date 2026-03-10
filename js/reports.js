@@ -4,9 +4,9 @@
 
 function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl) {
   const stageStatusColor = s =>
-    s === 'completed' ? '#4ade80' : s === 'failed' ? '#f87171' : '#94a3b8';
+    s === 'completed' ? '#7baa8a' : s === 'failed' ? '#b87878' : '#8899aa';
   const itemStatusColor = s =>
-    s === 'passed' ? '#16a34a' : s === 'failed' ? '#dc2626' : '#94a3b8';
+    s === 'passed' ? '#4a8c60' : s === 'failed' ? '#a05050' : '#8899aa';
   const itemIcon = s =>
     s === 'passed' ? '✓' : s === 'failed' ? '✗' : '○';
   const wrap = c =>
@@ -16,18 +16,20 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl) 
 
   // Header + pod info
   sections.push(wrap(`
-    <div style="background:#a5f3f1;color:#1a1a1a;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;">
-      <div style="text-align:left;">
-        ${barcodeDataUrl ? `
-          <img src="${barcodeDataUrl}" style="height:20px;display:block;" />
-          <div style="font-size:9px;margin-top:2px;text-align:center;font-weight:600;">${escHtml(pod.pod_code)}</div>
-        ` : ''}
-      </div>
-      <div style="text-align:right;">
-        ${logoDataUrl ? `<img src="${logoDataUrl}" style="height:52px;display:block;margin-bottom:6px;margin-left:auto;" />` : ''}
-        <div style="font-size:22px;font-weight:bold;">דוח בקרת איכות</div>
-        <div style="font-size:14px;margin-top:4px;">פוד: ${escHtml(pod.pod_code)}</div>
-        <div style="font-size:12px;margin-top:2px;opacity:0.7;">נוצר: ${formatDate(new Date().toISOString().split('T')[0])}</div>
+    <div style="background:#7ab8b6;color:#1a1a1a;padding:14px 24px;">
+      <div style="font-size:13px;font-weight:bold;letter-spacing:2px;margin-bottom:10px;text-align:right;">MODUSYSTEMS LTD.</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="text-align:left;">
+          <div style="font-size:22px;font-weight:bold;">דוח בקרת איכות</div>
+          <div style="font-size:14px;margin-top:4px;">פוד: ${escHtml(pod.pod_code)}</div>
+          <div style="font-size:12px;margin-top:2px;opacity:0.7;">נוצר: ${formatDate(new Date().toISOString().split('T')[0])}</div>
+        </div>
+        <div style="text-align:right;">
+          ${barcodeDataUrl ? `
+            <img src="${barcodeDataUrl}" style="height:20px;display:block;margin-left:auto;" />
+            <div style="font-size:9px;margin-top:2px;text-align:center;font-weight:600;">${escHtml(pod.pod_code)}</div>
+          ` : ''}
+        </div>
       </div>
     </div>
     <div style="background:#f1f5f9;padding:12px 24px;text-align:right;border-bottom:2px solid #e2e8f0;">
@@ -62,15 +64,15 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl) 
 
     sections.push(wrap(`
       <div style="margin:8px 24px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
-        <div style="background:${bgColor};color:#1e293b;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;">
+        <div style="background:${bgColor};color:#1a1a1a;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;">
           <span style="font-size:12px;">${passed}/${items.length} עברו</span>
           <span style="font-size:13px;font-weight:bold;">${stage.stage_number}. ${escHtml(stage.stage_name)}</span>
         </div>
         ${stage.inspector_name ? `
-        <div style="background:#dcfce7;padding:6px 12px;font-size:11px;color:#166534;display:flex;align-items:center;justify-content:space-between;">
+        <div style="background:#c8dfd2;padding:6px 12px;font-size:11px;color:#2d5540;display:flex;align-items:center;justify-content:space-between;">
           <div style="text-align:right;">בודק: <strong>${escHtml(stage.inspector_name)}</strong> | תאריך: ${escHtml(formatDate(stage.inspection_date))}</div>
           <div>
-            ${stage.inspector_signature ? `<img src="${stage.inspector_signature}" style="height:38px;background:#fff;border-radius:3px;padding:2px;border:1px solid #bbf7d0;" alt="חתימה" />` : ''}
+            ${stage.inspector_signature ? `<img src="${stage.inspector_signature}" style="height:38px;background:#fff;border-radius:3px;padding:2px;border:1px solid #a0c4b0;" alt="חתימה" />` : ''}
           </div>
         </div>` : ''}
         ${itemsHTML}
@@ -98,7 +100,7 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl) 
         </div>
         <div style="text-align:right;">
           <div style="font-size:11px;color:#64748b;margin-bottom:6px;">חתימה</div>
-          <div style="border:1px solid #94a3b8;height:18px;border-radius:4px;"></div>
+          <div style="border:1px solid #94a3b8;height:18px;width:33%;border-radius:4px;"></div>
         </div>
       </div>
     </div>

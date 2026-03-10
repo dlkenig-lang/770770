@@ -127,7 +127,7 @@ function renderActiveStage() {
       ` : ''}
       ${!_castingBaseApproved && stage.stage_number > 1 ? `
         <div class="qc-casting-block-banner">
-          🔒 שלב זה נעול עד לאישור סעיפים 1–6 ביציקת הרצפה (שלב A)
+          🔒 שלב זה נעול עד לאישור סעיפים 1–7 ביציקת הרצפה (שלב A)
         </div>
       ` : ''}
       <div class="qc-items-table-wrapper">

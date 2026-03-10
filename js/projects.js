@@ -1365,12 +1365,12 @@ function printAllBarcodes() {
       JsBarcode(svg, code, { format: 'CODE128', width: 3, height: 110, displayValue: false, margin: 0 });
     } catch (e) { console.error('JsBarcode error', code, e); }
     const svgHtml = svg.outerHTML;
-    return `<div class="barcode-item"><div class="bw">${svgHtml}</div><div class="bc-label">${escHtml(code)}</div></div>`;
+    return `<div class="barcode-item"><div class="content"><div class="bw">${svgHtml}</div><div class="bc-label">${escHtml(code)}</div></div></div>`;
   }).join('');
 
   document.body.removeChild(scratch);
 
-  // Brother QL-700: 62mm tape, 150mm label — portrait (62×150), one label per page
+  // Brother QL-700: 62mm tape, 150mm label — portrait (62×150), barcode rotated 90°
   const css = `
     *{box-sizing:border-box;margin:0;padding:0}
     @page{size:62mm 150mm;margin:0}
@@ -1379,13 +1379,18 @@ function printAllBarcodes() {
     .toolbar h2{font-size:15px;flex:1;text-align:center;color:#1e293b}
     .btn-print{background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-size:14px;cursor:pointer}
     .btn-print:hover{background:#1d4ed8}
-    .barcode-item{width:62mm;height:150mm;overflow:hidden;display:flex;flex-direction:column;
-      align-items:center;justify-content:center;padding:4mm 4mm;
+    .barcode-item{width:62mm;height:150mm;overflow:hidden;position:relative;
       page-break-after:always;break-after:page}
     .barcode-item:last-child{page-break-after:auto;break-after:auto}
-    .bw{width:100%;display:flex;justify-content:center}
-    .bw svg{width:100%;height:auto;max-height:35mm}
-    .bc-label{font-size:10pt;font-weight:bold;letter-spacing:1px;margin-top:3mm;text-align:center;word-break:break-all}
+    .content{
+      position:absolute;top:50%;left:50%;
+      width:142mm;
+      transform:translate(-50%,-50%) rotate(-90deg);
+      display:flex;flex-direction:column;align-items:center;gap:3mm;
+    }
+    .bw{width:100%}
+    .bw svg{width:100%;height:auto;max-height:28mm}
+    .bc-label{font-size:11pt;font-weight:bold;letter-spacing:1.5px;text-align:center;white-space:nowrap}
     @media print{.toolbar{display:none}}
   `;
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">

@@ -172,21 +172,28 @@ function showBarcodeModal(podCode) {
     const svgHtml = psvg.outerHTML;
     document.body.removeChild(scratch);
 
-    // Brother QL-700: 62mm tape, 150mm label — portrait (62×150)
+    // Brother QL-700: 62mm tape, 150mm label — portrait (62×150), barcode rotated 90°
     const css = `
       *{box-sizing:border-box;margin:0;padding:0}
       @page{size:62mm 150mm;margin:0}
-      html,body{width:62mm;height:150mm;overflow:hidden}
-      body{display:flex;flex-direction:column;align-items:center;justify-content:center;
-        padding:4mm 4mm;font-family:monospace;background:#fff}
-      .bw{width:100%;display:flex;justify-content:center}
-      .bw svg{width:100%;height:auto;max-height:35mm}
-      .bc{font-size:10pt;font-weight:bold;letter-spacing:1px;margin-top:3mm;text-align:center;word-break:break-all}
+      html,body{width:62mm;height:150mm;overflow:hidden;background:#fff;font-family:monospace}
+      body{position:relative}
+      .content{
+        position:absolute;top:50%;left:50%;
+        width:142mm;
+        transform:translate(-50%,-50%) rotate(-90deg);
+        display:flex;flex-direction:column;align-items:center;gap:3mm;
+      }
+      .bw{width:100%}
+      .bw svg{width:100%;height:auto;max-height:28mm}
+      .bc{font-size:11pt;font-weight:bold;letter-spacing:1.5px;text-align:center;white-space:nowrap}
     `;
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
       <title>${podCode}</title><style>${css}</style></head><body>
-      <div class="bw">${svgHtml}</div>
-      <div class="bc">${podCode}</div>
+      <div class="content">
+        <div class="bw">${svgHtml}</div>
+        <div class="bc">${podCode}</div>
+      </div>
       </body></html>`;
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);

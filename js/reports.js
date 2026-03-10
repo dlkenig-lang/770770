@@ -2,7 +2,7 @@
 // Reports Module - PDF & Excel Generation
 // =============================================
 
-function buildPDFSections(pod, stages, stageItems) {
+function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl) {
   const stageStatusColor = s =>
     s === 'completed' ? '#16a34a' : s === 'failed' ? '#dc2626' : '#64748b';
   const itemStatusColor = s =>
@@ -16,10 +16,19 @@ function buildPDFSections(pod, stages, stageItems) {
 
   // Header + pod info
   sections.push(wrap(`
-    <div style="background:#2563eb;color:#fff;padding:18px 24px;text-align:right;">
-      <div style="font-size:22px;font-weight:bold;">דוח בקרת איכות</div>
-      <div style="font-size:14px;margin-top:4px;">פוד: ${escHtml(pod.pod_code)}</div>
-      <div style="font-size:12px;margin-top:2px;opacity:0.85;">נוצר: ${formatDate(new Date().toISOString().split('T')[0])}</div>
+    <div style="background:#3DD4CE;color:#1a1a1a;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="text-align:left;">
+        ${barcodeDataUrl ? `
+          <img src="${barcodeDataUrl}" style="height:60px;display:block;" />
+          <div style="font-size:11px;margin-top:2px;text-align:center;font-weight:600;">${escHtml(pod.pod_code)}</div>
+        ` : ''}
+      </div>
+      <div style="text-align:right;">
+        ${logoDataUrl ? `<img src="${logoDataUrl}" style="height:52px;display:block;margin-bottom:6px;margin-left:auto;" />` : ''}
+        <div style="font-size:22px;font-weight:bold;">דוח בקרת איכות</div>
+        <div style="font-size:14px;margin-top:4px;">פוד: ${escHtml(pod.pod_code)}</div>
+        <div style="font-size:12px;margin-top:2px;opacity:0.7;">נוצר: ${formatDate(new Date().toISOString().split('T')[0])}</div>
+      </div>
     </div>
     <div style="background:#f1f5f9;padding:12px 24px;text-align:right;border-bottom:2px solid #e2e8f0;">
       <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">פרטי פוד</div>
@@ -58,24 +67,40 @@ function buildPDFSections(pod, stages, stageItems) {
           <span style="font-size:13px;font-weight:bold;">${stage.stage_number}. ${escHtml(stage.stage_name)}</span>
         </div>
         ${stage.inspector_name ? `
-        <div style="background:#dcfce7;padding:5px 12px;font-size:11px;color:#166534;text-align:right;">
-          בודק: ${escHtml(stage.inspector_name)} | תאריך: ${escHtml(formatDate(stage.inspection_date))}
+        <div style="background:#dcfce7;padding:6px 12px;font-size:11px;color:#166534;text-align:right;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            ${stage.inspector_signature ? `<img src="${stage.inspector_signature}" style="height:38px;background:#fff;border-radius:3px;padding:2px;border:1px solid #bbf7d0;" alt="חתימה" />` : ''}
+          </div>
+          <div>בודק: <strong>${escHtml(stage.inspector_name)}</strong> | תאריך: ${escHtml(formatDate(stage.inspection_date))}</div>
         </div>` : ''}
         ${itemsHTML}
       </div>
     `));
   }
 
-  // Signatures
+  // Additional reviewer sign-off (replaces generic "חתימות סיום")
   sections.push(wrap(`
-    <div style="padding:8px 24px 24px;">
-      <div style="border-top:1px solid #e2e8f0;padding-top:14px;">
-        <div style="font-size:13px;font-weight:bold;margin-bottom:10px;text-align:right;">חתימות סיום</div>
-        ${['בודק', 'מנהל בקרת איכות', 'מנהל פרויקט'].map(label => `
-          <div style="display:flex;justify-content:space-between;margin-bottom:14px;font-size:12px;">
-            <span>תאריך: ___________</span>
-            <span>${escHtml(label)}: _______________________</span>
-          </div>`).join('')}
+    <div style="padding:8px 24px 28px;">
+      <div style="border-top:2px solid #e2e8f0;padding-top:16px;">
+        <div style="font-size:13px;font-weight:bold;margin-bottom:14px;text-align:right;">אישור גורם נוסף</div>
+        <div style="display:flex;gap:24px;margin-bottom:16px;">
+          <div style="flex:1;text-align:right;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px;">שם</div>
+            <div style="border-bottom:1px solid #94a3b8;height:24px;"></div>
+          </div>
+          <div style="flex:1;text-align:right;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px;">תפקיד</div>
+            <div style="border-bottom:1px solid #94a3b8;height:24px;"></div>
+          </div>
+          <div style="flex:1;text-align:right;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px;">תאריך</div>
+            <div style="border-bottom:1px solid #94a3b8;height:24px;"></div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:#64748b;margin-bottom:6px;">חתימה</div>
+          <div style="border:1px solid #94a3b8;height:70px;border-radius:4px;"></div>
+        </div>
       </div>
     </div>
   `));
@@ -101,7 +126,23 @@ async function buildAndDownloadPDF(pod, stages, stageItems) {
   const CONTENT_W_MM = 210 - MARGIN_MM * 2;
   const pxToMm = CONTENT_W_MM / 794;
 
-  const sections = buildPDFSections(pod, stages, stageItems);
+  // Fetch logo as data URL
+  let logoDataUrl = null;
+  try {
+    const res = await fetch('images/logo.svg');
+    const svgText = await res.text();
+    logoDataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgText)));
+  } catch (e) { /* skip logo */ }
+
+  // Generate barcode as canvas data URL
+  let barcodeDataUrl = null;
+  try {
+    const bc = document.createElement('canvas');
+    JsBarcode(bc, pod.pod_code, { format: 'CODE128', width: 2, height: 60, displayValue: false, margin: 4 });
+    barcodeDataUrl = bc.toDataURL('image/png');
+  } catch (e) { /* skip barcode */ }
+
+  const sections = buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl);
   const canvases = [];
   for (const html of sections) {
     canvases.push(await renderSection(html, SCALE));

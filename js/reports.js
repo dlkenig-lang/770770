@@ -26,7 +26,7 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl) 
         </div>
         <div style="text-align:right;">
           ${barcodeDataUrl ? `
-            <img src="${barcodeDataUrl}" style="height:20px;display:block;margin-left:auto;" />
+            <img src="${barcodeDataUrl}" style="height:50px;width:auto;display:block;margin-left:auto;image-rendering:pixelated;" />
             <div style="font-size:9px;margin-top:2px;text-align:center;font-weight:600;">${escHtml(pod.pod_code)}</div>
           ` : ''}
         </div>
@@ -139,7 +139,7 @@ async function buildAndDownloadPDF(pod, stages, stageItems) {
   let barcodeDataUrl = null;
   try {
     const bc = document.createElement('canvas');
-    JsBarcode(bc, pod.pod_code, { format: 'CODE128', width: 1, height: 20, displayValue: false, margin: 2 });
+    JsBarcode(bc, pod.pod_code, { format: 'CODE128', width: 3, height: 150, displayValue: false, margin: 10 });
     barcodeDataUrl = bc.toDataURL('image/png');
   } catch (e) { /* skip barcode */ }
 

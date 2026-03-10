@@ -1379,7 +1379,7 @@ function printAllBarcodes() {
     .toolbar h2{font-size:15px;flex:1;text-align:center;color:#1e293b}
     .btn-print{background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-size:14px;cursor:pointer}
     .btn-print:hover{background:#1d4ed8}
-    .barcode-item{width:150mm;height:62mm;display:flex;flex-direction:column;
+    .barcode-item{width:100%;height:100vh;overflow:hidden;display:flex;flex-direction:column;
       align-items:center;justify-content:center;page-break-after:always;break-after:page}
     .barcode-item:last-child{page-break-after:auto;break-after:auto}
     .bw{width:100%;display:flex;justify-content:center}

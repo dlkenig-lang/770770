@@ -176,7 +176,8 @@ function showBarcodeModal(podCode) {
     const css = `
       *{box-sizing:border-box;margin:0;padding:0}
       @page{size:150mm 62mm;margin:4mm 6mm}
-      html,body{width:150mm;height:62mm;display:flex;flex-direction:column;
+      html{height:100%;overflow:hidden}
+      body{height:100%;overflow:hidden;display:flex;flex-direction:column;
         align-items:center;justify-content:center;font-family:monospace;background:#fff}
       .bw{width:100%;display:flex;justify-content:center}
       .bw svg{width:100%;height:auto;max-height:40mm}

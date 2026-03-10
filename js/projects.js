@@ -1373,14 +1373,15 @@ function printAllBarcodes() {
   // Brother QL-700: 62mm tape, 150mm label — portrait (62×150), one label per page
   const css = `
     *{box-sizing:border-box;margin:0;padding:0}
-    @page{size:62mm 150mm;margin:3mm 4mm}
-    body{font-family:monospace;background:#fff}
+    @page{size:62mm 150mm;margin:0}
+    html,body{background:#fff;font-family:monospace}
     .toolbar{display:flex;align-items:center;gap:16px;padding:12px 16px;border-bottom:2px solid #e2e8f0;background:#f8fafc}
     .toolbar h2{font-size:15px;flex:1;text-align:center;color:#1e293b}
     .btn-print{background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-size:14px;cursor:pointer}
     .btn-print:hover{background:#1d4ed8}
-    .barcode-item{width:100%;height:100vh;overflow:hidden;display:flex;flex-direction:column;
-      align-items:center;justify-content:center;page-break-after:always;break-after:page}
+    .barcode-item{width:62mm;height:150mm;overflow:hidden;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;padding:4mm 4mm;
+      page-break-after:always;break-after:page}
     .barcode-item:last-child{page-break-after:auto;break-after:auto}
     .bw{width:100%;display:flex;justify-content:center}
     .bw svg{width:100%;height:auto;max-height:35mm}

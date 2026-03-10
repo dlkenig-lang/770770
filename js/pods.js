@@ -175,10 +175,10 @@ function showBarcodeModal(podCode) {
     // Brother QL-700: 62mm tape, 150mm label — portrait (62×150)
     const css = `
       *{box-sizing:border-box;margin:0;padding:0}
-      @page{size:62mm 150mm;margin:3mm 4mm}
-      html{height:100%;overflow:hidden}
-      body{height:100%;overflow:hidden;display:flex;flex-direction:column;
-        align-items:center;justify-content:center;font-family:monospace;background:#fff}
+      @page{size:62mm 150mm;margin:0}
+      html,body{width:62mm;height:150mm;overflow:hidden}
+      body{display:flex;flex-direction:column;align-items:center;justify-content:center;
+        padding:4mm 4mm;font-family:monospace;background:#fff}
       .bw{width:100%;display:flex;justify-content:center}
       .bw svg{width:100%;height:auto;max-height:35mm}
       .bc{font-size:10pt;font-weight:bold;letter-spacing:1px;margin-top:3mm;text-align:center;word-break:break-all}

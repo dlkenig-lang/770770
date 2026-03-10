@@ -50,7 +50,7 @@ const QC_STAGES = [
     items: [
       { key: 'collars', label: 'קולרים', instruction: 'לוודא שאין בועות' },
       { key: 'corner_tapes', label: 'סרטים בפינות', instruction: null },
-      { key: 'sealing_layer', label: 'שכבת איטום', instruction: null },
+      { key: 'sealing_layer', label: 'שכבת איטום', instruction: 'מינימום 2 שכבות איטום' },
     ]
   },
   {
@@ -71,19 +71,22 @@ const QC_STAGES = [
     nameEn: 'Edge Accessories Installation',
     items: [
       { key: 'horizontality', label: 'בדיקת אופקיות כלל האביזרים', instruction: null },
+      { key: 'trays', label: 'התקנת מגשים', instruction: null },
+      { key: 'vent_opening', label: 'פתח אוורור', instruction: null },
+      { key: 'vent_grille', label: 'גריל לוונטה', instruction: null },
       { key: 'toilet', label: 'אסלה', instruction: 'יש לבדוק גובה 39 ± 1 ס"מ | לבדוק חומר גמיש' },
       { key: 'shower', label: 'מקלחון', instruction: null },
       { key: 'faucet', label: 'ברז', instruction: null },
       { key: 'sink', label: 'כיור', instruction: 'לבדוק חומר גמיש' },
-      { key: 'cabinet', label: 'ארון', instruction: null },
+      { key: 'cabinet', label: 'ארון', instruction: 'לוודא מידת ארון' },
       { key: 'flush_btn', label: 'לחצן הדחה', instruction: null },
       { key: 'towel_rack', label: 'מתלה מגבות', instruction: null },
       { key: 'toilet_paper', label: 'מתקן נייר טואלט', instruction: null },
       { key: 'shower_head', label: 'ראש טוש', instruction: null },
       { key: 'sprayer', label: 'מזלף', instruction: null },
       { key: 'light_fixture', label: 'גוף תאורה', instruction: null },
-      { key: 'vent_opening', label: 'פתח אוורור', instruction: null },
-      { key: 'vent_grille', label: 'גריל לוונטה', instruction: null },
+      { key: 'electrical_circuits', label: 'מעגלים חשמליים', instruction: null },
+      { key: 'outlets', label: 'שקעים', instruction: null },
     ]
   }
 ];

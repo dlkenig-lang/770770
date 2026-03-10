@@ -172,16 +172,16 @@ function showBarcodeModal(podCode) {
     const svgHtml = psvg.outerHTML;
     document.body.removeChild(scratch);
 
-    // Brother QL-700: 62mm tape, 150mm label — print landscape (150×62)
+    // Brother QL-700: 62mm tape, 150mm label — portrait (62×150)
     const css = `
       *{box-sizing:border-box;margin:0;padding:0}
-      @page{size:150mm 62mm;margin:4mm 6mm}
+      @page{size:62mm 150mm;margin:3mm 4mm}
       html{height:100%;overflow:hidden}
       body{height:100%;overflow:hidden;display:flex;flex-direction:column;
         align-items:center;justify-content:center;font-family:monospace;background:#fff}
       .bw{width:100%;display:flex;justify-content:center}
-      .bw svg{width:100%;height:auto;max-height:40mm}
-      .bc{font-size:13pt;font-weight:bold;letter-spacing:1.5px;margin-top:3mm;text-align:center}
+      .bw svg{width:100%;height:auto;max-height:35mm}
+      .bc{font-size:10pt;font-weight:bold;letter-spacing:1px;margin-top:3mm;text-align:center;word-break:break-all}
     `;
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
       <title>${podCode}</title><style>${css}</style></head><body>

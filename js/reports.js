@@ -4,9 +4,9 @@
 
 function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl) {
   const stageStatusColor = s =>
-    s === 'completed' ? '#16a34a' : s === 'failed' ? '#dc2626' : '#64748b';
+    s === 'completed' ? '#4ade80' : s === 'failed' ? '#f87171' : '#94a3b8';
   const itemStatusColor = s =>
-    s === 'passed' ? '#16a34a' : s === 'failed' ? '#dc2626' : '#64748b';
+    s === 'passed' ? '#16a34a' : s === 'failed' ? '#dc2626' : '#94a3b8';
   const itemIcon = s =>
     s === 'passed' ? '✓' : s === 'failed' ? '✗' : '○';
   const wrap = c =>
@@ -16,11 +16,11 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl) 
 
   // Header + pod info
   sections.push(wrap(`
-    <div style="background:#3DD4CE;color:#1a1a1a;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;">
+    <div style="background:#a5f3f1;color:#1a1a1a;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;">
       <div style="text-align:left;">
         ${barcodeDataUrl ? `
-          <img src="${barcodeDataUrl}" style="height:60px;display:block;" />
-          <div style="font-size:11px;margin-top:2px;text-align:center;font-weight:600;">${escHtml(pod.pod_code)}</div>
+          <img src="${barcodeDataUrl}" style="height:20px;display:block;" />
+          <div style="font-size:9px;margin-top:2px;text-align:center;font-weight:600;">${escHtml(pod.pod_code)}</div>
         ` : ''}
       </div>
       <div style="text-align:right;">
@@ -62,27 +62,26 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl) 
 
     sections.push(wrap(`
       <div style="margin:8px 24px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
-        <div style="background:${bgColor};color:#fff;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;">
+        <div style="background:${bgColor};color:#1e293b;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;">
           <span style="font-size:12px;">${passed}/${items.length} עברו</span>
           <span style="font-size:13px;font-weight:bold;">${stage.stage_number}. ${escHtml(stage.stage_name)}</span>
         </div>
         ${stage.inspector_name ? `
-        <div style="background:#dcfce7;padding:6px 12px;font-size:11px;color:#166534;text-align:right;display:flex;align-items:center;justify-content:space-between;">
+        <div style="background:#dcfce7;padding:6px 12px;font-size:11px;color:#166534;display:flex;align-items:center;justify-content:space-between;">
+          <div style="text-align:right;">בודק: <strong>${escHtml(stage.inspector_name)}</strong> | תאריך: ${escHtml(formatDate(stage.inspection_date))}</div>
           <div>
             ${stage.inspector_signature ? `<img src="${stage.inspector_signature}" style="height:38px;background:#fff;border-radius:3px;padding:2px;border:1px solid #bbf7d0;" alt="חתימה" />` : ''}
           </div>
-          <div>בודק: <strong>${escHtml(stage.inspector_name)}</strong> | תאריך: ${escHtml(formatDate(stage.inspection_date))}</div>
         </div>` : ''}
         ${itemsHTML}
       </div>
     `));
   }
 
-  // Additional reviewer sign-off (replaces generic "חתימות סיום")
+  // Additional reviewer sign-off
   sections.push(wrap(`
     <div style="padding:8px 24px 28px;">
       <div style="border-top:2px solid #e2e8f0;padding-top:16px;">
-        <div style="font-size:13px;font-weight:bold;margin-bottom:14px;text-align:right;">אישור גורם נוסף</div>
         <div style="display:flex;gap:24px;margin-bottom:16px;">
           <div style="flex:1;text-align:right;">
             <div style="font-size:11px;color:#64748b;margin-bottom:6px;">שם</div>
@@ -99,7 +98,7 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl) 
         </div>
         <div style="text-align:right;">
           <div style="font-size:11px;color:#64748b;margin-bottom:6px;">חתימה</div>
-          <div style="border:1px solid #94a3b8;height:70px;border-radius:4px;"></div>
+          <div style="border:1px solid #94a3b8;height:18px;border-radius:4px;"></div>
         </div>
       </div>
     </div>
@@ -138,7 +137,7 @@ async function buildAndDownloadPDF(pod, stages, stageItems) {
   let barcodeDataUrl = null;
   try {
     const bc = document.createElement('canvas');
-    JsBarcode(bc, pod.pod_code, { format: 'CODE128', width: 2, height: 60, displayValue: false, margin: 4 });
+    JsBarcode(bc, pod.pod_code, { format: 'CODE128', width: 1, height: 20, displayValue: false, margin: 2 });
     barcodeDataUrl = bc.toDataURL('image/png');
   } catch (e) { /* skip barcode */ }
 

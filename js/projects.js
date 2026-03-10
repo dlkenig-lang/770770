@@ -626,31 +626,18 @@ async function loadProjectDetailsTab(project) {
       const firstError = results.find(r => r.error);
       if (firstError) { setLoading(btn, false); showToast('שגיאה בשמירה', 'error'); return; }
 
-      // If project code changed, update all pod_codes for this project
+      // If project code changed, rename all pod_codes via a single server-side RPC
       if (codeChanged) {
-        const { data: pods, error: podsErr } = await supabaseClient
-          .from('pods').select('id, pod_code').eq('project_id', project.id);
-        if (podsErr) {
-          console.error('[save] fetch pods error:', podsErr);
+        const { error: rpcErr } = await supabaseClient.rpc('rename_project_code_in_pods', {
+          p_project_id: project.id,
+          p_old_code: oldCode,
+          p_new_code: newCode,
+        });
+        if (rpcErr) {
+          console.error('[save] rename_project_code_in_pods error:', rpcErr);
           setLoading(btn, false);
-          showToast('שגיאה בעדכון קודי פודים: ' + podsErr.message, 'error');
+          showToast('שגיאה בעדכון קודי פודים: ' + rpcErr.message, 'error');
           return;
-        }
-        if (pods && pods.length > 0) {
-          const podUpdates = pods.map(pod => {
-            const updatedCode = pod.pod_code.startsWith(oldCode + '-')
-              ? newCode + pod.pod_code.slice(oldCode.length)
-              : pod.pod_code;
-            return supabaseClient.from('pods').update({ pod_code: updatedCode }).eq('id', pod.id);
-          });
-          const podResults = await Promise.all(podUpdates);
-          const podErr = podResults.find(r => r.error);
-          if (podErr) {
-            console.error('[save] pod update error:', podErr.error);
-            setLoading(btn, false);
-            showToast('שגיאה בעדכון קודי פודים: ' + podErr.error.message, 'error');
-            return;
-          }
         }
       }
 

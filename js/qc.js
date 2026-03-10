@@ -143,7 +143,7 @@ function renderActiveStage() {
           </thead>
           <tbody>
             ${(stageRef?.items || []).map((itemDef, rowIdx) => {
-              const castingItemKeys = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixation', 'drainage_channel', 'lifting_bolts'];
+              const castingItemKeys = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixation', 'drainage_channel', 'lifting_bolts', 'shower_parallel'];
               const isCastingItem = castingItemKeys.includes(itemDef.key);
               // Lock all non-casting items until casting is approved
               const lockedPreCasting = !_castingBaseApproved && !(stage.stage_number === 1 && isCastingItem);
@@ -492,7 +492,7 @@ async function handleItemStatusChange(btn) {
   await checkCastingApprovalTrigger(stageId, itemKey);
 
   // If one of the post-casting items (7-9) in stage A is answered, remove casting approval
-  const postCastingKeys = ['segregation', 'shower_parallel', 'drainage_test'];
+  const postCastingKeys = ['segregation', 'drainage_test'];
   const stageForItem = _qcStages.find(s => s.id === stageId);
   if (
     _qcCastingApproved &&
@@ -518,7 +518,7 @@ async function checkCastingApprovalTrigger(stageId, itemKey) {
   const stage = _qcStages.find(s => s.id === stageId);
   if (!stage || stage.stage_number !== 1) return;
 
-  const castingItemKeys = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixation', 'drainage_channel', 'lifting_bolts'];
+  const castingItemKeys = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixation', 'drainage_channel', 'lifting_bolts', 'shower_parallel'];
   // Only trigger when a casting item (1-6) itself was saved
   if (!castingItemKeys.includes(itemKey)) return;
   const stageItems = _qcStageItems[stageId] || [];
@@ -529,7 +529,7 @@ async function checkCastingApprovalTrigger(stageId, itemKey) {
 
   if (!allPassed) return;
 
-  const confirmed = confirm('כל סעיפי הבסיס 1–6 אושרו ✓\nהאם לאשר את רצפת הפוד ליציקה?');
+  const confirmed = confirm('כל סעיפי הבסיס 1–7 אושרו ✓\nהאם לאשר את רצפת הפוד ליציקה?');
   if (!confirmed) return;
 
   const { error } = await supabaseClient.from('pods').update({

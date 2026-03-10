@@ -1138,6 +1138,7 @@ table tbody tr:hover { background: #f8fafc; }
   .pods-stats-strip { grid-template-columns: repeat(3, 1fr); }
   .filter-bar { flex-direction: column; }
   .filter-select { width: 100%; }
+  .mobile-hidden { display: none !important; }
 }
 
 @media print {

@@ -601,9 +601,13 @@ async function loadProjectDetailsTab(project) {
       const btn = document.getElementById('btn-save-project-details');
       setLoading(btn, true);
 
+      const oldCode = project.code?.toUpperCase() || '';
+      const newCode = document.getElementById('det-code').value.trim().toUpperCase();
+      const codeChanged = oldCode && newCode && oldCode !== newCode;
+
       const projectUpdate = supabaseClient.from('projects').update({
         name: document.getElementById('det-name').value.trim(),
-        code: document.getElementById('det-code').value.trim().toUpperCase(),
+        code: newCode,
         location: document.getElementById('det-location').value.trim(),
         pipe_type: document.getElementById('det-pipe').value || null,
         onedrive_folder_url: document.getElementById('det-onedrive').value.trim() || null,
@@ -618,16 +622,31 @@ async function loadProjectDetailsTab(project) {
       });
 
       const results = await Promise.all([projectUpdate, ...typeUpdates]);
-      setLoading(btn, false);
 
       const firstError = results.find(r => r.error);
-      if (firstError) { showToast('שגיאה בשמירה', 'error'); return; }
+      if (firstError) { setLoading(btn, false); showToast('שגיאה בשמירה', 'error'); return; }
 
-      showToast('הפרטים עודכנו', 'success');
+      // If project code changed, update all pod_codes for this project
+      if (codeChanged) {
+        const { data: pods } = await supabaseClient.from('pods').select('id, pod_code').eq('project_id', project.id);
+        if (pods && pods.length > 0) {
+          const podUpdates = pods.map(pod => {
+            const updatedCode = pod.pod_code.startsWith(oldCode + '-')
+              ? newCode + pod.pod_code.slice(oldCode.length)
+              : pod.pod_code;
+            return supabaseClient.from('pods').update({ pod_code: updatedCode }).eq('id', pod.id);
+          });
+          await Promise.all(podUpdates);
+        }
+      }
+
+      setLoading(btn, false);
+      showToast(codeChanged ? `הפרטים עודכנו, קוד הפודים עודכן ל-${newCode}` : 'הפרטים עודכנו', 'success');
       AppState.currentProject = { ...AppState.currentProject,
         name: document.getElementById('det-name').value.trim(),
-        code: document.getElementById('det-code').value.trim().toUpperCase(),
+        code: newCode,
       };
+      project.code = newCode;
       document.getElementById('project-detail-title').textContent = AppState.currentProject.name;
     });
   }

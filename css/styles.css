@@ -1098,19 +1098,21 @@ table tbody tr:hover { background: #f8fafc; }
     order: -1;
   }
 
-  /* Sidebar becomes a slide-in drawer from right */
+  /* Sidebar becomes a slide-in drawer from right.
+     Using right property (not translateX) to avoid RTL/iOS Safari transform bug. */
   .sidebar {
     display: flex !important;
     flex-direction: column;
     width: 260px;
-    top: 0; right: 0; bottom: 0;
-    transform: translateX(100%);
-    transition: transform 0.25s ease;
+    top: 0; right: -260px; bottom: 0;
+    left: auto;
+    transform: none;
+    transition: right 0.25s ease;
     z-index: 150;
     box-shadow: -4px 0 20px rgba(0,0,0,0.15);
     padding-top: calc(var(--navbar-h) + 8px);
   }
-  .sidebar.open { transform: translateX(0); }
+  .sidebar.open { right: 0; }
   .sidebar-footer { display: block; padding-bottom: 70px; }
   .sidebar-user-header { display: flex; }
 

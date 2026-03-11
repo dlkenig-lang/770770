@@ -430,6 +430,8 @@ function renderPodCard(pod, groups = []) {
   const dirLabel = pod.type_directions?.direction === 'R' ? 'ימין' : pod.type_directions?.direction === 'L' ? 'שמאל' : (pod.type_directions?.direction || '');
   const unresolvedCount = (pod.comments || []).filter(c => !c.is_resolved).length;
   const flaggedCount = (pod.comments || []).filter(c => !c.is_resolved && c.is_flagged).length;
+  const groupIdx = groups.findIndex(g => g.id === pod.group_id);
+  const groupLabel = groupIdx >= 0 && pod.group_serial ? String.fromCharCode(65 + groupIdx) + pod.group_serial : '';
 
   return `
     <div class="pod-card pod-card-clickable btn-open-pod ${flaggedCount > 0 ? 'pod-card-has-flagged' : unresolvedCount > 0 ? 'pod-card-has-comments' : ''} ${pod.casting_approved ? 'pod-card-casting-approved' : ''}" data-pod-id="${pod.id}">
@@ -454,17 +456,20 @@ function renderPodCard(pod, groups = []) {
         </div>
         <div class="pod-card-meta-item">
           <span class="pod-card-meta-label">קבוצה</span>
-          ${isAdminOrPM() && groups.length ? (() => {
-            const selIdx = groups.findIndex(g => g.id === pod.group_id);
-            const dotColor = selIdx >= 0 ? GROUP_COLORS[selIdx % GROUP_COLORS.length] : 'transparent';
-            return `<div style="display:flex;align-items:center;gap:4px">
-              <span class="pod-group-color-dot" data-pod-id="${pod.id}" style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:${dotColor};${selIdx < 0 ? 'border:1px solid var(--border)' : ''}"></span>
-              <select class="pod-card-group-select" data-pod-id="${pod.id}" style="font-size:12px;border:1px solid var(--border);border-radius:4px;padding:1px 4px;background:var(--bg);color:var(--text);cursor:pointer;max-width:110px">
-                <option value="" data-color="">ללא קבוצה</option>
-                ${groups.map((g, i) => `<option value="${g.id}" data-color="${GROUP_COLORS[i % GROUP_COLORS.length]}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
-              </select>
-            </div>`;
-          })() : `<span class="pod-card-meta-value">${pod.production_groups?.name ? escHtml(pod.production_groups.name) : '—'}</span>`}
+          <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+            ${isAdminOrPM() && groups.length ? (() => {
+              const selIdx = groups.findIndex(g => g.id === pod.group_id);
+              const dotColor = selIdx >= 0 ? GROUP_COLORS[selIdx % GROUP_COLORS.length] : 'transparent';
+              return `<div style="display:flex;align-items:center;gap:4px">
+                <span class="pod-group-color-dot" data-pod-id="${pod.id}" style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:${dotColor};${selIdx < 0 ? 'border:1px solid var(--border)' : ''}"></span>
+                <select class="pod-card-group-select" data-pod-id="${pod.id}" style="font-size:12px;border:1px solid var(--border);border-radius:4px;padding:1px 4px;background:var(--bg);color:var(--text);cursor:pointer;max-width:110px">
+                  <option value="" data-color="">ללא קבוצה</option>
+                  ${groups.map((g, i) => `<option value="${g.id}" data-color="${GROUP_COLORS[i % GROUP_COLORS.length]}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
+                </select>
+              </div>`;
+            })() : `<span class="pod-card-meta-value">${pod.production_groups?.name ? escHtml(pod.production_groups.name) : '—'}</span>`}
+            ${groupLabel ? `<span style="font-weight:700;font-size:13px;color:var(--primary);letter-spacing:0.5px">${escHtml(groupLabel)}</span>` : ''}
+          </div>
         </div>
       </div>
       <div class="card-progress-section">
@@ -477,7 +482,7 @@ function renderPodCard(pod, groups = []) {
         </div>
       </div>
       <div class="pod-card-actions">
-        <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}" data-group-label="${escHtml((() => { const idx = groups.findIndex(g => g.id === pod.group_id); return idx >= 0 && pod.group_serial ? String.fromCharCode(65 + idx) + pod.group_serial : ''; })())}">🔲 ברקוד</button>
+        <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}" data-group-label="${escHtml(groupLabel)}">🔲 ברקוד</button>
         ${isAdminOrPM() ? `<button class="btn btn-danger btn-sm btn-delete-pod" data-pod-id="${pod.id}">🗑</button>` : ''}
       </div>
     </div>

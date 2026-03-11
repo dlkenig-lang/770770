@@ -53,18 +53,22 @@ async function openPod(podId) {
   const groupCell = isAdminOrPM() ? `
     <div class="info-item">
       <div class="info-label">קבוצה</div>
-      <div class="info-value" style="display:flex;align-items:center;gap:6px">
+      <div class="info-value" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span id="pod-group-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${dotColor || 'transparent'};${dotColor ? '' : 'border:1px solid var(--border)'}"></span>
         <select id="pod-group-select" class="form-control" style="font-size:13px;padding:2px 6px;height:auto;min-width:120px">
           <option value="" data-color="">ללא קבוצה</option>
           ${groups.map((g, i) => `<option value="${g.id}" data-color="${GROUP_COLORS[i % GROUP_COLORS.length]}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
         </select>
+        ${AppState.currentPodGroupLabel ? `<span id="pod-group-label-badge" style="font-weight:700;font-size:15px;color:var(--primary);letter-spacing:0.5px">${escHtml(AppState.currentPodGroupLabel)}</span>` : '<span id="pod-group-label-badge"></span>'}
       </div>
     </div>
   ` : `
     <div class="info-item">
       <div class="info-label">קבוצה</div>
-      <div class="info-value">${escHtml(pod.production_groups?.name || '—')}</div>
+      <div class="info-value" style="display:flex;align-items:center;gap:6px">
+        <span>${escHtml(pod.production_groups?.name || '—')}</span>
+        ${AppState.currentPodGroupLabel ? `<span style="font-weight:700;font-size:15px;color:var(--primary);letter-spacing:0.5px">${escHtml(AppState.currentPodGroupLabel)}</span>` : ''}
+      </div>
     </div>
   `;
 
@@ -125,6 +129,8 @@ async function openPod(podId) {
     AppState.currentPod.group_serial = groupSerial;
     const idx = groups.findIndex(g => g.id === groupId);
     AppState.currentPodGroupLabel = idx >= 0 && groupSerial ? String.fromCharCode(65 + idx) + groupSerial : '';
+    const badge = document.getElementById('pod-group-label-badge');
+    if (badge) badge.textContent = AppState.currentPodGroupLabel;
     showToast('הקבוצה עודכנה', 'success');
   });
 

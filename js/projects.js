@@ -372,7 +372,7 @@ async function loadPodsTab(projectId, filters = {}) {
     btn.addEventListener('click', () => openPod(btn.dataset.podId));
   });
   container.querySelectorAll('.btn-pod-barcode-tbl').forEach(btn => {
-    btn.addEventListener('click', (e) => { e.stopPropagation(); showBarcodeModal(btn.dataset.podCode); });
+    btn.addEventListener('click', (e) => { e.stopPropagation(); showBarcodeModal(btn.dataset.podCode, btn.dataset.groupLabel || ''); });
   });
   if (isAdminOrPM()) {
     container.querySelectorAll('.btn-delete-pod').forEach(btn => {

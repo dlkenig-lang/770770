@@ -1143,12 +1143,14 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
     const btn = document.getElementById('btn-grp-save');
     setLoading(btn, true);
     try {
+      let saveError;
       if (groupId) {
-        await supabaseClient.from('production_groups').update({ name: nm, target_date: dt || null, max_pods: mp }).eq('id', groupId);
+        ({ error: saveError } = await supabaseClient.from('production_groups').update({ name: nm, target_date: dt || null, max_pods: mp }).eq('id', groupId));
       } else {
         const { data: groups } = await supabaseClient.from('production_groups').select('id').eq('project_id', projectId);
-        await supabaseClient.from('production_groups').insert({ project_id: projectId, name: nm, target_date: dt || null, max_pods: mp, sort_order: (groups || []).length });
+        ({ error: saveError } = await supabaseClient.from('production_groups').insert({ project_id: projectId, name: nm, target_date: dt || null, max_pods: mp, sort_order: (groups || []).length }));
       }
+      if (saveError) { showToast('שגיאה: ' + saveError.message, 'error'); return; }
       showToast('נשמר בהצלחה', 'success');
       closeModal();
       await loadGroupsTab(projectId);

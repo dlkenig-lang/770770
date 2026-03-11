@@ -111,7 +111,10 @@ async function openPod(podId) {
         e.target.value = AppState.currentPod.group_id || '';
         return;
       }
-      groupSerial = Math.max(0, ...(grpPods || []).map(p => p.group_serial || 0)) + 1;
+      const usedSerials = new Set((grpPods || []).map(p => p.group_serial).filter(Boolean));
+      let nextSerial = 1;
+      while (usedSerials.has(nextSerial)) nextSerial++;
+      groupSerial = nextSerial;
     }
     const { error: updErr } = await supabaseClient
       .from('pods')

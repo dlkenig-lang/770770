@@ -401,7 +401,10 @@ async function loadPodsTab(projectId, filters = {}) {
             e.target.value = e.target.dataset.prevValue || '';
             return;
           }
-          groupSerial = Math.max(0, ...(grpPods || []).map(p => p.group_serial || 0)) + 1;
+          const usedSerials = new Set((grpPods || []).map(p => p.group_serial).filter(Boolean));
+          let nextSerial = 1;
+          while (usedSerials.has(nextSerial)) nextSerial++;
+          groupSerial = nextSerial;
         }
         e.target.dataset.prevValue = groupId || '';
         const { error } = await supabaseClient.from('pods').update({ group_id: groupId, group_serial: groupSerial }).eq('id', podId);

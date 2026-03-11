@@ -391,8 +391,28 @@ async function loadPodsTab(projectId, filters = {}) {
           dot.style.background = color || 'transparent';
           dot.style.border = color ? 'none' : '1px solid var(--border)';
         }
-        const { error } = await supabaseClient.from('pods').update({ group_id: groupId }).eq('id', podId);
+        let groupSerial = null;
+        if (groupId) {
+          const { data: grpData } = await supabaseClient.from('production_groups').select('max_pods').eq('id', groupId).single();
+          const { data: grpPods } = await supabaseClient.from('pods').select('group_serial').eq('group_id', groupId);
+          const currentCount = (grpPods || []).length;
+          if (grpData?.max_pods && currentCount >= grpData.max_pods) {
+            showToast(`הקבוצה מלאה — קיבולת מקסימלית: ${grpData.max_pods} פודים`, 'error');
+            e.target.value = e.target.dataset.prevValue || '';
+            return;
+          }
+          groupSerial = Math.max(0, ...(grpPods || []).map(p => p.group_serial || 0)) + 1;
+        }
+        e.target.dataset.prevValue = groupId || '';
+        const { error } = await supabaseClient.from('pods').update({ group_id: groupId, group_serial: groupSerial }).eq('id', podId);
         if (error) { showToast('שגיאה בשמירת קבוצה', 'error'); return; }
+        // Update barcode button's group label
+        const card = e.target.closest('.pod-card');
+        const barcodeBtn = card?.querySelector('.btn-pod-barcode-tbl');
+        if (barcodeBtn) {
+          const idx = allGroups.findIndex(g => g.id === groupId);
+          barcodeBtn.dataset.groupLabel = idx >= 0 && groupSerial ? String.fromCharCode(65 + idx) + groupSerial : '';
+        }
         showToast('הקבוצה עודכנה', 'success');
       });
     });
@@ -454,7 +474,7 @@ function renderPodCard(pod, groups = []) {
         </div>
       </div>
       <div class="pod-card-actions">
-        <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}">🔲 ברקוד</button>
+        <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}" data-group-label="${escHtml((() => { const idx = groups.findIndex(g => g.id === pod.group_id); return idx >= 0 && pod.group_serial ? String.fromCharCode(65 + idx) + pod.group_serial : ''; })())}">🔲 ברקוד</button>
         ${isAdminOrPM() ? `<button class="btn btn-danger btn-sm btn-delete-pod" data-pod-id="${pod.id}">🗑</button>` : ''}
       </div>
     </div>
@@ -476,25 +496,33 @@ async function loadGroupsTab(projectId) {
     return;
   }
 
-  container.innerHTML = groups.map((g, i) => `
+  container.innerHTML = groups.map((g, i) => {
+    const letter = String.fromCharCode(65 + i);
+    return `
     <div class="group-card">
       <div class="group-color-dot" style="background:${GROUP_COLORS[i % GROUP_COLORS.length]}"></div>
-      <div>
-        <div class="group-name">${escHtml(g.name)}</div>
-        ${g.target_date ? `<div class="group-date">יעד: ${formatDate(g.target_date)}</div>` : ''}
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px;font-weight:900;color:${GROUP_COLORS[i % GROUP_COLORS.length]};min-width:20px">${letter}</span>
+        <div>
+          <div class="group-name">${escHtml(g.name)}</div>
+          <div style="display:flex;gap:12px">
+            ${g.max_pods ? `<div class="group-date">קיבולת: ${g.max_pods} פודים</div>` : ''}
+            ${g.target_date ? `<div class="group-date">יעד: ${formatDate(g.target_date)}</div>` : ''}
+          </div>
+        </div>
       </div>
       <div class="group-actions" style="margin-right:auto">
         ${isAdminOrPM() ? `
-          <button class="btn btn-secondary btn-sm btn-edit-group" data-group-id="${g.id}" data-name="${escHtml(g.name)}" data-date="${g.target_date || ''}">עריכה</button>
+          <button class="btn btn-secondary btn-sm btn-edit-group" data-group-id="${g.id}" data-name="${escHtml(g.name)}" data-date="${g.target_date || ''}" data-max-pods="${g.max_pods || ''}">עריכה</button>
           <button class="btn btn-danger btn-sm btn-delete-group" data-group-id="${g.id}">🗑</button>
         ` : ''}
       </div>
     </div>
-  `).join('');
+  `;}).join('');
 
   if (isAdminOrPM()) {
     container.querySelectorAll('.btn-edit-group').forEach(btn => {
-      btn.addEventListener('click', () => showGroupModal(projectId, btn.dataset.groupId, btn.dataset.name, btn.dataset.date));
+      btn.addEventListener('click', () => showGroupModal(projectId, btn.dataset.groupId, btn.dataset.name, btn.dataset.date, btn.dataset.maxPods ? parseInt(btn.dataset.maxPods) : null));
     });
     container.querySelectorAll('.btn-delete-group').forEach(btn => {
       btn.addEventListener('click', () => deleteGroup(btn.dataset.groupId, projectId));
@@ -1072,7 +1100,7 @@ function sortGroupsByOption(groups) {
   });
 }
 
-async function showGroupModal(projectId, groupId = null, name = '', date = '') {
+async function showGroupModal(projectId, groupId = null, name = '', date = '', maxPods = null) {
   let usedNames = [];
   if (!groupId) {
     const { data: existing } = await supabaseClient
@@ -1091,6 +1119,10 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '') {
       </select>
     </div>
     <div class="form-group">
+      <label>מספר פודים בקבוצה</label>
+      <input type="number" id="grp-max-pods" class="form-control" min="1" placeholder="ללא הגבלה" value="${maxPods || ''}" />
+    </div>
+    <div class="form-group">
       <label>תאריך יעד</label>
       <input type="date" id="grp-date" class="form-control" value="${date}" />
     </div>
@@ -1103,15 +1135,16 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '') {
   document.getElementById('btn-grp-save')?.addEventListener('click', async () => {
     const nm = document.getElementById('grp-name')?.value.trim();
     const dt = document.getElementById('grp-date')?.value;
+    const mp = parseInt(document.getElementById('grp-max-pods')?.value) || null;
     if (!nm) { showToast('יש להזין שם', 'error'); return; }
     const btn = document.getElementById('btn-grp-save');
     setLoading(btn, true);
     try {
       if (groupId) {
-        await supabaseClient.from('production_groups').update({ name: nm, target_date: dt || null }).eq('id', groupId);
+        await supabaseClient.from('production_groups').update({ name: nm, target_date: dt || null, max_pods: mp }).eq('id', groupId);
       } else {
         const { data: groups } = await supabaseClient.from('production_groups').select('id').eq('project_id', projectId);
-        await supabaseClient.from('production_groups').insert({ project_id: projectId, name: nm, target_date: dt || null, sort_order: (groups || []).length });
+        await supabaseClient.from('production_groups').insert({ project_id: projectId, name: nm, target_date: dt || null, max_pods: mp, sort_order: (groups || []).length });
       }
       showToast('נשמר בהצלחה', 'success');
       closeModal();
@@ -1349,23 +1382,26 @@ function printAllBarcodes() {
   const cards = document.querySelectorAll('#pods-table-container .btn-pod-barcode-tbl');
   if (cards.length === 0) { showToast('אין פודים להדפסה לפי הסינון הנוכחי', 'error'); return; }
 
-  const codes = Array.from(cards).map(btn => btn.dataset.podCode).filter(Boolean);
-  console.log('[printAllBarcodes] codes:', codes);
-  if (codes.length === 0) { showToast('לא נמצאו קודי ברקוד', 'error'); return; }
+  const items = Array.from(cards).map(btn => ({ code: btn.dataset.podCode, groupLabel: btn.dataset.groupLabel || '' })).filter(i => i.code);
+  console.log('[printAllBarcodes] items:', items);
+  if (items.length === 0) { showToast('לא נמצאו קודי ברקוד', 'error'); return; }
 
   // Render SVGs into live DOM using a hidden scratch div
   const scratch = document.createElement('div');
   scratch.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
   document.body.appendChild(scratch);
 
-  const barcodeItems = codes.map(code => {
+  const barcodeItems = items.map(({ code, groupLabel }) => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     scratch.appendChild(svg);
     try {
       JsBarcode(svg, code, { format: 'CODE128', width: 3, height: 110, displayValue: false, margin: 0 });
     } catch (e) { console.error('JsBarcode error', code, e); }
     const svgHtml = svg.outerHTML;
-    return `<div class="barcode-item"><div class="content"><div class="bw">${svgHtml}</div><div class="bc-label">${escHtml(code)}</div></div></div>`;
+    const groupMarkerHtml = groupLabel
+      ? `<div class="group-marker">${escHtml(groupLabel)}</div>`
+      : '';
+    return `<div class="barcode-item"><div class="content"><div class="barcode-section"><div class="bw">${svgHtml}</div><div class="bc-label">${escHtml(code)}</div></div>${groupMarkerHtml}</div></div>`;
   }).join('');
 
   document.body.removeChild(scratch);
@@ -1384,19 +1420,21 @@ function printAllBarcodes() {
     .barcode-item:last-child{page-break-after:auto;break-after:auto}
     .content{
       position:absolute;top:50%;left:50%;
-      width:142mm;
+      width:142mm;height:56mm;
       transform:translate(-50%,-50%) rotate(-90deg);
-      display:flex;flex-direction:column;align-items:center;gap:3mm;
+      display:flex;flex-direction:row;align-items:stretch;
     }
+    .barcode-section{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3mm}
     .bw{width:100%}
     .bw svg{width:100%;height:auto;max-height:28mm}
     .bc-label{font-size:11pt;font-weight:bold;letter-spacing:1.5px;text-align:center;white-space:nowrap}
+    .group-marker{display:flex;align-items:center;justify-content:center;border-right:2px solid #000;padding:0 4mm;font-size:80pt;font-weight:900;writing-mode:vertical-lr;text-orientation:mixed;letter-spacing:0;line-height:1;flex-shrink:0}
     @media print{.toolbar{display:none}}
   `;
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>ברקודים</title><style>${css}</style></head><body>
     <div class="toolbar">
-      <h2>ברקודים — ${escHtml(AppState.currentProject?.name || '')} &nbsp;|&nbsp; ${codes.length} מדבקות &nbsp;|&nbsp; Brother QL-700 · 62×150mm</h2>
+      <h2>ברקודים — ${escHtml(AppState.currentProject?.name || '')} &nbsp;|&nbsp; ${items.length} מדבקות &nbsp;|&nbsp; Brother QL-700 · 62×150mm</h2>
       <button class="btn-print" onclick="window.print()">🖨️ הדפס</button>
     </div>
     ${barcodeItems}

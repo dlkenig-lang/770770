@@ -2,7 +2,7 @@
 // Reports Module - PDF & Excel Generation
 // =============================================
 
-function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl) {
+function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, groupLabel = '') {
   const stageStatusColor = s =>
     s === 'completed' ? '#7baa8a' : s === 'failed' ? '#b87878' : '#8899aa';
   const itemStatusColor = s =>
@@ -34,8 +34,8 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl) 
     </div>
     <div style="background:#f1f5f9;padding:12px 24px;text-align:right;border-bottom:2px solid #e2e8f0;">
       <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">פרטי פוד</div>
-      <div style="font-size:12px;">פרויקט: ${escHtml(pod.projects?.name || '')} | קוד: ${escHtml(pod.pod_code)}</div>
-      <div style="font-size:12px;margin-top:3px;">טיפוס: T${escHtml(String(pod.project_types?.type_number || ''))} | כיוון: ${escHtml(pod.type_directions?.direction || '')} | צינור: ${escHtml(pod.projects?.pipe_type || '')}</div>
+      <div style="font-size:12px;">פרויקט: ${escHtml(pod.projects?.name || '')} | קוד: ${escHtml(pod.pod_code)}${groupLabel ? ` | סימון קבוצה: <strong style="font-size:14px">${escHtml(groupLabel)}</strong>` : ''}</div>
+      <div style="font-size:12px;margin-top:3px;">טיפוס: T${escHtml(String(pod.project_types?.type_number || ''))} | כיוון: ${escHtml(pod.type_directions?.direction || '')} | צינור: ${escHtml(pod.projects?.pipe_type || '')}${pod.production_groups?.name ? ` | קבוצה: ${escHtml(pod.production_groups.name)}` : ''}</div>
     </div>
   `));
 
@@ -143,7 +143,7 @@ async function buildAndDownloadPDF(pod, stages, stageItems) {
     barcodeDataUrl = bc.toDataURL('image/png');
   } catch (e) { /* skip barcode */ }
 
-  const sections = buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl);
+  const sections = buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, AppState.currentPodGroupLabel || '');
   const canvases = [];
   for (const html of sections) {
     canvases.push(await renderSection(html, SCALE));

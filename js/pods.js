@@ -14,7 +14,7 @@ async function openPod(podId) {
       projects(id, name, code, date_received, pipe_type, onedrive_folder_url),
       project_types(type_number, dimensions),
       type_directions(direction),
-      production_groups(name),
+      production_groups(name, max_pods),
       comments(id, is_resolved, is_flagged)
     `)
     .eq('id', podId)
@@ -29,10 +29,10 @@ async function openPod(podId) {
   if (isAdminOrPM()) {
     const { data: g } = await supabaseClient
       .from('production_groups')
-      .select('id, name')
+      .select('id, name, max_pods')
       .eq('project_id', pod.projects.id)
       .order('name');
-    groups = g || [];
+    groups = sortGroupsByOption(g || []);
   }
 
   document.getElementById('pod-detail-code').textContent = pod.pod_code;
@@ -47,6 +47,8 @@ async function openPod(podId) {
 
   const selGroupIdx = groups.findIndex(g => g.id === pod.group_id);
   const dotColor = selGroupIdx >= 0 ? GROUP_COLORS[selGroupIdx % GROUP_COLORS.length] : '';
+  const groupLetter = selGroupIdx >= 0 ? String.fromCharCode(65 + selGroupIdx) : '';
+  AppState.currentPodGroupLabel = groupLetter && pod.group_serial ? `${groupLetter}${pod.group_serial}` : '';
 
   const groupCell = isAdminOrPM() ? `
     <div class="info-item">
@@ -99,12 +101,27 @@ async function openPod(podId) {
       dot.style.background = color || 'transparent';
       dot.style.border = color ? 'none' : '1px solid var(--border)';
     }
+    let groupSerial = null;
+    if (groupId) {
+      const grp = groups.find(g => g.id === groupId);
+      const { data: grpPods } = await supabaseClient.from('pods').select('group_serial').eq('group_id', groupId);
+      const currentCount = (grpPods || []).length;
+      if (grp?.max_pods && currentCount >= grp.max_pods) {
+        showToast(`הקבוצה מלאה — קיבולת מקסימלית: ${grp.max_pods} פודים`, 'error');
+        e.target.value = AppState.currentPod.group_id || '';
+        return;
+      }
+      groupSerial = Math.max(0, ...(grpPods || []).map(p => p.group_serial || 0)) + 1;
+    }
     const { error: updErr } = await supabaseClient
       .from('pods')
-      .update({ group_id: groupId })
+      .update({ group_id: groupId, group_serial: groupSerial })
       .eq('id', podId);
     if (updErr) { showToast('שגיאה בשמירת קבוצה', 'error'); return; }
     AppState.currentPod.group_id = groupId;
+    AppState.currentPod.group_serial = groupSerial;
+    const idx = groups.findIndex(g => g.id === groupId);
+    AppState.currentPodGroupLabel = idx >= 0 && groupSerial ? String.fromCharCode(65 + idx) + groupSerial : '';
     showToast('הקבוצה עודכנה', 'success');
   });
 
@@ -135,7 +152,7 @@ async function openPod(podId) {
 }
 
 // ---- BARCODE ----
-function showBarcodeModal(podCode) {
+function showBarcodeModal(podCode, groupLabel = '') {
   const modal = document.getElementById('barcode-modal');
   const display = document.getElementById('barcode-display');
   const codeEl = document.getElementById('barcode-pod-code');
@@ -180,19 +197,27 @@ function showBarcodeModal(podCode) {
       body{position:relative}
       .content{
         position:absolute;top:50%;left:50%;
-        width:142mm;
+        width:142mm;height:56mm;
         transform:translate(-50%,-50%) rotate(-90deg);
-        display:flex;flex-direction:column;align-items:center;gap:3mm;
+        display:flex;flex-direction:row;align-items:stretch;
       }
+      .barcode-section{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3mm}
       .bw{width:100%}
       .bw svg{width:100%;height:auto;max-height:28mm}
       .bc{font-size:11pt;font-weight:bold;letter-spacing:1.5px;text-align:center;white-space:nowrap}
+      .group-marker{display:flex;align-items:center;justify-content:center;border-right:2px solid #000;padding:0 4mm;font-size:80pt;font-weight:900;writing-mode:vertical-lr;text-orientation:mixed;letter-spacing:0;line-height:1;flex-shrink:0}
     `;
+    const groupMarkerHtml = groupLabel
+      ? `<div class="group-marker">${groupLabel.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`
+      : '';
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
       <title>${podCode}</title><style>${css}</style></head><body>
       <div class="content">
-        <div class="bw">${svgHtml}</div>
-        <div class="bc">${podCode}</div>
+        <div class="barcode-section">
+          <div class="bw">${svgHtml}</div>
+          <div class="bc">${podCode}</div>
+        </div>
+        ${groupMarkerHtml}
       </div>
       </body></html>`;
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
@@ -302,7 +327,7 @@ function initPodDetailButtons() {
 
   // Barcode
   document.getElementById('btn-pod-barcode')?.addEventListener('click', () => {
-    if (AppState.currentPod) showBarcodeModal(AppState.currentPod.pod_code);
+    if (AppState.currentPod) showBarcodeModal(AppState.currentPod.pod_code, AppState.currentPodGroupLabel || '');
   });
   document.getElementById('barcode-modal-close')?.addEventListener('click', () => {
     document.getElementById('barcode-modal').classList.add('hidden');

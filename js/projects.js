@@ -409,13 +409,17 @@ async function loadPodsTab(projectId, filters = {}) {
         e.target.dataset.prevValue = groupId || '';
         const { error } = await supabaseClient.from('pods').update({ group_id: groupId, group_serial: groupSerial }).eq('id', podId);
         if (error) { showToast('שגיאה בשמירת קבוצה', 'error'); return; }
-        // Update barcode button's group label
+        // Update group label badge and barcode button on the card
         const card = e.target.closest('.pod-card');
-        const barcodeBtn = card?.querySelector('.btn-pod-barcode-tbl');
-        if (barcodeBtn) {
-          const idx = allGroups.findIndex(g => g.id === groupId);
-          barcodeBtn.dataset.groupLabel = idx >= 0 && groupSerial ? String.fromCharCode(65 + idx) + groupSerial : '';
+        const idx = allGroups.findIndex(g => g.id === groupId);
+        const newLabel = idx >= 0 && groupSerial ? String.fromCharCode(65 + idx) + groupSerial : '';
+        const labelEl = card?.querySelector('.pod-card-group-label');
+        if (labelEl) {
+          labelEl.textContent = newLabel;
+          labelEl.style.fontWeight = newLabel ? '700' : '';
         }
+        const barcodeBtn = card?.querySelector('.btn-pod-barcode-tbl');
+        if (barcodeBtn) barcodeBtn.dataset.groupLabel = newLabel;
         showToast('הקבוצה עודכנה', 'success');
       });
     });
@@ -468,7 +472,7 @@ function renderPodCard(pod, groups = []) {
                 </select>
               </div>`;
             })() : `<span class="pod-card-meta-value">${pod.production_groups?.name ? escHtml(pod.production_groups.name) : '—'}</span>`}
-            ${groupLabel ? `<span style="font-weight:700;font-size:13px;color:var(--primary);letter-spacing:0.5px">${escHtml(groupLabel)}</span>` : ''}
+            ${groupLabel ? `<span class="pod-card-group-label" style="font-weight:700;font-size:13px;color:var(--primary);letter-spacing:0.5px">${escHtml(groupLabel)}</span>` : '<span class="pod-card-group-label"></span>'}
           </div>
         </div>
       </div>

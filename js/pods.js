@@ -219,7 +219,7 @@ function showBarcodeModal(podCode, groupLabel = '') {
       .bw{width:100%}
       .bw svg{width:100%;height:auto;max-height:28mm}
       .bc{font-size:11pt;font-weight:bold;letter-spacing:1.5px;text-align:center;white-space:nowrap}
-      .group-marker{display:flex;align-items:center;justify-content:center;border-right:2px solid #000;padding:0 4mm;font-size:80pt;font-weight:900;writing-mode:vertical-lr;text-orientation:mixed;letter-spacing:0;line-height:1;flex-shrink:0;transform:rotate(90deg)}
+      .group-marker{display:flex;align-items:center;justify-content:center;border-right:2px solid #000;padding:0 4mm;font-size:80pt;font-weight:900;writing-mode:vertical-lr;text-orientation:mixed;letter-spacing:0;line-height:1;flex-shrink:0;transform:rotate(180deg)}
     `;
     const groupMarkerHtml = groupLabel
       ? `<div class="group-marker">${groupLabel.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`

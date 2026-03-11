@@ -183,6 +183,11 @@ function showBarcodeModal(podCode, groupLabel = '') {
   }
 
   codeEl.textContent = podCode;
+  const groupLabelEl = document.getElementById('barcode-group-label');
+  if (groupLabelEl) {
+    groupLabelEl.textContent = groupLabel || '';
+    groupLabelEl.style.display = groupLabel ? '' : 'none';
+  }
   modal.classList.remove('hidden');
 
   document.getElementById('btn-print-barcode').onclick = () => {

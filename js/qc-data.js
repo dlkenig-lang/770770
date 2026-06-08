@@ -87,6 +87,7 @@ const QC_STAGES = [
       { key: 'light_fixture', label: 'גוף תאורה', instruction: null },
       { key: 'electrical_circuits', label: 'מעגלים חשמליים', instruction: null },
       { key: 'outlets', label: 'שקעים', instruction: null },
+      { key: 'mirror', label: 'מראה', instruction: null },
     ]
   }
 ];

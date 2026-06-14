@@ -2,6 +2,15 @@
 // Main App Module - Initialization & Routing
 // =============================================
 
+// Detect password-recovery token in URL hash BEFORE any auth events fire.
+// Supabase appends #access_token=...&type=recovery to the redirectTo URL.
+// We set this flag early so INITIAL_SESSION/SIGNED_IN cannot log the user in.
+window._passwordRecoveryMode = (function () {
+  const hash = window.location.hash || '';
+  const search = window.location.search || '';
+  return hash.includes('type=recovery') || search.includes('type=recovery');
+})();
+
 // ---- USER DISPLAY HELPER ----
 // Updates both desktop navbar AND mobile sidebar drawer
 function updateUserDisplay(profile) {
@@ -382,18 +391,23 @@ async function init() {
   // Guard against double-firing: Supabase can emit both INITIAL_SESSION and
   // SIGNED_IN on the same page load. We only initialize once per user session.
   let _initializedUserId = null;
-  let _passwordRecoveryMode = false; // true while waiting for user to set new password
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (event === 'PASSWORD_RECOVERY') {
-      _passwordRecoveryMode = true;
+      window._passwordRecoveryMode = true;
       document.getElementById('loading-screen').classList.add('hidden');
       document.getElementById('auth-screen').style.display = 'flex';
       showAuthPanel('reset');
       return;
     }
-    // Block the automatic SIGNED_IN that Supabase fires right after PASSWORD_RECOVERY.
-    // The user must explicitly set a new password first; the reset form clears this flag.
-    if (_passwordRecoveryMode) return;
+    // Block INITIAL_SESSION / SIGNED_IN while in password-recovery flow.
+    // The flag is set either from the URL hash above, or from the PASSWORD_RECOVERY event.
+    // auth.js clears it after a successful password update.
+    if (window._passwordRecoveryMode) {
+      document.getElementById('loading-screen').classList.add('hidden');
+      document.getElementById('auth-screen').style.display = 'flex';
+      showAuthPanel('reset');
+      return;
+    }
     if (event === 'INITIAL_SESSION') {
       if (!session) {
         document.getElementById('loading-screen').classList.add('hidden');

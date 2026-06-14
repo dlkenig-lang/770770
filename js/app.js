@@ -2,13 +2,20 @@
 // Main App Module - Initialization & Routing
 // =============================================
 
-// Detect password-recovery token in URL hash BEFORE any auth events fire.
-// Supabase appends #access_token=...&type=recovery to the redirectTo URL.
-// We set this flag early so INITIAL_SESSION/SIGNED_IN cannot log the user in.
+// Detect password-recovery BEFORE any auth events fire.
+// Works for both implicit flow (type=recovery in hash/search)
+// and PKCE flow (no type in URL — we rely on sessionStorage set by the forgot-password form,
+// or on the custom redirectTo we append ?type=recovery to).
 window._passwordRecoveryMode = (function () {
   const hash = window.location.hash || '';
   const search = window.location.search || '';
-  return hash.includes('type=recovery') || search.includes('type=recovery');
+  const fromUrl = hash.includes('type=recovery') || search.includes('type=recovery');
+  const fromStorage = sessionStorage.getItem('pendingPasswordReset') === '1';
+  if (fromUrl || fromStorage) {
+    sessionStorage.removeItem('pendingPasswordReset');
+    return true;
+  }
+  return false;
 })();
 
 // ---- USER DISPLAY HELPER ----

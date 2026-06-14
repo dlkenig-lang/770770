@@ -126,9 +126,12 @@ function initAuth() {
 
     try {
       const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/#reset-password'
+        redirectTo: window.location.origin + window.location.pathname + '?type=recovery'
       });
       if (error) throw error;
+      // Mark this browser as expecting a password reset so we can detect it
+      // even if the return URL doesn't contain type=recovery (PKCE flow)
+      sessionStorage.setItem('pendingPasswordReset', '1');
       sucEl.textContent = 'קישור לאיפוס סיסמה נשלח לאימייל שלך';
       sucEl.classList.remove('hidden');
     } catch (err) {

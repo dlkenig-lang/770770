@@ -32,6 +32,14 @@ async function loadQCStages(podId) {
 
   _qcCastingApproved = AppState.currentPod?.casting_approved || false;
   if (_qcCastingApproved) _castingBaseApproved = true;
+
+  // If Stage A is already signed (completed/failed), unlock downstream stages
+  // even if casting_approved flag was never explicitly set on the pod
+  const stageA = _qcStages.find(s => s.stage_number === 1);
+  if (stageA?.status === 'completed' || stageA?.status === 'failed') {
+    _castingBaseApproved = true;
+  }
+
   renderQCTabsUI();
 }
 

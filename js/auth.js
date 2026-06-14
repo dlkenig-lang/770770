@@ -164,6 +164,10 @@ function initAuth() {
       sucEl.textContent = 'הסיסמה עודכנה בהצלחה! מיד תועבר למערכת...';
       sucEl.classList.remove('hidden');
       e.target.reset();
+      // Clear recovery mode flag so the app initializes after redirect
+      if (typeof _passwordRecoveryMode !== 'undefined') _passwordRecoveryMode = false;
+      // Reload to get a clean session without the recovery token in the URL
+      setTimeout(() => window.location.replace(window.location.pathname), 1500);
     } catch (err) {
       errEl.textContent = translateAuthError(err.message);
       errEl.classList.remove('hidden');

@@ -278,7 +278,7 @@ async function loadReportsView() {
     supabaseClient.from('projects').select('id, name, code').eq('is_active', true).order('name'),
     supabaseClient.from('pods').select(`
       *,
-      projects(id, name, code, pipe_type),
+      projects(id, name, code, pipe_type, is_active),
       project_types(type_number, dimensions),
       type_directions(direction),
       production_groups(name),
@@ -286,7 +286,9 @@ async function loadReportsView() {
     `).order('pod_code'),
   ]);
 
-  const pods = allPods || [];
+  // Exclude pods belonging to archived projects
+  const getSerial = code => parseInt((code || '').slice(-3)) || 0;
+  const pods = (allPods || []).filter(p => p.projects?.is_active !== false);
   const types = [...new Set(pods.map(p => p.project_types?.type_number).filter(Boolean))].sort((a,b) => a-b);
   const groups = [...new Set(pods.map(p => p.production_groups?.name).filter(Boolean))].sort();
   const directions = [...new Set(pods.map(p => p.type_directions?.direction).filter(Boolean))].sort();
@@ -354,7 +356,7 @@ async function loadReportsView() {
       (!group  || p.production_groups?.name === group) &&
       (!dir    || p.type_directions?.direction === dir) &&
       (!status || p.status === status)
-    );
+    ).sort((a, b) => getSerial(a.pod_code) - getSerial(b.pod_code));
   }
 
   function renderTable() {
@@ -385,7 +387,7 @@ async function loadReportsView() {
                 const completed = (p.qc_stages || []).filter(s => s.status === 'completed').length;
                 const pct = Math.round(completed / 6 * 100);
                 const statusColor = p.status === 'completed' ? '#16a34a' : p.status === 'failed' ? '#dc2626' : '#64748b';
-                return `<tr style="border-bottom:1px solid #f1f5f9;">
+                return `<tr class="rf-pod-row" data-pod-id="${p.id}" style="border-bottom:1px solid #f1f5f9;transition:background 0.2s;">
                   <td style="padding:8px 12px;font-weight:600;">${escHtml(p.pod_code)}</td>
                   <td style="padding:8px 12px;">${escHtml(p.projects?.name || '')}</td>
                   <td style="padding:8px 12px;">T${p.project_types?.type_number || ''}</td>
@@ -431,6 +433,18 @@ async function loadReportsView() {
   document.getElementById('rf-btn-excel').addEventListener('click', () => {
     const filtered = getFiltered();
     if (!filtered.length) { showToast('אין פודים נבחרים', 'warning'); return; }
+
+    // Highlight selected rows in blue
+    const selectedIds = new Set(filtered.map(p => p.id));
+    document.querySelectorAll('.rf-pod-row').forEach(row => {
+      if (selectedIds.has(row.dataset.podId)) {
+        row.style.background = '#dbeafe';
+      }
+    });
+    setTimeout(() => {
+      document.querySelectorAll('.rf-pod-row').forEach(row => { row.style.background = ''; });
+    }, 2000);
+
     try {
       const label = document.getElementById('rf-project').value
         ? (projects || []).find(p => p.id === document.getElementById('rf-project').value)?.name || 'סינון'

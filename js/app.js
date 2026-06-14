@@ -382,13 +382,18 @@ async function init() {
   // Guard against double-firing: Supabase can emit both INITIAL_SESSION and
   // SIGNED_IN on the same page load. We only initialize once per user session.
   let _initializedUserId = null;
+  let _passwordRecoveryMode = false; // true while waiting for user to set new password
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (event === 'PASSWORD_RECOVERY') {
+      _passwordRecoveryMode = true;
       document.getElementById('loading-screen').classList.add('hidden');
       document.getElementById('auth-screen').style.display = 'flex';
       showAuthPanel('reset');
       return;
     }
+    // Block the automatic SIGNED_IN that Supabase fires right after PASSWORD_RECOVERY.
+    // The user must explicitly set a new password first; the reset form clears this flag.
+    if (_passwordRecoveryMode) return;
     if (event === 'INITIAL_SESSION') {
       if (!session) {
         document.getElementById('loading-screen').classList.add('hidden');

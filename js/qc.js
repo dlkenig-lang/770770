@@ -15,6 +15,10 @@ let _castingBaseApproved = false; // never resets once set; used to lock casting
 
 const STAGE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
+// Keys of Stage A items that must all pass before casting approval (items 1–7).
+// Edit this list when adding/removing casting-check items from Stage A in qc-data.js.
+const CASTING_ITEM_KEYS = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixation', 'drainage_channel', 'lifting_bolts', 'shower_parallel'];
+
 async function loadQCStages(podId) {
   const container = document.getElementById('qc-stages-container');
   container.innerHTML = '<div class="loading-spinner" style="margin:40px auto"></div>';
@@ -32,6 +36,14 @@ async function loadQCStages(podId) {
 
   _qcCastingApproved = AppState.currentPod?.casting_approved || false;
   if (_qcCastingApproved) _castingBaseApproved = true;
+
+  // If Stage A is already signed (completed/failed), unlock downstream stages
+  // even if casting_approved flag was never explicitly set on the pod
+  const stageA = _qcStages.find(s => s.stage_number === 1);
+  if (stageA?.status === 'completed' || stageA?.status === 'failed') {
+    _castingBaseApproved = true;
+  }
+
   renderQCTabsUI();
 }
 
@@ -143,8 +155,7 @@ function renderActiveStage() {
           </thead>
           <tbody>
             ${(stageRef?.items || []).map((itemDef, rowIdx) => {
-              const castingItemKeys = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixation', 'drainage_channel', 'lifting_bolts', 'shower_parallel'];
-              const isCastingItem = castingItemKeys.includes(itemDef.key);
+              const isCastingItem = CASTING_ITEM_KEYS.includes(itemDef.key);
               // Lock all non-casting items until casting is approved
               const lockedPreCasting = !_castingBaseApproved && !(stage.stage_number === 1 && isCastingItem);
               // Lock casting items 1-6 once approved
@@ -534,11 +545,9 @@ async function checkCastingApprovalTrigger(stageId, itemKey) {
   const stage = _qcStages.find(s => s.id === stageId);
   if (!stage || stage.stage_number !== 1) return;
 
-  const castingItemKeys = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixation', 'drainage_channel', 'lifting_bolts', 'shower_parallel'];
-  // Only trigger when a casting item (1-6) itself was saved
-  if (!castingItemKeys.includes(itemKey)) return;
+  if (!CASTING_ITEM_KEYS.includes(itemKey)) return;
   const stageItems = _qcStageItems[stageId] || [];
-  const allPassed = castingItemKeys.every(key => {
+  const allPassed = CASTING_ITEM_KEYS.every(key => {
     const item = stageItems.find(i => i.item_key === key);
     return item?.status === 'passed';
   });

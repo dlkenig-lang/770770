@@ -341,7 +341,7 @@ async function loadReportsView() {
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <span id="rf-count" style="font-size:13px;color:#64748b;"></span>
           <button id="rf-btn-pdf" class="btn btn-primary btn-sm">📄 ייצוא PDF לנבחרים</button>
-          <button id="rf-btn-excel" class="btn btn-secondary btn-sm">📊 ייצוא Excel לנבחרים</button>
+          <button id="rf-btn-excel" class="btn btn-primary btn-sm">📊 ייצוא Excel לנבחרים</button>
         </div>
       </div>
     </div>

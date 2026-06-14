@@ -194,7 +194,12 @@ async function restoreProject(projectId) {
 function renderProjectCard(p) {
   const pods = p.pods || [];
   const completed = pods.filter(pod => pod.status === 'completed').length;
-  const pct = pods.length > 0 ? Math.round(completed / pods.length * 100) : 0;
+  const inProgress = pods.filter(pod => pod.status === 'in_progress').length;
+  // Count in_progress pods as 50% contribution so the bar reflects ongoing work
+  const effectivePct = pods.length > 0
+    ? Math.round((completed + inProgress * 0.5) / pods.length * 100)
+    : 0;
+  const pct = effectivePct;
   return `
     <div class="project-card" data-project-id="${p.id}">
       <div class="project-card-code">${escHtml(p.code)}</div>
@@ -340,15 +345,21 @@ async function loadPodsTab(projectId, filters = {}) {
         <div class="pods-stat-value">${failed}</div>
         <div class="pods-stat-label">נכשלו</div>
       </div>
+      ${(() => {
+        const totalStages = total * 6;
+        const doneStages = allPods.reduce((sum, p) => sum + (p.qc_stages || []).filter(s => s.status === 'completed').length, 0);
+        const stagePct = totalStages > 0 ? Math.round(doneStages / totalStages * 100) : 0;
+        return `
       <div class="page-progress-bar" style="flex-basis:100%">
         <div class="page-progress-header">
-          <span class="page-progress-label">התקדמות פרויקט</span>
-          <span class="page-progress-pct ${total>0&&done===total?'pct-done':''}">${total>0?Math.round(done/total*100):0}%</span>
+          <span class="page-progress-label">התקדמות פרויקט — ${doneStages}/${totalStages} שלבים</span>
+          <span class="page-progress-pct ${stagePct===100?'pct-done':''}">${stagePct}%</span>
         </div>
         <div class="progress-bar-outer progress-bar-lg">
-          <div class="progress-bar-inner ${total>0&&done===total?'full':''}" style="width:${total>0?Math.round(done/total*100):0}%"></div>
+          <div class="progress-bar-inner ${stagePct===100?'full':''}" style="width:${stagePct}%"></div>
         </div>
-      </div>
+      </div>`;
+      })()}
     `;
   }
 
@@ -1098,10 +1109,15 @@ function sortGroupsByOption(groups) {
   return [...groups].sort((a, b) => {
     const ai = GROUP_NAME_OPTIONS.indexOf(a.name);
     const bi = GROUP_NAME_OPTIONS.indexOf(b.name);
-    if (ai === -1 && bi === -1) return a.name.localeCompare(b.name, 'he');
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
-    return ai - bi;
+    if (ai !== -1 || bi !== -1) {
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    }
+    // Numeric fallback: extract leading number from name (e.g. "G1" → 1, "G10" → 10)
+    const na = parseInt((a.name || '').replace(/\D/g, '')) || 0;
+    const nb = parseInt((b.name || '').replace(/\D/g, '')) || 0;
+    return na !== nb ? na - nb : a.name.localeCompare(b.name, 'he');
   });
 }
 

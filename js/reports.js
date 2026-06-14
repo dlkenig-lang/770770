@@ -290,7 +290,11 @@ async function loadReportsView() {
   const getSerial = code => parseInt((code || '').slice(-3)) || 0;
   const pods = (allPods || []).filter(p => p.projects?.is_active !== false);
   const types = [...new Set(pods.map(p => p.project_types?.type_number).filter(Boolean))].sort((a,b) => a-b);
-  const groups = [...new Set(pods.map(p => p.production_groups?.name).filter(Boolean))].sort();
+  const groups = [...new Set(pods.map(p => p.production_groups?.name).filter(Boolean))].sort((a, b) => {
+    const na = parseInt(a.replace(/\D/g, '')) || 0;
+    const nb = parseInt(b.replace(/\D/g, '')) || 0;
+    return na !== nb ? na - nb : a.localeCompare(b);
+  });
   const directions = [...new Set(pods.map(p => p.type_directions?.direction).filter(Boolean))].sort();
 
   container.innerHTML = `

@@ -18,6 +18,10 @@ window._passwordRecoveryMode = (function () {
   return false;
 })();
 
+// Flag: page arrived via a Supabase PKCE redirect (has ?code= in URL).
+// Used to delay SIGNED_IN handling so PASSWORD_RECOVERY can fire first.
+window._pkceCodeInUrl = window.location.search.includes('code=') || window.location.hash.includes('code=');
+
 // ---- USER DISPLAY HELPER ----
 // Updates both desktop navbar AND mobile sidebar drawer
 function updateUserDisplay(profile) {
@@ -398,28 +402,33 @@ async function init() {
   // Guard against double-firing: Supabase can emit both INITIAL_SESSION and
   // SIGNED_IN on the same page load. We only initialize once per user session.
   let _initializedUserId = null;
+  let _pendingSessionTimer = null;
+
+  function showRecoveryPanel() {
+    if (_pendingSessionTimer) { clearTimeout(_pendingSessionTimer); _pendingSessionTimer = null; }
+    window._passwordRecoveryMode = true;
+    _initializedUserId = null;
+    document.getElementById('loading-screen').classList.add('hidden');
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('auth-screen').style.display = 'flex';
+    showAuthPanel('reset');
+  }
+
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (event === 'PASSWORD_RECOVERY') {
-      window._passwordRecoveryMode = true;
-      _initializedUserId = null;
-      document.getElementById('loading-screen').classList.add('hidden');
-      document.getElementById('app').classList.add('hidden');
-      document.getElementById('auth-screen').style.display = 'flex';
-      showAuthPanel('reset');
+      showRecoveryPanel();
       return;
     }
-    // Block INITIAL_SESSION / SIGNED_IN while in password-recovery flow.
-    // The flag is set either from the URL hash above, or from the PASSWORD_RECOVERY event.
-    // auth.js clears it after a successful password update.
+    // Block any event while in password-recovery flow.
     if (window._passwordRecoveryMode) {
-      document.getElementById('loading-screen').classList.add('hidden');
-      document.getElementById('app').classList.add('hidden');
-      document.getElementById('auth-screen').style.display = 'flex';
-      showAuthPanel('reset');
+      showRecoveryPanel();
       return;
     }
     if (event === 'INITIAL_SESSION') {
       if (!session) {
+        // If code is in URL, Supabase is mid-PKCE exchange — keep spinner and wait
+        // for SIGNED_IN / PASSWORD_RECOVERY instead of showing login prematurely.
+        if (window._pkceCodeInUrl) return;
         document.getElementById('loading-screen').classList.add('hidden');
         document.getElementById('auth-screen').style.display = 'flex';
       } else {
@@ -429,6 +438,17 @@ async function init() {
     } else if (event === 'SIGNED_IN') {
       // Skip if we already initialized for this exact user (avoids double-init)
       if (session?.user?.id && session.user.id === _initializedUserId) return;
+      if (window._pkceCodeInUrl) {
+        // Delay app opening briefly so PASSWORD_RECOVERY can fire first if this is recovery
+        _pendingSessionTimer = setTimeout(async () => {
+          _pendingSessionTimer = null;
+          if (!window._passwordRecoveryMode) {
+            _initializedUserId = session?.user?.id ?? null;
+            await onAuthStateChange(session);
+          }
+        }, 300);
+        return;
+      }
       _initializedUserId = session?.user?.id ?? null;
       await onAuthStateChange(session);
     } else if (event === 'SIGNED_OUT') {

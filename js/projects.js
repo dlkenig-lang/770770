@@ -470,7 +470,7 @@ function renderPodCard(pod, groups = []) {
               const dotColor = selIdx >= 0 ? GROUP_COLORS[selIdx % GROUP_COLORS.length] : 'transparent';
               return `<div style="display:flex;align-items:center;gap:4px">
                 <span class="pod-group-color-dot" data-pod-id="${pod.id}" style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:${dotColor};${selIdx < 0 ? 'border:1px solid var(--border)' : ''}"></span>
-                <select class="pod-card-group-select" data-pod-id="${pod.id}" style="font-size:12px;border:1px solid var(--border);border-radius:4px;padding:1px 4px;background:var(--bg);color:var(--text);cursor:pointer;max-width:110px">
+                <select class="pod-card-group-select" data-pod-id="${pod.id}" style="font-size:12px;border:1px solid var(--border);border-radius:4px;padding:1px 4px;background:var(--bg);color:var(--text);cursor:pointer;max-width:110px" ${pod.group_id ? 'disabled title="לא ניתן להעביר פוד קיים בין קבוצות"' : ''}>
                   <option value="" data-color="">ללא קבוצה</option>
                   ${groups.map((g, i) => `<option value="${g.id}" data-color="${GROUP_COLORS[i % GROUP_COLORS.length]}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
                 </select>

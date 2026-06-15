@@ -55,7 +55,7 @@ async function openPod(podId) {
       <div class="info-label">קבוצה</div>
       <div class="info-value" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span id="pod-group-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${dotColor || 'transparent'};${dotColor ? '' : 'border:1px solid var(--border)'}"></span>
-        <select id="pod-group-select" class="form-control" style="font-size:13px;padding:2px 6px;height:auto;min-width:120px">
+        <select id="pod-group-select" class="form-control" style="font-size:13px;padding:2px 6px;height:auto;min-width:120px" ${pod.group_id ? 'disabled title="לא ניתן להעביר פוד קיים בין קבוצות"' : ''}>
           <option value="" data-color="">ללא קבוצה</option>
           ${groups.map((g, i) => `<option value="${g.id}" data-color="${GROUP_COLORS[i % GROUP_COLORS.length]}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
         </select>

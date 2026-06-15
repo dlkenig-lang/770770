@@ -401,7 +401,9 @@ async function init() {
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (event === 'PASSWORD_RECOVERY') {
       window._passwordRecoveryMode = true;
+      _initializedUserId = null;
       document.getElementById('loading-screen').classList.add('hidden');
+      document.getElementById('app').classList.add('hidden');
       document.getElementById('auth-screen').style.display = 'flex';
       showAuthPanel('reset');
       return;
@@ -411,6 +413,7 @@ async function init() {
     // auth.js clears it after a successful password update.
     if (window._passwordRecoveryMode) {
       document.getElementById('loading-screen').classList.add('hidden');
+      document.getElementById('app').classList.add('hidden');
       document.getElementById('auth-screen').style.display = 'flex';
       showAuthPanel('reset');
       return;

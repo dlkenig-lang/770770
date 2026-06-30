@@ -439,7 +439,7 @@ function renderPodCard(pod, groups = []) {
   const unresolvedCount = (pod.comments || []).filter(c => !c.is_resolved).length;
   const flaggedCount = (pod.comments || []).filter(c => !c.is_resolved && c.is_flagged).length;
   const groupIdx = groups.findIndex(g => g.id === pod.group_id);
-  const groupLabel = groupIdx >= 0 && pod.group_serial ? String.fromCharCode(65 + groupIdx) + pod.group_serial : '';
+  const groupLabel = groupIdx >= 0 ? (pod.group_serial ? String.fromCharCode(65 + groupIdx) + pod.group_serial : String.fromCharCode(65 + groupIdx)) : '';
 
   return `
     <div class="pod-card pod-card-clickable btn-open-pod ${flaggedCount > 0 ? 'pod-card-has-flagged' : unresolvedCount > 0 ? 'pod-card-has-comments' : ''} ${pod.casting_approved ? 'pod-card-casting-approved' : ''}" data-pod-id="${pod.id}">

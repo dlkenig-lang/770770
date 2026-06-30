@@ -46,7 +46,7 @@ async function openPod(podId) {
   const selGroupIdx = groups.findIndex(g => g.id === pod.group_id);
   const dotColor = selGroupIdx >= 0 ? GROUP_COLORS[selGroupIdx % GROUP_COLORS.length] : '';
   const groupLetter = selGroupIdx >= 0 ? String.fromCharCode(65 + selGroupIdx) : '';
-  AppState.currentPodGroupLabel = groupLetter && pod.group_serial ? `${groupLetter}${pod.group_serial}` : '';
+  AppState.currentPodGroupLabel = groupLetter ? (pod.group_serial ? `${groupLetter}${pod.group_serial}` : groupLetter) : '';
 
   const groupCell = isAdminOrPM() ? `
     <div class="info-item">

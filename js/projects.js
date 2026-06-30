@@ -1291,9 +1291,25 @@ async function showAddPodModal(projectId) {
     const btn = document.getElementById('btn-add-pod-confirm');
     setLoading(btn, true);
     try {
+      let groupSerial = null;
+      if (groupId) {
+        const { data: grpData } = await supabaseClient.from('production_groups').select('max_pods').eq('id', groupId).single();
+        const { data: grpPods } = await supabaseClient.from('pods').select('group_serial').eq('group_id', groupId);
+        const currentCount = (grpPods || []).length;
+        if (grpData?.max_pods && currentCount >= grpData.max_pods) {
+          showToast(`הקבוצה מלאה — קיבולת מקסימלית: ${grpData.max_pods} פודים`, 'error');
+          setLoading(btn, false);
+          return;
+        }
+        const usedSerials = new Set((grpPods || []).map(p => p.group_serial).filter(Boolean));
+        let nextSerial = 1;
+        while (usedSerials.has(nextSerial)) nextSerial++;
+        groupSerial = nextSerial;
+      }
       const { error } = await supabaseClient.from('pods').insert({
         project_id: projectId, type_id: typeId, direction_id: dirId,
         serial_number: serial, pod_code: podCode, group_id: groupId || null,
+        group_serial: groupSerial,
         status: 'pending',
       });
       if (error) throw error;
@@ -1450,7 +1466,7 @@ function printAllBarcodes() {
     .barcode-section{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3mm}
     .bw{width:100%}
     .bw svg{width:100%;height:auto;max-height:28mm}
-    .bc-label{font-size:11pt;font-weight:bold;letter-spacing:1.5px;text-align:center;white-space:nowrap}
+    .bc-label{font-size:18pt;font-weight:bold;letter-spacing:1.5px;text-align:center;white-space:nowrap}
     .group-marker{display:flex;align-items:center;justify-content:center;padding:4mm;font-size:80pt;font-weight:900;line-height:1;flex-shrink:0}
     @media print{.toolbar{display:none}}
   `;

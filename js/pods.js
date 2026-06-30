@@ -24,13 +24,16 @@ async function openPod(podId) {
 
   AppState.currentPod = pod;
 
-  // Fetch groups for all users — needed for group label in barcode/PDF
-  const { data: g } = await supabaseClient
-    .from('production_groups')
-    .select('id, name, max_pods')
-    .eq('project_id', pod.projects.id)
-    .order('name');
-  const groups = sortGroupsByOption(g || []);
+  // Fetch groups for group-assignment dropdown (admin/PM only)
+  let groups = [];
+  if (isAdminOrPM()) {
+    const { data: g } = await supabaseClient
+      .from('production_groups')
+      .select('id, name, max_pods')
+      .eq('project_id', pod.projects.id)
+      .order('name');
+    groups = sortGroupsByOption(g || []);
+  }
 
   document.getElementById('pod-detail-code').textContent = pod.pod_code;
   const statusEl = document.getElementById('pod-detail-status');
@@ -215,7 +218,7 @@ function showBarcodeModal(podCode, groupLabel = '') {
       .barcode-section{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3mm}
       .bw{width:100%}
       .bw svg{width:100%;height:auto;max-height:28mm}
-      .bc{font-size:18pt;font-weight:bold;letter-spacing:1.5px;text-align:center;white-space:nowrap}
+      .bc{font-size:11pt;font-weight:bold;letter-spacing:1.5px;text-align:center;white-space:nowrap}
       .group-marker{display:flex;align-items:center;justify-content:center;padding:4mm;font-size:80pt;font-weight:900;line-height:1;flex-shrink:0}
     `;
     const groupMarkerHtml = groupLabel

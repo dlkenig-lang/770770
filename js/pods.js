@@ -211,25 +211,24 @@ function showBarcodeModal(podCode, groupLabel = '') {
         position:absolute;top:50%;left:50%;
         width:142mm;height:56mm;
         transform:translate(-50%,-50%) rotate(-90deg);
-        display:flex;flex-direction:row;align-items:stretch;
+        display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:2mm;
       }
-      .barcode-section{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3mm}
       .bw{width:100%}
-      .bw svg{width:100%;height:auto;max-height:28mm}
-      .bc{font-size:18pt;font-weight:bold;letter-spacing:1.5px;text-align:center;white-space:nowrap}
-      .group-marker{display:flex;align-items:center;justify-content:center;padding:4mm;font-size:80pt;font-weight:900;line-height:1;flex-shrink:0}
+      .bw svg{width:100%;height:auto;max-height:34mm}
+      .bottom-row{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5mm}
+      .group-marker{font-size:32pt;font-weight:900;line-height:1;white-space:nowrap}
+      .bc{font-size:18pt;font-weight:bold;letter-spacing:1.5px;white-space:nowrap}
     `;
-    const groupMarkerHtml = groupLabel
-      ? `<div class="group-marker">${groupLabel.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`
-      : '';
+    const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const groupPart = groupLabel ? `<div class="group-marker">${esc(groupLabel)}</div>` : '';
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
       <title>${podCode}</title><style>${css}</style></head><body>
       <div class="content">
-        <div class="barcode-section">
-          <div class="bw">${svgHtml}</div>
-          <div class="bc">${podCode}</div>
+        <div class="bw">${svgHtml}</div>
+        <div class="bottom-row">
+          ${groupPart}
+          <div class="bc">${esc(podCode)}</div>
         </div>
-        ${groupMarkerHtml}
       </div>
       </body></html>`;
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });

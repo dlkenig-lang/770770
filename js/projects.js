@@ -416,7 +416,7 @@ async function loadPodsTab(projectId, filters = {}) {
         // Update group label badge and barcode button on the card
         const card = e.target.closest('.pod-card');
         const idx = allGroups.findIndex(g => g.id === groupId);
-        const newLabel = idx >= 0 && groupSerial ? String.fromCharCode(65 + idx) + groupSerial : '';
+        const newLabel = idx >= 0 ? (allGroups[idx]?.name || '') : '';
         const labelEl = card?.querySelector('.pod-card-group-label');
         if (labelEl) {
           labelEl.textContent = newLabel;
@@ -513,12 +513,10 @@ async function loadGroupsTab(projectId) {
   }
 
   container.innerHTML = groups.map((g, i) => {
-    const letter = String.fromCharCode(65 + i);
     return `
     <div class="group-card">
       <div class="group-color-dot" style="background:${GROUP_COLORS[i % GROUP_COLORS.length]}"></div>
       <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:18px;font-weight:900;color:${GROUP_COLORS[i % GROUP_COLORS.length]};min-width:20px">${letter}</span>
         <div>
           <div class="group-name">${escHtml(g.name)}</div>
           <div style="display:flex;gap:12px">

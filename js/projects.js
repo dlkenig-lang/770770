@@ -1120,22 +1120,18 @@ function sortGroupsByOption(groups) {
 }
 
 async function showGroupModal(projectId, groupId = null, name = '', date = '', maxPods = null) {
-  let usedNames = [];
+  let autoName = name;
   if (!groupId) {
     const { data: existing } = await supabaseClient
       .from('production_groups').select('name').eq('project_id', projectId);
-    usedNames = (existing || []).map(g => g.name);
+    const count = (existing || []).length;
+    autoName = `G${count + 1}`;
   }
 
   openModal(groupId ? 'עריכת קבוצה' : 'קבוצת ביצוע חדשה', `
     <div class="form-group">
       <label>שם הקבוצה</label>
-      <select id="grp-name" class="form-control">
-        <option value="">-- בחר קבוצה --</option>
-        ${GROUP_NAME_OPTIONS.filter(opt => !usedNames.includes(opt) || opt === name).map(opt =>
-          `<option value="${opt}"${opt === name ? ' selected' : ''}>${opt}</option>`
-        ).join('')}
-      </select>
+      <input type="text" id="grp-name" class="form-control" value="${escHtml(autoName)}" />
     </div>
     <div class="form-group">
       <label>מספר פודים בקבוצה</label>

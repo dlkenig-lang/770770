@@ -12,8 +12,8 @@ async function loadDashboard() {
   const projList = document.getElementById('dashboard-projects-list');
 
   // Show loading state immediately
-  statsEl.innerHTML = '<div class="loading-inline">טוען נתונים...</div>';
-  projList.innerHTML = '<div class="loading-inline">טוען פרויקטים...</div>';
+  statsEl.innerHTML = `<div class="loading-inline">${t('proj.loadingData')}</div>`;
+  projList.innerHTML = `<div class="loading-inline">${t('proj.loadingProjects')}</div>`;
 
   const TIMEOUT = 8000;
   let projects, dashErr;
@@ -29,12 +29,12 @@ async function loadDashboard() {
   }
 
   if (dashErr) {
-    const msg = dashErr.message === 'timeout' ? 'הטעינה לקחה יותר מדי זמן.' : 'שגיאה בטעינת פרויקטים.';
+    const msg = dashErr.message === 'timeout' ? t('proj.loadTimeout') : t('proj.loadError');
     statsEl.innerHTML = '';
     projList.innerHTML = `<div class="empty-state">
       <div class="empty-state-icon">⚠️</div>
       <div class="empty-state-text">${msg}</div>
-      <button class="btn btn-primary btn-sm" onclick="loadDashboard()" style="margin-top:12px">נסה שוב</button>
+      <button class="btn btn-primary btn-sm" onclick="loadDashboard()" style="margin-top:12px">${t('proj.retry')}</button>
     </div>`;
     return;
   }
@@ -47,24 +47,24 @@ async function loadDashboard() {
   statsEl.innerHTML = `
     <div class="stat-card">
       <div class="stat-value">${totalProjects}</div>
-      <div class="stat-label">פרויקטים פעילים</div>
+      <div class="stat-label">${t('proj.activeProjects')}</div>
     </div>
     <div class="stat-card">
       <div class="stat-value">${totalPods}</div>
-      <div class="stat-label">סה"כ פודים</div>
+      <div class="stat-label">${t('proj.totalPods')}</div>
     </div>
     <div class="stat-card">
       <div class="stat-value">${completedPods}</div>
-      <div class="stat-label">פודים שהושלמו</div>
+      <div class="stat-label">${t('proj.completedPods')}</div>
     </div>
     <div class="stat-card">
       <div class="stat-value">${failedPods}</div>
-      <div class="stat-label">פודים שנכשלו</div>
+      <div class="stat-label">${t('proj.failedPods')}</div>
     </div>
   `;
 
   if (!projects || projects.length === 0) {
-    projList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">אין פרויקטים עדיין</div></div>';
+    projList.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">${t('proj.noProjects')}</div></div>`;
     return;
   }
 
@@ -79,7 +79,7 @@ async function loadDashboard() {
 async function loadProjects() {
   const list       = document.getElementById('projects-list');
   const archList   = document.getElementById('archived-projects-list');
-  list.innerHTML   = '<div class="loading-inline">טוען פרויקטים...</div>';
+  list.innerHTML   = `<div class="loading-inline">${t('proj.loadingProjects')}</div>`;
 
   // Fetch active + archived in parallel
   let active = [], archived = [], error;
@@ -97,14 +97,14 @@ async function loadProjects() {
   } catch (e) { error = e; }
 
   if (error) {
-    const msg = error.message === 'timeout' ? 'הטעינה לקחה יותר מדי זמן.' : 'שגיאה בטעינת פרויקטים.';
-    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-text">${msg}</div><button class="btn btn-primary btn-sm" onclick="loadProjects()" style="margin-top:12px">נסה שוב</button></div>`;
+    const msg = error.message === 'timeout' ? t('proj.loadTimeout') : t('proj.loadError');
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-text">${msg}</div><button class="btn btn-primary btn-sm" onclick="loadProjects()" style="margin-top:12px">${t('proj.retry')}</button></div>`;
     return;
   }
 
   // Active projects
   if (active.length === 0) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">אין פרויקטים עדיין. לחץ "+ פרויקט חדש" להוספה</div></div>';
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">${t('proj.noProjectsHint')}</div></div>`;
   } else {
     active.forEach(p => ProjectCache.set(p.id, p));
     list.innerHTML = active.map(p => renderProjectCard(p)).join('');
@@ -116,7 +116,7 @@ async function loadProjects() {
   // Archived projects
   if (archList) {
     if (archived.length === 0) {
-      archList.innerHTML = '<div class="empty-state" style="padding:16px"><div class="empty-state-text">אין פרויקטים בארכיון</div></div>';
+      archList.innerHTML = `<div class="empty-state" style="padding:16px"><div class="empty-state-text">${t('proj.noArchived')}</div></div>`;
     } else {
       archived.forEach(p => ProjectCache.set(p.id, p));
       archList.innerHTML = archived.map(p => renderArchivedCard(p)).join('');
@@ -144,29 +144,29 @@ function renderArchivedCard(p) {
     <div class="project-card archived-card" data-project-id="${p.id}">
       <div class="project-card-header">
         <span class="project-code-badge">${escHtml(p.code || '')}</span>
-        <span class="archive-badge">📦 ארכיון</span>
+        <span class="archive-badge">${t('proj.archiveBadge')}</span>
       </div>
       <div class="project-card-name">${escHtml(p.name)}</div>
       <div class="project-card-meta">
         ${p.location ? `📍 ${escHtml(p.location)}` : ''}
       </div>
       <div class="archived-card-actions">
-        <button class="btn btn-secondary btn-sm btn-restore-project" data-project-id="${p.id}">♻️ שחזר לפעיל</button>
-        <button class="btn btn-danger btn-sm btn-delete-archived" data-project-id="${p.id}" data-project-name="${escHtml(p.name)}">🗑️ מחק לצמיתות</button>
+        <button class="btn btn-secondary btn-sm btn-restore-project" data-project-id="${p.id}">${t('proj.restoreToActive')}</button>
+        <button class="btn btn-danger btn-sm btn-delete-archived" data-project-id="${p.id}" data-project-name="${escHtml(p.name)}">${t('proj.deletePermanent')}</button>
       </div>
     </div>`;
 }
 
 async function deleteArchivedProject(projectId, projectName) {
-  openModal('מחיקה לצמיתות', `
-    <p style="color:#dc2626;font-weight:600;margin-bottom:8px">⚠️ פעולה זו אינה הפיכה!</p>
-    <p style="margin-bottom:16px;font-size:14px">כדי לאשר מחיקה לצמיתות, הקלד את שם הפרויקט:</p>
+  openModal(t('proj.deletePermanentTitle'), `
+    <p style="color:#dc2626;font-weight:600;margin-bottom:8px">${t('proj.irreversibleWarning')}</p>
+    <p style="margin-bottom:16px;font-size:14px">${t('proj.typeNameToConfirm')}</p>
     <p style="font-weight:700;margin-bottom:10px;padding:8px;background:var(--bg);border-radius:6px;text-align:center">${escHtml(projectName)}</p>
-    <input id="delete-arch-input" class="form-control" placeholder="הקלד שם הפרויקט לאימות" autocomplete="off" />
+    <input id="delete-arch-input" class="form-control" placeholder="${t('proj.typeNamePlaceholder')}" autocomplete="off" />
   `, []);
   document.getElementById('modal-footer').innerHTML = `
-    <button class="btn btn-ghost" id="btn-arch-delete-cancel">ביטול</button>
-    <button class="btn btn-danger" id="btn-arch-delete-confirm" disabled>מחק לצמיתות</button>
+    <button class="btn btn-ghost" id="btn-arch-delete-cancel">${t('common.cancel')}</button>
+    <button class="btn btn-danger" id="btn-arch-delete-confirm" disabled>${t('proj.deletePermanentBtn')}</button>
   `;
   const input = document.getElementById('delete-arch-input');
   const confirmBtn = document.getElementById('btn-arch-delete-confirm');
@@ -174,20 +174,20 @@ async function deleteArchivedProject(projectId, projectName) {
   input.addEventListener('input', () => { confirmBtn.disabled = input.value.trim() !== projectName; });
   confirmBtn.addEventListener('click', async () => {
     if (input.value.trim() !== projectName) return;
-    confirmBtn.disabled = true; confirmBtn.textContent = 'מוחק...';
+    confirmBtn.disabled = true; confirmBtn.textContent = t('proj.deleting');
     const { error } = await supabaseClient.from('projects').delete().eq('id', projectId);
-    if (error) { showToast('שגיאה במחיקה: ' + error.message, 'error'); confirmBtn.disabled = false; confirmBtn.textContent = 'מחק לצמיתות'; return; }
+    if (error) { showToast(t('proj.deleteError') + error.message, 'error'); confirmBtn.disabled = false; confirmBtn.textContent = t('proj.deletePermanentBtn'); return; }
     ProjectCache.delete(projectId);
     closeModal();
-    showToast('הפרויקט נמחק לצמיתות', 'success');
+    showToast(t('proj.projectDeletedPermanent'), 'success');
     await loadProjects();
   });
 }
 
 async function restoreProject(projectId) {
   const { error } = await supabaseClient.from('projects').update({ is_active: true }).eq('id', projectId);
-  if (error) { showToast('שגיאה בשחזור הפרויקט', 'error'); return; }
-  showToast('הפרויקט שוחזר לרשימה הפעילה', 'success');
+  if (error) { showToast(t('proj.restoreError'), 'error'); return; }
+  showToast(t('proj.projectRestored'), 'success');
   await loadProjects();
 }
 
@@ -212,16 +212,16 @@ function renderProjectCard(p) {
       <div class="project-card-stats">
         <div class="project-stat">
           <div class="project-stat-value">${pods.length}</div>
-          <div class="project-stat-label">פודים</div>
+          <div class="project-stat-label">${t('proj.pods')}</div>
         </div>
         <div class="project-stat">
           <div class="project-stat-value">${completed}</div>
-          <div class="project-stat-label">הושלמו</div>
+          <div class="project-stat-label">${t('proj.completed')}</div>
         </div>
       </div>
       <div class="card-progress-section">
         <div class="card-progress-header">
-          <span class="card-progress-label">התקדמות</span>
+          <span class="card-progress-label">${t('proj.progress')}</span>
           <span class="card-progress-pct ${pct===100?'pct-done':''}">${pct}%</span>
         </div>
         <div class="progress-bar-outer progress-bar-lg">
@@ -247,23 +247,23 @@ async function openProject(projectId) {
         supabaseClient.from('projects').select('*').eq('id', projectId).single(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
       ]);
-      if (result.error) { showToast('שגיאה בטעינת פרויקט: ' + result.error.message, 'error'); return; }
+      if (result.error) { showToast(t('proj.loadProjectError') + result.error.message, 'error'); return; }
       project = result.data;
     } catch (e) {
-      showToast('שגיאה בטעינת פרויקט — רענן את הדף (F5)', 'error'); return;
+      showToast(t('proj.loadProjectRefresh'), 'error'); return;
     }
   }
 
-  if (!project) { showToast('הפרויקט לא נמצא', 'error'); return; }
+  if (!project) { showToast(t('proj.projectNotFound'), 'error'); return; }
 
   AppState.currentProject = project;
 
   document.getElementById('project-detail-title').textContent = project.name;
   document.getElementById('project-info-bar').innerHTML = `
-    <div class="info-item"><div class="info-label">קוד</div><div class="info-value">${escHtml(project.code)}</div></div>
-    <div class="info-item"><div class="info-label">תאריך קבלה</div><div class="info-value">${formatDate(project.date_received)}</div></div>
-    ${project.location ? `<div class="info-item"><div class="info-label">מיקום</div><div class="info-value">${escHtml(project.location)}</div></div>` : ''}
-    ${project.pipe_type ? `<div class="info-item"><div class="info-label">סוג צנרת</div><div class="info-value">${escHtml(project.pipe_type)}</div></div>` : ''}
+    <div class="info-item"><div class="info-label">${t('proj.code')}</div><div class="info-value">${escHtml(project.code)}</div></div>
+    <div class="info-item"><div class="info-label">${t('proj.dateReceived')}</div><div class="info-value">${formatDate(project.date_received)}</div></div>
+    ${project.location ? `<div class="info-item"><div class="info-label">${t('proj.location')}</div><div class="info-value">${escHtml(project.location)}</div></div>` : ''}
+    ${project.pipe_type ? `<div class="info-item"><div class="info-label">${t('proj.pipeType')}</div><div class="info-value">${escHtml(project.pipe_type)}</div></div>` : ''}
   `;
 
   showView('project-detail');
@@ -327,23 +327,23 @@ async function loadPodsTab(projectId, filters = {}) {
     statsEl.innerHTML = `
       <div class="pods-stat-card pods-stat-total">
         <div class="pods-stat-value">${total}</div>
-        <div class="pods-stat-label">סה"כ פודים</div>
+        <div class="pods-stat-label">${t('proj.totalPods')}</div>
       </div>
       <div class="pods-stat-card pods-stat-pending">
         <div class="pods-stat-value">${pending}</div>
-        <div class="pods-stat-label">ממתינים</div>
+        <div class="pods-stat-label">${t('proj.pending')}</div>
       </div>
       <div class="pods-stat-card pods-stat-inprogress">
         <div class="pods-stat-value">${inProg}</div>
-        <div class="pods-stat-label">בתהליך</div>
+        <div class="pods-stat-label">${t('proj.inProgress')}</div>
       </div>
       <div class="pods-stat-card pods-stat-completed">
         <div class="pods-stat-value">${done}</div>
-        <div class="pods-stat-label">הושלמו</div>
+        <div class="pods-stat-label">${t('proj.completed')}</div>
       </div>
       <div class="pods-stat-card pods-stat-failed">
         <div class="pods-stat-value">${failed}</div>
-        <div class="pods-stat-label">נכשלו</div>
+        <div class="pods-stat-label">${t('proj.failed')}</div>
       </div>
       ${(() => {
         const totalStages = total * 6;
@@ -352,7 +352,7 @@ async function loadPodsTab(projectId, filters = {}) {
         return `
       <div class="page-progress-bar" style="flex-basis:100%">
         <div class="page-progress-header">
-          <span class="page-progress-label">התקדמות פרויקט — ${doneStages}/${totalStages} שלבים</span>
+          <span class="page-progress-label">${t('proj.projectProgress', { done: doneStages, total: totalStages })}</span>
           <span class="page-progress-pct ${stagePct===100?'pct-done':''}">${stagePct}%</span>
         </div>
         <div class="progress-bar-outer progress-bar-lg">
@@ -366,7 +366,7 @@ async function loadPodsTab(projectId, filters = {}) {
   const container = document.getElementById('pods-table-container');
 
   if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">אין פודים בפרויקט זה</div></div>';
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">${t('proj.noPodsInProject')}</div></div>`;
     return;
   }
 
@@ -390,7 +390,7 @@ function renderPodCard(pod, groups = []) {
   const completedStages = stages.filter(s => s.status === 'completed').length;
   const pct = Math.round(completedStages / 6 * 100);
   const statusCls = `status-${pod.status}`;
-  const dirLabel = pod.type_directions?.direction === 'R' ? 'ימין' : pod.type_directions?.direction === 'L' ? 'שמאל' : (pod.type_directions?.direction || '');
+  const dirLabel = pod.type_directions?.direction === 'R' ? t('proj.dirRight') : pod.type_directions?.direction === 'L' ? t('proj.dirLeft') : (pod.type_directions?.direction || '');
   const unresolvedCount = (pod.comments || []).filter(c => !c.is_resolved).length;
   const flaggedCount = (pod.comments || []).filter(c => !c.is_resolved && c.is_flagged).length;
   const groupIdx = groups.findIndex(g => g.id === pod.group_id);
@@ -400,25 +400,25 @@ function renderPodCard(pod, groups = []) {
     <div class="pod-card pod-card-clickable btn-open-pod ${flaggedCount > 0 ? 'pod-card-has-flagged' : unresolvedCount > 0 ? 'pod-card-has-comments' : ''} ${pod.casting_approved ? 'pod-card-casting-approved' : ''}" data-pod-id="${pod.id}">
       <div class="pod-card-header">
         <div class="pod-card-code">${escHtml(pod.pod_code)}</div>
-        ${pod.casting_approved ? `<span class="casting-approved-badge" title="מאושר ליציקה">🏗️ מאושר ליציקה</span>` : ''}
+        ${pod.casting_approved ? `<span class="casting-approved-badge" title="${t('pod.castingApprovedTitle')}">${t('pod.castingApproved')}</span>` : ''}
         ${flaggedCount > 0
-          ? `<span class="unresolved-badge badge-flagged" title="${flaggedCount} הערות מסומנות לטיפול">🚩 ${flaggedCount}</span>`
+          ? `<span class="unresolved-badge badge-flagged" title="${t('qc.commentsFlaggedMany', { n: flaggedCount })}">🚩 ${flaggedCount}</span>`
           : unresolvedCount > 0
-          ? `<span class="unresolved-badge" title="${unresolvedCount} הערות לא טופלו">💬 ${unresolvedCount}</span>`
+          ? `<span class="unresolved-badge" title="${t('proj.unresolvedTitle', { n: unresolvedCount })}">💬 ${unresolvedCount}</span>`
           : ''}
         <span class="status-badge ${statusCls}">${STATUS_LABELS[pod.status] || pod.status}</span>
       </div>
       <div class="pod-card-meta">
         <div class="pod-card-meta-item">
-          <span class="pod-card-meta-label">טיפוס</span>
+          <span class="pod-card-meta-label">${t('proj.type')}</span>
           <span class="pod-card-meta-value">T${pod.project_types?.type_number || '—'}</span>
         </div>
         <div class="pod-card-meta-item">
-          <span class="pod-card-meta-label">כיוון</span>
+          <span class="pod-card-meta-label">${t('proj.direction')}</span>
           <span class="pod-card-meta-value">${dirLabel || '—'}</span>
         </div>
         <div class="pod-card-meta-item">
-          <span class="pod-card-meta-label">קבוצה</span>
+          <span class="pod-card-meta-label">${t('proj.group')}</span>
           <div style="display:flex;align-items:center;gap:5px">
             ${(() => {
               const selIdx = groups.findIndex(g => g.id === pod.group_id);
@@ -431,7 +431,7 @@ function renderPodCard(pod, groups = []) {
       </div>
       <div class="card-progress-section">
         <div class="card-progress-header">
-          <span class="card-progress-label">${completedStages}/6 שלבים</span>
+          <span class="card-progress-label">${t('proj.stagesCount', { done: completedStages })}</span>
           <span class="card-progress-pct ${pct===100?'pct-done':''}">${pct}%</span>
         </div>
         <div class="progress-bar-outer progress-bar-lg">
@@ -439,7 +439,7 @@ function renderPodCard(pod, groups = []) {
         </div>
       </div>
       <div class="pod-card-actions">
-        <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}" data-group-label="${escHtml(groupLabel)}">🔲 ברקוד</button>
+        <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}" data-group-label="${escHtml(groupLabel)}">${t('pod.barcode')}</button>
         ${isAdminOrPM() ? `<button class="btn btn-danger btn-sm btn-delete-pod" data-pod-id="${pod.id}">🗑</button>` : ''}
       </div>
     </div>
@@ -467,7 +467,7 @@ async function loadGroupsTab(projectId) {
   const container = document.getElementById('groups-list');
 
   if (!groups || groups.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🗓</div><div class="empty-state-text">אין קבוצות ביצוע עדיין</div></div>';
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🗓</div><div class="empty-state-text">${t('proj.noGroups')}</div></div>`;
     return;
   }
 
@@ -479,19 +479,19 @@ async function loadGroupsTab(projectId) {
         <div>
           <div class="group-name">${escHtml(g.name)}</div>
           <div style="display:flex;gap:12px;flex-wrap:wrap">
-            ${g.casting_target_date ? `<div class="group-date">יציקה: ${formatDate(g.casting_target_date)}</div>` : ''}
-            ${g.target_date ? `<div class="group-date">יעד: ${formatDate(g.target_date)}</div>` : ''}
+            ${g.casting_target_date ? `<div class="group-date">${t('proj.castingLabel')} ${formatDate(g.casting_target_date)}</div>` : ''}
+            ${g.target_date ? `<div class="group-date">${t('proj.targetLabel')} ${formatDate(g.target_date)}</div>` : ''}
           </div>
           ${(() => {
             const comp = (g.pod_composition && Object.keys(g.pod_composition).length) ? g.pod_composition : (podCompByGroup[g.id] || {});
             if (!Object.keys(comp).length) return '';
-            const rows = (types || []).flatMap(t =>
-              (t.type_directions || []).map(d => {
-                const key = `${t.id}_${d.id}`;
+            const rows = (types || []).flatMap(ty =>
+              (ty.type_directions || []).map(d => {
+                const key = `${ty.id}_${d.id}`;
                 const val = comp[key];
                 if (!val) return '';
-                const dirLabel = d.direction === 'R' ? 'ימין' : d.direction === 'L' ? 'שמאל' : d.direction;
-                return `<span style="font-size:12px;background:var(--primary-light);color:var(--primary);border-radius:4px;padding:2px 7px">T${t.type_number} ${dirLabel}: ${val}</span>`;
+                const dirLabel = d.direction === 'R' ? t('proj.dirRight') : d.direction === 'L' ? t('proj.dirLeft') : d.direction;
+                return `<span style="font-size:12px;background:var(--primary-light);color:var(--primary);border-radius:4px;padding:2px 7px">T${ty.type_number} ${dirLabel}: ${val}</span>`;
               })
             ).filter(Boolean).join('');
             return rows ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${rows}</div>` : '';
@@ -500,7 +500,7 @@ async function loadGroupsTab(projectId) {
       </div>
       <div class="group-actions" style="margin-right:auto">
         ${isAdminOrPM() ? `
-          <button class="btn btn-secondary btn-sm btn-edit-group" data-group-id="${g.id}" data-name="${escHtml(g.name)}" data-date="${g.target_date || ''}" data-casting-date="${g.casting_target_date || ''}" data-max-pods="${g.max_pods || ''}" data-composition="${escHtml(JSON.stringify(g.pod_composition || {}))}">עריכה</button>
+          <button class="btn btn-secondary btn-sm btn-edit-group" data-group-id="${g.id}" data-name="${escHtml(g.name)}" data-date="${g.target_date || ''}" data-casting-date="${g.casting_target_date || ''}" data-max-pods="${g.max_pods || ''}" data-composition="${escHtml(JSON.stringify(g.pod_composition || {}))}">${t('common.edit')}</button>
           <button class="btn btn-danger btn-sm btn-delete-group" data-group-id="${g.id}">🗑</button>
         ` : ''}
       </div>
@@ -539,23 +539,23 @@ async function loadProjectDetailsTab(project) {
   const typesSection = isAdminOrPM() && types?.length ? `
     <div class="card" style="margin-top:16px">
       <div class="card-body">
-        <div style="font-weight:600;margin-bottom:12px;font-size:15px">מידות לפי טיפוס</div>
-        ${types.map(t => {
-          const d = parseDims(t.dimensions);
+        <div style="font-weight:600;margin-bottom:12px;font-size:15px">${t('proj.dimsByType')}</div>
+        ${types.map(ty => {
+          const d = parseDims(ty.dimensions);
           return `
           <div class="det-type-row" style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
-            <div class="type-badge" style="flex-shrink:0">T${t.type_number}</div>
+            <div class="type-badge" style="flex-shrink:0">T${ty.type_number}</div>
             <div class="form-group" style="margin:0;flex:1;min-width:80px">
-              <label style="font-size:11px">אורך</label>
-              <input type="text" class="form-control det-dim-l" data-type-id="${t.id}" value="${escHtml(d.l)}" placeholder="אורך" />
+              <label style="font-size:11px">${t('proj.length')}</label>
+              <input type="text" class="form-control det-dim-l" data-type-id="${ty.id}" value="${escHtml(d.l)}" placeholder="${t('proj.length')}" />
             </div>
             <div class="form-group" style="margin:0;flex:1;min-width:80px">
-              <label style="font-size:11px">רוחב</label>
-              <input type="text" class="form-control det-dim-w" data-type-id="${t.id}" value="${escHtml(d.w)}" placeholder="רוחב" />
+              <label style="font-size:11px">${t('proj.width')}</label>
+              <input type="text" class="form-control det-dim-w" data-type-id="${ty.id}" value="${escHtml(d.w)}" placeholder="${t('proj.width')}" />
             </div>
             <div class="form-group" style="margin:0;flex:1;min-width:80px">
-              <label style="font-size:11px">גובה</label>
-              <input type="text" class="form-control det-dim-h" data-type-id="${t.id}" value="${escHtml(d.h)}" placeholder="גובה" />
+              <label style="font-size:11px">${t('proj.height')}</label>
+              <input type="text" class="form-control det-dim-h" data-type-id="${ty.id}" value="${escHtml(d.h)}" placeholder="${t('proj.height')}" />
             </div>
           </div>`;
         }).join('')}
@@ -564,11 +564,11 @@ async function loadProjectDetailsTab(project) {
   ` : (!isAdminOrPM() && types?.length ? `
     <div class="card" style="margin-top:16px">
       <div class="card-body">
-        <div style="font-weight:600;margin-bottom:12px;font-size:15px">מידות לפי טיפוס</div>
-        ${types.map(t => `
+        <div style="font-weight:600;margin-bottom:12px;font-size:15px">${t('proj.dimsByType')}</div>
+        ${types.map(ty => `
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
-            <div class="type-badge" style="flex-shrink:0">T${t.type_number}</div>
-            <span class="text-muted" style="font-size:13px">${escHtml(t.dimensions || '—')}</span>
+            <div class="type-badge" style="flex-shrink:0">T${ty.type_number}</div>
+            <span class="text-muted" style="font-size:13px">${escHtml(ty.dimensions || '—')}</span>
           </div>`).join('')}
       </div>
     </div>
@@ -580,47 +580,47 @@ async function loadProjectDetailsTab(project) {
         ${isAdminOrPM() ? `
           <div class="form-row">
             <div class="form-group">
-              <label>שם פרויקט מלא</label>
+              <label>${t('proj.fullProjectName')}</label>
               <input type="text" id="det-name" class="form-control" value="${escHtml(project.name)}" />
             </div>
             <div class="form-group">
-              <label>קוד פרויקט (3 אותיות)</label>
+              <label>${t('proj.projectCode3')}</label>
               <input type="text" id="det-code" class="form-control" value="${escHtml(project.code)}" maxlength="3" style="text-transform:uppercase" />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>מיקום</label>
+              <label>${t('proj.location')}</label>
               <input type="text" id="det-location" class="form-control" value="${escHtml(project.location || '')}" />
             </div>
             <div class="form-group">
-              <label>סוג צנרת</label>
+              <label>${t('proj.pipeType')}</label>
               <select id="det-pipe" class="form-control">
-                <option value="">בחר...</option>
+                <option value="">${t('proj.selectPlaceholder')}</option>
                 <option value="HDPE" ${project.pipe_type === 'HDPE' ? 'selected' : ''}>HDPE</option>
                 <option value="PVC" ${project.pipe_type === 'PVC' ? 'selected' : ''}>PVC</option>
               </select>
             </div>
           </div>
           <div class="form-group">
-            <label>קישור OneDrive לתיקיית הפרויקט</label>
+            <label>${t('proj.onedriveLink')}</label>
             <input type="url" id="det-onedrive" class="form-control" value="${escHtml(project.onedrive_folder_url || '')}" placeholder="https://onedrive.live.com/..." />
-            <div class="form-hint">הדבק כאן את הקישור לתיקיית OneDrive של הפרויקט לשמירת PDF</div>
+            <div class="form-hint">${t('proj.onedriveHint')}</div>
           </div>
         ` : `
           <div class="form-row">
-            <div class="info-item"><div class="info-label">שם</div><div class="info-value">${escHtml(project.name)}</div></div>
-            <div class="info-item"><div class="info-label">קוד</div><div class="info-value">${escHtml(project.code)}</div></div>
+            <div class="info-item"><div class="info-label">${t('proj.name')}</div><div class="info-value">${escHtml(project.name)}</div></div>
+            <div class="info-item"><div class="info-label">${t('proj.code')}</div><div class="info-value">${escHtml(project.code)}</div></div>
           </div>
           <div class="form-row mt-4">
-            <div class="info-item"><div class="info-label">מיקום</div><div class="info-value">${escHtml(project.location || '—')}</div></div>
-            <div class="info-item"><div class="info-label">סוג צנרת</div><div class="info-value">${escHtml(project.pipe_type || '—')}</div></div>
+            <div class="info-item"><div class="info-label">${t('proj.location')}</div><div class="info-value">${escHtml(project.location || '—')}</div></div>
+            <div class="info-item"><div class="info-label">${t('proj.pipeType')}</div><div class="info-value">${escHtml(project.pipe_type || '—')}</div></div>
           </div>
         `}
       </div>
     </div>
     ${typesSection}
-    ${isAdminOrPM() ? `<button class="btn btn-primary" id="btn-save-project-details" style="margin-top:8px">שמור שינויים</button>` : ''}
+    ${isAdminOrPM() ? `<button class="btn btn-primary" id="btn-save-project-details" style="margin-top:8px">${t('proj.saveChanges')}</button>` : ''}
   `;
 
   if (isAdminOrPM()) {
@@ -651,7 +651,7 @@ async function loadProjectDetailsTab(project) {
       const results = await Promise.all([projectUpdate, ...typeUpdates]);
 
       const firstError = results.find(r => r.error);
-      if (firstError) { setLoading(btn, false); showToast('שגיאה בשמירה', 'error'); return; }
+      if (firstError) { setLoading(btn, false); showToast(t('qc.saveError'), 'error'); return; }
 
       // If project code changed, rename all pod_codes via a single server-side RPC
       if (codeChanged) {
@@ -663,14 +663,14 @@ async function loadProjectDetailsTab(project) {
         if (rpcErr) {
           console.error('[save] rename_project_code_in_pods error:', rpcErr);
           setLoading(btn, false);
-          showToast('שגיאה בעדכון קודי פודים: ' + rpcErr.message, 'error');
+          showToast(t('proj.podCodeUpdateError') + rpcErr.message, 'error');
           return;
         }
       }
 
       setLoading(btn, false);
       const newName = document.getElementById('det-name').value.trim();
-      showToast(codeChanged ? `הפרטים עודכנו, קוד הפודים עודכן ל-${newCode}` : 'הפרטים עודכנו', 'success');
+      showToast(codeChanged ? t('proj.detailsUpdatedCode', { code: newCode }) : t('proj.detailsUpdated'), 'success');
       AppState.currentProject = { ...AppState.currentProject, name: newName, code: newCode };
       project.code = newCode;
       document.getElementById('project-detail-title').textContent = newName;
@@ -692,7 +692,7 @@ async function loadPlansTab(projectId) {
   const container = document.getElementById('plans-list');
 
   if (!types || types.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📐</div><div class="empty-state-text">אין טיפוסים בפרויקט זה</div></div>';
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📐</div><div class="empty-state-text">${t('proj.noTypesInProject')}</div></div>`;
     return;
   }
 
@@ -705,14 +705,14 @@ async function loadPlansTab(projectId) {
 
   container.innerHTML = `
     <div class="types-list">
-      ${types.map(t => {
-        const typePlans = plansByType[t.id] || [];
+      ${types.map(ty => {
+        const typePlans = plansByType[ty.id] || [];
         return `
-        <div class="type-item" data-type-id="${t.id}">
+        <div class="type-item" data-type-id="${ty.id}">
           <div class="type-item-header">
-            <div class="type-badge">T${t.type_number}</div>
-            <span class="text-muted">מידות: ${escHtml(t.dimensions || '—')}</span>
-            ${canEdit ? `<label class="btn btn-primary btn-sm plan-upload-label" style="margin-right:auto">📤 הוסף PDF<input type="file" accept="application/pdf" class="plan-file-input" data-type-id="${t.id}" style="display:none"></label>` : ''}
+            <div class="type-badge">T${ty.type_number}</div>
+            <span class="text-muted">${t('proj.dimsLabel')}${escHtml(ty.dimensions || '—')}</span>
+            ${canEdit ? `<label class="btn btn-primary btn-sm plan-upload-label" style="margin-right:auto">${t('proj.addPdf')}<input type="file" accept="application/pdf" class="plan-file-input" data-type-id="${ty.id}" style="display:none"></label>` : ''}
           </div>
           ${typePlans.length > 0 ? `
             <div class="plans-files-list">
@@ -724,7 +724,7 @@ async function loadPlansTab(projectId) {
                 </div>
               `).join('')}
             </div>
-          ` : '<div class="text-muted text-sm" style="margin-top:4px">אין תוכניות מועלות</div>'}
+          ` : `<div class="text-muted text-sm" style="margin-top:4px">${t('proj.noPlansUploaded')}</div>`}
         </div>`;
       }).join('')}
     </div>
@@ -744,15 +744,15 @@ async function loadPlansTab(projectId) {
 }
 
 async function uploadPlan(typeId, file, projectId) {
-  if (file.type !== 'application/pdf') { showToast('יש להעלות קובץ PDF בלבד', 'error'); return; }
-  if (file.size > 20 * 1024 * 1024) { showToast('גודל הקובץ המקסימלי הוא 20MB', 'error'); return; }
+  if (file.type !== 'application/pdf') { showToast(t('proj.pdfOnly'), 'error'); return; }
+  if (file.size > 20 * 1024 * 1024) { showToast(t('proj.maxFileSize20'), 'error'); return; }
 
-  showToast('מעלה קובץ...', 'info');
+  showToast(t('proj.uploadingFile'), 'info');
   const storagePath = `${projectId}/${typeId}/${Date.now()}_${file.name}`;
   const { error: upErr } = await supabaseClient.storage.from('plans').upload(storagePath, file);
   if (upErr) {
     console.error('Storage upload error:', upErr);
-    showToast('שגיאה בהעלאה: ' + upErr.message, 'error');
+    showToast(t('qc.uploadError') + upErr.message, 'error');
     return;
   }
 
@@ -770,24 +770,24 @@ async function uploadPlan(typeId, file, projectId) {
 
   if (dbErr) {
     console.error('DB insert error:', dbErr);
-    showToast('שגיאה בשמירה: ' + dbErr.message, 'error');
+    showToast(t('proj.saveErrorColon') + dbErr.message, 'error');
     await supabaseClient.storage.from('plans').remove([storagePath]);
     return;
   }
 
-  showToast('התוכנית הועלתה בהצלחה', 'success');
+  showToast(t('proj.planUploaded'), 'success');
   await loadPlansTab(projectId);
 }
 
 async function deletePlan(planId, storagePath, projectId) {
-  if (!confirm('האם למחוק תוכנית זו?')) return;
+  if (!confirm(t('proj.confirmDeletePlan'))) return;
 
   const { error: dbErr } = await supabaseClient.from('type_plans').delete().eq('id', planId);
-  if (dbErr) { showToast('שגיאה במחיקה: ' + dbErr.message, 'error'); return; }
+  if (dbErr) { showToast(t('proj.deleteError') + dbErr.message, 'error'); return; }
 
   if (storagePath) await supabaseClient.storage.from('plans').remove([storagePath]);
 
-  showToast('התוכנית נמחקה', 'success');
+  showToast(t('proj.planDeleted'), 'success');
   await loadPlansTab(projectId);
 }
 
@@ -806,16 +806,16 @@ async function setupPodFilters(projectId) {
   const statusSel = document.getElementById('filter-status');
   const castingSel = document.getElementById('filter-casting');
 
-  groupSel.innerHTML = '<option value="">כל הקבוצות</option>' + groups.map(g =>
+  groupSel.innerHTML = `<option value="">${t('filter.allGroups')}</option>` + groups.map(g =>
     `<option value="${g.id}">${escHtml(g.name)}</option>`).join('');
 
-  typeSel.innerHTML = '<option value="">כל הטיפוסים</option>' + (types || []).map(t =>
-    `<option value="${t.type_number}">T${t.type_number}</option>`).join('');
+  typeSel.innerHTML = `<option value="">${t('filter.allTypes')}</option>` + (types || []).map(ty =>
+    `<option value="${ty.type_number}">T${ty.type_number}</option>`).join('');
 
   dirSel.innerHTML = `
-    <option value="">כל הכיוונים</option>
-    <option value="R">ימין (R)</option>
-    <option value="L">שמאל (L)</option>
+    <option value="">${t('filter.allDirections')}</option>
+    <option value="R">${t('direction.R')}</option>
+    <option value="L">${t('direction.L')}</option>
   `;
 
   const applyFilters = () => {
@@ -837,9 +837,9 @@ async function setupPodFilters(projectId) {
 
 // ---- NEW PROJECT MODAL ----
 function showNewProjectModal() {
-  openModal('פרויקט חדש', buildNewProjectForm(), [
-    { label: 'ביטול', cls: 'btn-ghost', id: 'btn-modal-cancel' },
-    { label: 'צור פרויקט', cls: 'btn-primary', id: 'btn-modal-create-project' },
+  openModal(t('proj.newProjectTitle'), buildNewProjectForm(), [
+    { label: t('common.cancel'), cls: 'btn-ghost', id: 'btn-modal-cancel' },
+    { label: t('proj.createProject'), cls: 'btn-primary', id: 'btn-modal-create-project' },
   ]);
 
   document.getElementById('btn-modal-cancel')?.addEventListener('click', closeModal);
@@ -855,23 +855,23 @@ function buildNewProjectForm() {
     <form id="form-new-project">
       <div class="form-row">
         <div class="form-group">
-          <label>שם פרויקט מלא <span class="required">*</span></label>
-          <input type="text" id="np-name" class="form-control" placeholder="שם הפרויקט" required />
+          <label>${t('proj.fullProjectName')} <span class="required">*</span></label>
+          <input type="text" id="np-name" class="form-control" placeholder="${t('proj.projectNamePlaceholder')}" required />
         </div>
         <div class="form-group">
-          <label>קוד פרויקט (3 אותיות) <span class="required">*</span></label>
+          <label>${t('proj.projectCode3')} <span class="required">*</span></label>
           <input type="text" id="np-code" class="form-control" placeholder="SVC" maxlength="3" style="text-transform:uppercase" required />
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>תאריך קבלת פרויקט <span class="required">*</span></label>
+          <label>${t('proj.dateReceivedLabel')} <span class="required">*</span></label>
           <input type="date" id="np-date" class="form-control" required />
         </div>
         <div class="form-group">
-          <label>סוג צנרת</label>
+          <label>${t('proj.pipeType')}</label>
           <select id="np-pipe" class="form-control">
-            <option value="">בחר...</option>
+            <option value="">${t('proj.selectPlaceholder')}</option>
             <option value="HDPE">HDPE</option>
             <option value="PVC">PVC</option>
           </select>
@@ -879,11 +879,11 @@ function buildNewProjectForm() {
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>מיקום</label>
-          <input type="text" id="np-location" class="form-control" placeholder="עיר / כתובת" />
+          <label>${t('proj.location')}</label>
+          <input type="text" id="np-location" class="form-control" placeholder="${t('proj.locationPlaceholder')}" />
         </div>
         <div class="form-group">
-          <label>מספר טיפוסים</label>
+          <label>${t('proj.typeCount')}</label>
           <input type="number" id="np-type-count" class="form-control" value="1" min="1" max="99" />
         </div>
       </div>
@@ -900,35 +900,35 @@ function renderTypeInputs() {
   for (let i = 1; i <= count; i++) {
     html += `
       <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;background:#f8fafc">
-        <div style="font-weight:600;margin-bottom:10px;color:var(--primary)">טיפוס T${i}</div>
+        <div style="font-weight:600;margin-bottom:10px;color:var(--primary)">${t('proj.type')} T${i}</div>
         <div class="form-row">
           <div class="form-group">
-            <label>אורך</label>
-            <input type="text" id="np-type${i}-dim-l" class="form-control" placeholder="אורך" />
+            <label>${t('proj.length')}</label>
+            <input type="text" id="np-type${i}-dim-l" class="form-control" placeholder="${t('proj.length')}" />
           </div>
           <div class="form-group">
-            <label>רוחב</label>
-            <input type="text" id="np-type${i}-dim-w" class="form-control" placeholder="רוחב" />
+            <label>${t('proj.width')}</label>
+            <input type="text" id="np-type${i}-dim-w" class="form-control" placeholder="${t('proj.width')}" />
           </div>
           <div class="form-group">
-            <label>גובה</label>
-            <input type="text" id="np-type${i}-dim-h" class="form-control" placeholder="גובה" />
+            <label>${t('proj.height')}</label>
+            <input type="text" id="np-type${i}-dim-h" class="form-control" placeholder="${t('proj.height')}" />
           </div>
         </div>
         <div class="form-group">
-          <label>כיוונים ומספר פודים</label>
+          <label>${t('proj.dirsAndPodCount')}</label>
           <div style="display:flex;gap:16px;flex-wrap:wrap">
             <div style="display:flex;align-items:center;gap:8px">
               <input type="checkbox" id="np-type${i}-R" checked />
-              <label for="np-type${i}-R">ימין (R)</label>
+              <label for="np-type${i}-R">${t('direction.R')}</label>
               <input type="number" id="np-type${i}-R-count" class="form-control" style="width:80px" value="1" min="1" />
-              <span class="text-sm text-muted">פודים</span>
+              <span class="text-sm text-muted">${t('proj.podsLower')}</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <input type="checkbox" id="np-type${i}-L" checked />
-              <label for="np-type${i}-L">שמאל (L)</label>
+              <label for="np-type${i}-L">${t('direction.L')}</label>
               <input type="number" id="np-type${i}-L-count" class="form-control" style="width:80px" value="1" min="1" />
-              <span class="text-sm text-muted">פודים</span>
+              <span class="text-sm text-muted">${t('proj.podsLower')}</span>
             </div>
           </div>
         </div>
@@ -948,10 +948,10 @@ async function createProject() {
   const typeCount = parseInt(document.getElementById('np-type-count')?.value || 1);
 
   if (!name || !code || !dateReceived) {
-    showToast('יש למלא שם, קוד ותאריך', 'error'); return;
+    showToast(t('proj.fillNameCodeDate'), 'error'); return;
   }
   if (code.length !== 3) {
-    showToast('הקוד חייב להיות 3 אותיות בדיוק', 'error'); return;
+    showToast(t('proj.codeMustBe3'), 'error'); return;
   }
   if (!AppState.currentProfile) {
     // Try to reload profile once before giving up
@@ -960,14 +960,14 @@ async function createProject() {
       if (reloaded) AppState.currentProfile = reloaded;
     }
     if (!AppState.currentProfile) {
-      showToast('שגיאה: פרופיל לא נטען. רענן את הדף (F5) ונסה שוב.', 'error'); return;
+      showToast(t('proj.profileNotLoaded'), 'error'); return;
     }
   }
 
   const setBtnStep = (text) => { if (btn) { btn.innerHTML = `⏳ ${text}`; btn.disabled = true; } };
-  const resetBtn = () => { if (btn) { btn.innerHTML = 'צור פרויקט'; btn.disabled = false; } };
+  const resetBtn = () => { if (btn) { btn.innerHTML = t('proj.createProject'); btn.disabled = false; } };
 
-  setBtnStep('יוצר פרויקט...');
+  setBtnStep(t('proj.creatingProject'));
   try {
     // Step 1: Insert project
     console.log('[createProject] Step 1: inserting project');
@@ -985,7 +985,7 @@ async function createProject() {
         new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 12000)),
       ]);
       const { error: insertErr } = result || {};
-      if (insertErr) throw new Error('שלב 1 – insert: ' + insertErr.message);
+      if (insertErr) throw new Error(t('proj.errInsertStep') + insertErr.message);
       insertConfirmed = true;
       console.log('[createProject] Step 1a: insert confirmed');
     } catch (e) {
@@ -1005,14 +1005,14 @@ async function createProject() {
       .single();
     console.log('[createProject] Step 1b result:', { project, projErr, insertConfirmed });
 
-    if (projErr && !insertConfirmed) throw new Error('שגיאה ביצירת פרויקט: ' + projErr.message);
-    if (!project) throw new Error('הפרויקט לא נמצא לאחר יצירה — נסה שוב');
+    if (projErr && !insertConfirmed) throw new Error(t('proj.errCreateProject') + projErr.message);
+    if (!project) throw new Error(t('proj.errNotFoundAfterCreate'));
     console.log('[createProject] Step 1 OK, project id:', project.id);
 
     // Step 2: Insert types and directions, create pods
     let globalSerial = 0;
     for (let i = 1; i <= typeCount; i++) {
-      setBtnStep(`שומר טיפוס ${i}/${typeCount}...`);
+      setBtnStep(t('proj.savingType', { i, total: typeCount }));
       const dimL = document.getElementById(`np-type${i}-dim-l`)?.value.trim() || '';
       const dimW = document.getElementById(`np-type${i}-dim-w`)?.value.trim() || '';
       const dimH = document.getElementById(`np-type${i}-dim-h`)?.value.trim() || '';
@@ -1022,7 +1022,7 @@ async function createProject() {
         .from('project_types')
         .insert({ project_id: project.id, type_number: i, dimensions: dims || null })
         .select().single();
-      if (typeErr) throw new Error(`שלב 2 – טיפוס ${i}: ` + typeErr.message);
+      if (typeErr) throw new Error(t('proj.errTypeStep', { i }) + typeErr.message);
       console.log(`[createProject] Type ${i} OK`);
 
       for (const dir of ['R', 'L']) {
@@ -1030,16 +1030,16 @@ async function createProject() {
         if (!cb?.checked) continue;
         const podCount = parseInt(document.getElementById(`np-type${i}-${dir}-count`)?.value || 1);
 
-        setBtnStep(`שומר כיוון ${dir}...`);
+        setBtnStep(t('proj.savingDirection', { dir }));
         console.log(`[createProject] Step 3: inserting direction ${dir} for type ${i}`);
         const { data: dirData, error: dirErr } = await supabaseClient
           .from('type_directions')
           .insert({ type_id: typeData.id, direction: dir, pod_count: podCount })
           .select().single();
-        if (dirErr) throw new Error(`שלב 3 – כיוון ${dir}: ` + dirErr.message);
+        if (dirErr) throw new Error(t('proj.errDirStep', { dir }) + dirErr.message);
         console.log(`[createProject] Direction ${dir} OK`);
 
-        setBtnStep(`יוצר פודים...`);
+        setBtnStep(t('proj.creatingPods'));
         const podsToInsert = [];
         for (let s = 1; s <= podCount; s++) {
           globalSerial++;
@@ -1055,19 +1055,19 @@ async function createProject() {
         if (podsToInsert.length > 0) {
           console.log(`[createProject] Step 4: inserting ${podsToInsert.length} pods`);
           const { error: podsErr } = await supabaseClient.from('pods').insert(podsToInsert);
-          if (podsErr) throw new Error('שלב 4 – פודים: ' + podsErr.message);
+          if (podsErr) throw new Error(t('proj.errPodsStep') + podsErr.message);
           console.log('[createProject] Pods OK');
         }
       }
     }
 
-    showToast('הפרויקט נוצר בהצלחה!', 'success');
+    showToast(t('proj.projectCreated'), 'success');
     closeModal();
     await loadProjects();
     openProject(project.id);
   } catch (err) {
     console.error('[createProject] Error:', err);
-    showToast('שגיאה: ' + (err.message || err), 'error');
+    showToast(t('proj.errorPrefix') + (err.message || err), 'error');
   } finally {
     resetBtn();
   }
@@ -1127,49 +1127,49 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
     });
   }
 
-  const typeRows = (types || []).flatMap(t =>
-    (t.type_directions || []).map(d => {
-      const key = `${t.id}_${d.id}`;
-      const dirLabel = d.direction === 'R' ? 'ימין' : d.direction === 'L' ? 'שמאל' : d.direction;
+  const typeRows = (types || []).flatMap(ty =>
+    (ty.type_directions || []).map(d => {
+      const key = `${ty.id}_${d.id}`;
+      const dirLabel = d.direction === 'R' ? t('proj.dirRight') : d.direction === 'L' ? t('proj.dirLeft') : d.direction;
       const val = composition[key] || '';
       if (isEdit) {
         return val ? `
           <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
-            <span style="font-weight:500">T${t.type_number} — ${dirLabel}</span>
+            <span style="font-weight:500">T${ty.type_number} — ${dirLabel}</span>
             <span style="font-weight:700;color:var(--primary)">${val}</span>
           </div>` : '';
       }
       return `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
-          <span style="font-weight:500">T${t.type_number} — ${dirLabel}</span>
+          <span style="font-weight:500">T${ty.type_number} — ${dirLabel}</span>
           <input type="number" id="grp-comp-${key}" class="form-control" min="0" placeholder="0"
             value="${val}" style="width:80px;text-align:center" />
         </div>`;
     })
   ).filter(Boolean).join('');
 
-  openModal(isEdit ? 'עריכת קבוצה' : 'קבוצת ביצוע חדשה', `
+  openModal(isEdit ? t('proj.editGroup') : t('proj.newGroup'), `
     <div class="form-group">
-      <label>שם הקבוצה</label>
+      <label>${t('proj.groupName')}</label>
       ${isEdit
         ? `<div class="form-control" style="background:var(--surface-2);color:var(--text-secondary)">${escHtml(autoName)}</div>`
         : `<input type="text" id="grp-name" class="form-control" value="${escHtml(autoName)}" />`}
     </div>
     <div class="form-group">
-      <label>הרכב פודים בקבוצה</label>
-      ${typeRows || `<div style="color:var(--text-secondary);font-size:13px">${isEdit ? 'לא הוגדר הרכב' : 'אין טיפוסים מוגדרים בפרויקט'}</div>`}
+      <label>${t('proj.podComposition')}</label>
+      ${typeRows || `<div style="color:var(--text-secondary);font-size:13px">${isEdit ? t('proj.noCompositionDefined') : t('proj.noTypesDefined')}</div>`}
     </div>
     <div class="form-group">
-      <label>תאריך יציקה</label>
+      <label>${t('proj.castingDate')}</label>
       <input type="date" id="grp-casting-date" class="form-control" value="${castingDate}" />
     </div>
     <div class="form-group">
-      <label>תאריך יעד</label>
+      <label>${t('proj.targetDate')}</label>
       <input type="date" id="grp-date" class="form-control" value="${date}" />
     </div>
   `, [
-    { label: 'ביטול', cls: 'btn-ghost', id: 'btn-grp-cancel' },
-    { label: 'שמור', cls: 'btn-primary', id: 'btn-grp-save' },
+    { label: t('common.cancel'), cls: 'btn-ghost', id: 'btn-grp-cancel' },
+    { label: t('common.save'), cls: 'btn-primary', id: 'btn-grp-save' },
   ]);
 
   document.getElementById('btn-grp-cancel')?.addEventListener('click', closeModal);
@@ -1188,7 +1188,7 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
           .eq('id', groupId));
       } else {
         const nm = document.getElementById('grp-name')?.value.trim();
-        if (!nm) { showToast('יש להזין שם', 'error'); setLoading(btn, false); return; }
+        if (!nm) { showToast(t('proj.enterName'), 'error'); setLoading(btn, false); return; }
         // Build composition and total for new group
         const comp = {};
         let total = 0;
@@ -1251,17 +1251,17 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
           }
           if (podsToInsert.length > 0) {
             const { error: podsErr } = await supabaseClient.from('pods').insert(podsToInsert);
-            if (podsErr) { showToast('שגיאה ביצירת פודים: ' + podsErr.message, 'error'); return; }
+            if (podsErr) { showToast(t('proj.errorCreatingPods') + podsErr.message, 'error'); return; }
           }
         }
       }
-      if (saveError) { showToast('שגיאה: ' + saveError.message, 'error'); return; }
-      showToast('נשמר בהצלחה', 'success');
+      if (saveError) { showToast(t('proj.errorPrefix') + saveError.message, 'error'); return; }
+      showToast(t('proj.savedSuccess'), 'success');
       closeModal();
       await loadGroupsTab(projectId);
       await setupPodFilters(projectId);
     } catch (err) {
-      showToast('שגיאה: ' + err.message, 'error');
+      showToast(t('proj.errorPrefix') + err.message, 'error');
     } finally {
       setLoading(btn, false);
     }
@@ -1269,9 +1269,9 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
 }
 
 async function deleteGroup(groupId, projectId) {
-  if (!confirm('האם למחוק קבוצה זו?')) return;
+  if (!confirm(t('proj.confirmDeleteGroup'))) return;
   await supabaseClient.from('production_groups').delete().eq('id', groupId);
-  showToast('הקבוצה נמחקה', 'success');
+  showToast(t('proj.groupDeleted'), 'success');
   await loadGroupsTab(projectId);
   await setupPodFilters(projectId);
 }
@@ -1291,37 +1291,37 @@ async function showAddPodModal(projectId) {
 
   const project = AppState.currentProject;
 
-  openModal('הוסף פוד', `
+  openModal(t('proj.addPod'), `
     <div class="form-group">
-      <label>טיפוס</label>
+      <label>${t('proj.type')}</label>
       <select id="add-pod-type" class="form-control">
-        ${(types || []).map(t => `<option value="${t.id}" data-type-num="${t.type_number}">${'T' + t.type_number} (${t.dimensions || ''})</option>`).join('')}
+        ${(types || []).map(ty => `<option value="${ty.id}" data-type-num="${ty.type_number}">${'T' + ty.type_number} (${ty.dimensions || ''})</option>`).join('')}
       </select>
     </div>
     <div class="form-group">
-      <label>כיוון</label>
+      <label>${t('proj.direction')}</label>
       <select id="add-pod-dir" class="form-control">
-        <option value="">בחר כיוון</option>
+        <option value="">${t('proj.selectDirection')}</option>
       </select>
     </div>
     <div class="form-group">
-      <label>מספר סידורי</label>
+      <label>${t('proj.serialNumber')}</label>
       <input type="number" id="add-pod-serial" class="form-control" min="1" value="1" />
     </div>
     <div class="form-group">
-      <label>קבוצה</label>
+      <label>${t('proj.group')}</label>
       <select id="add-pod-group" class="form-control">
-        <option value="">ללא קבוצה</option>
+        <option value="">${t('proj.noGroup')}</option>
         ${(groups || []).map(g => `<option value="${g.id}">${escHtml(g.name)}</option>`).join('')}
       </select>
     </div>
     <div id="add-pod-preview" class="form-group">
-      <label>קוד פוד שייווצר</label>
+      <label>${t('proj.podCodeToCreate')}</label>
       <div id="pod-code-preview" style="font-family:monospace;font-size:16px;font-weight:700;padding:8px;background:#f8fafc;border-radius:8px;border:1.5px solid var(--border)"></div>
     </div>
   `, [
-    { label: 'ביטול', cls: 'btn-ghost', id: 'btn-add-pod-cancel' },
-    { label: 'צור פוד', cls: 'btn-primary', id: 'btn-add-pod-confirm' },
+    { label: t('common.cancel'), cls: 'btn-ghost', id: 'btn-add-pod-cancel' },
+    { label: t('proj.createPod'), cls: 'btn-primary', id: 'btn-add-pod-confirm' },
   ]);
 
   // Populate directions on type change
@@ -1330,9 +1330,9 @@ async function showAddPodModal(projectId) {
     const selectedTypeId = typeEl?.value;
     const selectedType = (types || []).find(t => t.id === selectedTypeId);
     const dirSel = document.getElementById('add-pod-dir');
-    dirSel.innerHTML = '<option value="">בחר כיוון</option>' +
+    dirSel.innerHTML = `<option value="">${t('proj.selectDirection')}</option>` +
       (selectedType?.type_directions || []).map(d =>
-        `<option value="${d.id}" data-dir="${d.direction}">${d.direction === 'R' ? 'ימין (R)' : 'שמאל (L)'}</option>`
+        `<option value="${d.id}" data-dir="${d.direction}">${d.direction === 'R' ? t('direction.R') : t('direction.L')}</option>`
       ).join('');
     updatePreview();
   };
@@ -1372,7 +1372,7 @@ async function showAddPodModal(projectId) {
     const serial = parseInt(serialEl?.value || 1);
     const groupId = groupEl?.value || null;
 
-    if (!typeId || !dirId || !dir) { showToast('יש לבחור טיפוס וכיוון', 'error'); return; }
+    if (!typeId || !dirId || !dir) { showToast(t('proj.selectTypeDirection'), 'error'); return; }
 
     const podCode = generatePodCode(project.code, project.date_received, typeNum, dir, serial);
     const btn = document.getElementById('btn-add-pod-confirm');
@@ -1384,7 +1384,7 @@ async function showAddPodModal(projectId) {
         const { data: grpPods } = await supabaseClient.from('pods').select('group_serial').eq('group_id', groupId);
         const currentCount = (grpPods || []).length;
         if (grpData?.max_pods && currentCount >= grpData.max_pods) {
-          showToast(`הקבוצה מלאה — קיבולת מקסימלית: ${grpData.max_pods} פודים`, 'error');
+          showToast(t('proj.groupFull', { max: grpData.max_pods }), 'error');
           setLoading(btn, false);
           return;
         }
@@ -1400,11 +1400,11 @@ async function showAddPodModal(projectId) {
         status: 'pending',
       });
       if (error) throw error;
-      showToast('הפוד נוצר בהצלחה', 'success');
+      showToast(t('proj.podCreated'), 'success');
       closeModal();
       await loadPodsTab(projectId);
     } catch (err) {
-      showToast('שגיאה: ' + err.message, 'error');
+      showToast(t('proj.errorPrefix') + err.message, 'error');
     } finally {
       setLoading(btn, false);
     }
@@ -1412,10 +1412,10 @@ async function showAddPodModal(projectId) {
 }
 
 async function deletePod(podId) {
-  if (!confirm('האם למחוק פוד זה? הפעולה אינה הפיכה')) return;
+  if (!confirm(t('proj.confirmDeletePod'))) return;
   const { error } = await supabaseClient.from('pods').delete().eq('id', podId);
-  if (error) { showToast('שגיאה במחיקה', 'error'); return; }
-  showToast('הפוד נמחק', 'success');
+  if (error) { showToast(t('proj.deleteErrorSimple'), 'error'); return; }
+  showToast(t('proj.podDeleted'), 'success');
   if (AppState.currentProject) await loadPodsTab(AppState.currentProject.id);
 }
 
@@ -1424,24 +1424,24 @@ function promptArchiveOrDelete() {
   const project = AppState.currentProject;
   if (!project) return;
 
-  openModal('פעולות על הפרויקט', `
+  openModal(t('proj.projectActions'), `
     <div class="archive-delete-options">
       <div class="archive-option">
         <div class="archive-option-icon">📦</div>
         <div class="archive-option-body">
-          <div class="archive-option-title">העבר לארכיון</div>
-          <div class="archive-option-desc">הפרויקט יוסתר מהרשימה הפעילה אך ישמר במערכת. ניתן לשחזר בעתיד.</div>
+          <div class="archive-option-title">${t('proj.moveToArchive')}</div>
+          <div class="archive-option-desc">${t('proj.moveToArchiveDesc')}</div>
         </div>
-        <button class="btn btn-secondary" id="btn-confirm-archive">ארכיון</button>
+        <button class="btn btn-secondary" id="btn-confirm-archive">${t('proj.archiveBtn')}</button>
       </div>
       <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
       <div class="archive-option">
         <div class="archive-option-icon">🗑️</div>
         <div class="archive-option-body">
-          <div class="archive-option-title" style="color:#dc2626">מחיקה לצמיתות</div>
-          <div class="archive-option-desc">מחיקה בלתי הפיכה של הפרויקט וכל הנתונים הקשורים אליו.</div>
+          <div class="archive-option-title" style="color:#dc2626">${t('proj.deletePermanentTitle')}</div>
+          <div class="archive-option-desc">${t('proj.permanentDeleteDesc')}</div>
         </div>
-        <button class="btn btn-danger" id="btn-go-delete">מחיקה</button>
+        <button class="btn btn-danger" id="btn-go-delete">${t('proj.deleteBtn')}</button>
       </div>
     </div>
   `, []);
@@ -1450,10 +1450,10 @@ function promptArchiveOrDelete() {
     const btn = document.getElementById('btn-confirm-archive');
     btn.disabled = true; btn.textContent = '...';
     const { error } = await supabaseClient.from('projects').update({ is_active: false }).eq('id', project.id);
-    if (error) { showToast('שגיאה בהעברה לארכיון: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'ארכיון'; return; }
+    if (error) { showToast(t('proj.archiveError') + error.message, 'error'); btn.disabled = false; btn.textContent = t('proj.archiveBtn'); return; }
     ProjectCache.delete(project.id);
     closeModal();
-    showToast('הפרויקט הועבר לארכיון', 'success');
+    showToast(t('proj.projectArchived'), 'success');
     showView('projects');
     await loadProjects();
   });
@@ -1461,15 +1461,15 @@ function promptArchiveOrDelete() {
   document.getElementById('btn-go-delete').addEventListener('click', () => {
     // Step 2 — require typing the project name
     document.getElementById('modal-body').innerHTML = `
-      <p style="color:#dc2626;font-weight:600;margin-bottom:8px">⚠️ פעולה זו אינה הפיכה!</p>
-      <p style="margin-bottom:16px;font-size:14px">כדי לאשר מחיקה לצמיתות, הקלד את שם הפרויקט:</p>
+      <p style="color:#dc2626;font-weight:600;margin-bottom:8px">${t('proj.irreversibleWarning')}</p>
+      <p style="margin-bottom:16px;font-size:14px">${t('proj.typeNameToConfirm')}</p>
       <p style="font-weight:700;margin-bottom:10px;padding:8px;background:var(--bg);border-radius:6px;text-align:center">${escHtml(project.name)}</p>
-      <input id="delete-confirm-input" class="form-control" placeholder="הקלד שם הפרויקט לאימות" autocomplete="off" />
-      <p id="delete-confirm-error" class="error-message hidden" style="margin-top:8px">השם אינו תואם</p>
+      <input id="delete-confirm-input" class="form-control" placeholder="${t('proj.typeNamePlaceholder')}" autocomplete="off" />
+      <p id="delete-confirm-error" class="error-message hidden" style="margin-top:8px">${t('proj.nameMismatch')}</p>
     `;
     document.getElementById('modal-footer').innerHTML = `
-      <button class="btn btn-ghost" id="btn-delete-back">חזרה</button>
-      <button class="btn btn-danger" id="btn-confirm-delete" disabled>מחק לצמיתות</button>
+      <button class="btn btn-ghost" id="btn-delete-back">${t('proj.back')}</button>
+      <button class="btn btn-danger" id="btn-confirm-delete" disabled>${t('proj.deletePermanentBtn')}</button>
     `;
 
     const input = document.getElementById('delete-confirm-input');
@@ -1483,16 +1483,16 @@ function promptArchiveOrDelete() {
 
     confirmBtn.addEventListener('click', async () => {
       if (input.value.trim() !== project.name) return;
-      confirmBtn.disabled = true; confirmBtn.textContent = 'מוחק...';
+      confirmBtn.disabled = true; confirmBtn.textContent = t('proj.deleting');
       const { error } = await supabaseClient.from('projects').delete().eq('id', project.id);
       if (error) {
-        showToast('שגיאה במחיקה: ' + error.message, 'error');
-        confirmBtn.disabled = false; confirmBtn.textContent = 'מחק לצמיתות';
+        showToast(t('proj.deleteError') + error.message, 'error');
+        confirmBtn.disabled = false; confirmBtn.textContent = t('proj.deletePermanentBtn');
         return;
       }
       ProjectCache.delete(project.id);
       closeModal();
-      showToast('הפרויקט נמחק לצמיתות', 'success');
+      showToast(t('proj.projectDeletedPermanent'), 'success');
       showView('projects');
       await loadProjects();
     });
@@ -1506,11 +1506,11 @@ function escHtml(str) {
 
 function printAllBarcodes() {
   const cards = document.querySelectorAll('#pods-table-container .btn-pod-barcode-tbl');
-  if (cards.length === 0) { showToast('אין פודים להדפסה לפי הסינון הנוכחי', 'error'); return; }
+  if (cards.length === 0) { showToast(t('proj.noPodsToPrint'), 'error'); return; }
 
   const items = Array.from(cards).map(btn => ({ code: btn.dataset.podCode, groupLabel: btn.dataset.groupLabel || '' })).filter(i => i.code);
   console.log('[printAllBarcodes] items:', items);
-  if (items.length === 0) { showToast('לא נמצאו קודי ברקוד', 'error'); return; }
+  if (items.length === 0) { showToast(t('proj.noBarcodesFound'), 'error'); return; }
 
   // Render SVGs into live DOM using a hidden scratch div
   const scratch = document.createElement('div');
@@ -1555,11 +1555,12 @@ function printAllBarcodes() {
     .bc-label{font-size:18pt;font-weight:bold;letter-spacing:1.5px;white-space:nowrap}
     @media print{.toolbar{display:none}}
   `;
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>ברקודים</title><style>${css}</style></head><body>
+  const dir = (typeof langDir === 'function') ? langDir(getLang()) : 'rtl';
+  const html = `<!DOCTYPE html><html dir="${dir}"><head><meta charset="UTF-8">
+    <title>${t('proj.barcodesTitle')}</title><style>${css}</style></head><body>
     <div class="toolbar">
-      <h2>ברקודים — ${escHtml(AppState.currentProject?.name || '')} &nbsp;|&nbsp; ${items.length} מדבקות &nbsp;|&nbsp; Brother QL-700 · 62×150mm</h2>
-      <button class="btn-print" onclick="window.print()">🖨️ הדפס</button>
+      <h2>${escHtml(t('proj.barcodesHeader', { name: AppState.currentProject?.name || '', count: items.length }))}</h2>
+      <button class="btn-print" onclick="window.print()">${t('common.print')}</button>
     </div>
     ${barcodeItems}
     </body></html>`;
@@ -1567,7 +1568,7 @@ function printAllBarcodes() {
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const printWin = window.open(url, '_blank');
-  if (!printWin) { showToast('חסום חלונות קופצים — אפשר חלונות קופצים בדפדפן', 'error'); return; }
+  if (!printWin) { showToast(t('proj.popupBlocked'), 'error'); return; }
   printWin.addEventListener('load', () => {
     printWin.print();
     URL.revokeObjectURL(url);

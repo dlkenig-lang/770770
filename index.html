@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="images/favicon.svg">
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
   <link rel="mask-icon" href="images/safari-pinned-tab.svg" color="#3DD4CE">
-  <link rel="stylesheet" href="css/styles.css?v=57" />
+  <link rel="stylesheet" href="css/styles.css?v=58" />
   <!-- Supabase - must load synchronously before app scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <!-- JsBarcode - defer, used only when printing barcodes -->
@@ -234,6 +234,11 @@
 
 <!-- ========== AUTH SCREENS ========== -->
 <div id="auth-screen" class="auth-screen">
+  <!-- Language switcher (visible on all auth panels, before login) -->
+  <div class="lang-switcher auth-lang-switcher" title="בחר שפה" data-i18n-title="lang.title">
+    <button type="button" class="lang-btn" data-lang="he" data-i18n="lang.he">עב</button>
+    <button type="button" class="lang-btn" data-lang="en" data-i18n="lang.en">EN</button>
+  </div>
   <!-- Login -->
   <div id="auth-login" class="auth-panel active">
     <div class="auth-card">

@@ -1278,6 +1278,15 @@ table tbody tr:hover { background: #f8fafc; }
   background: var(--primary);
   color: #fff;
 }
+/* Auth-screen switcher: fixed in the reading-end top corner, above the card */
+.auth-lang-switcher {
+  position: fixed;
+  top: 18px;
+  inset-inline-end: 18px;
+  z-index: 10;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
 
 /* =============================================
    LTR (English) layout overrides

@@ -379,6 +379,8 @@ function applyLang(lang) {
   if (typeof refreshI18nLabels === 'function') refreshI18nLabels();
   applyStaticTranslations(document);
   updateLangSwitcher(lang);
+  // Let other modules react to a direction/language change (e.g. mobile drawer).
+  window.dispatchEvent(new CustomEvent('languagechange:app', { detail: { lang } }));
   if (typeof window.rerenderCurrentView === 'function') {
     try { window.rerenderCurrentView(); } catch (e) { /* view not ready */ }
   }

@@ -201,28 +201,48 @@ function initAuth() {
 
   // Use window.innerWidth (physical pixels, RTL-immune) to position the drawer.
   const DRAWER_W = 260;
+  const MOBILE_BP = 768;
+  const isMobileView = () => window.innerWidth <= MOBILE_BP;
+  const isLtr = () => document.documentElement.getAttribute('dir') === 'ltr';
+
+  // Off-screen / open X positions depend on reading direction.
+  // RTL: drawer lives on the right → off-screen at innerWidth, open at innerWidth-W.
+  // LTR: drawer lives on the left  → off-screen at -W,          open at 0.
+  const closedLeft = () => (isLtr() ? -DRAWER_W : window.innerWidth);
+  const openLeft   = () => (isLtr() ? 0 : window.innerWidth - DRAWER_W);
 
   function openDrawer() {
-    if (!sidebar) return;
-    sidebar.style.left = (window.innerWidth - DRAWER_W) + 'px';
+    if (!sidebar || !isMobileView()) return;
+    sidebar.style.left = openLeft() + 'px';
     backdrop?.classList.add('open');
     document.body.style.overflow = 'hidden';
   }
   function closeDrawer() {
     if (!sidebar) return;
-    sidebar.style.left = window.innerWidth + 'px'; // off-screen right
     backdrop?.classList.remove('open');
     document.body.style.overflow = '';
+    // On desktop the sidebar is a fixed rail positioned by CSS — never leave an
+    // inline left behind (it would win over the LTR stylesheet and hide the rail).
+    if (isMobileView()) sidebar.style.left = closedLeft() + 'px';
+    else sidebar.style.left = '';
   }
 
-  // Keep drawer correctly positioned if viewport is resized (e.g. rotation)
-  window.addEventListener('resize', () => {
-    if (backdrop?.classList.contains('open')) {
-      sidebar.style.left = (window.innerWidth - DRAWER_W) + 'px';
-    } else {
-      sidebar.style.left = window.innerWidth + 'px';
+  // Keep the drawer/rail correctly positioned across viewport or language changes.
+  function syncDrawer() {
+    if (!sidebar) return;
+    if (!isMobileView()) {
+      // Desktop: hand positioning back to CSS.
+      sidebar.style.left = '';
+      backdrop?.classList.remove('open');
+      document.body.style.overflow = '';
+      return;
     }
-  });
+    sidebar.style.left = (backdrop?.classList.contains('open') ? openLeft() : closedLeft()) + 'px';
+  }
+  window.addEventListener('resize', syncDrawer);
+  // Re-sync after a language switch (direction may have flipped).
+  window.addEventListener('languagechange:app', syncDrawer);
+  syncDrawer();
 
   hamburger?.addEventListener('click', openDrawer);
   backdrop?.addEventListener('click', closeDrawer);

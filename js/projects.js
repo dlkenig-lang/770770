@@ -1186,7 +1186,7 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
     </div>
     <div class="form-group">
       <label>הרכב פודים בקבוצה</label>
-      ${typeRows || '<div style="color:var(--text-secondary);font-size:13px">${isEdit ? "לא הוגדר הרכב" : "אין טיפוסים מוגדרים בפרויקט"}</div>'}
+      ${typeRows || `<div style="color:var(--text-secondary);font-size:13px">${isEdit ? 'לא הוגדר הרכב' : 'אין טיפוסים מוגדרים בפרויקט'}</div>`}
     </div>
     <div class="form-group">
       <label>תאריך יציקה</label>

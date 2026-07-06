@@ -499,11 +499,21 @@ function renderPodCard(pod, groups = []) {
 
 // ---- GROUPS TAB ----
 async function loadGroupsTab(projectId) {
-  const [{ data: rawGroups }, { data: types }] = await Promise.all([
+  const [{ data: rawGroups }, { data: types }, { data: allGroupPods }] = await Promise.all([
     supabaseClient.from('production_groups').select('*').eq('project_id', projectId),
     supabaseClient.from('project_types').select('id, type_number, type_directions(id, direction)').eq('project_id', projectId).order('type_number'),
+    supabaseClient.from('pods').select('group_id, type_id, direction_id').eq('project_id', projectId).not('group_id', 'is', null),
   ]);
   const groups = sortGroupsByOption(rawGroups || []);
+
+  // Build composition map from actual pods for groups missing pod_composition
+  const podCompByGroup = {};
+  (allGroupPods || []).forEach(p => {
+    if (!p.group_id) return;
+    if (!podCompByGroup[p.group_id]) podCompByGroup[p.group_id] = {};
+    const key = `${p.type_id}_${p.direction_id}`;
+    podCompByGroup[p.group_id][key] = (podCompByGroup[p.group_id][key] || 0) + 1;
+  });
 
   const container = document.getElementById('groups-list');
 
@@ -524,8 +534,8 @@ async function loadGroupsTab(projectId) {
             ${g.target_date ? `<div class="group-date">יעד: ${formatDate(g.target_date)}</div>` : ''}
           </div>
           ${(() => {
-            const comp = g.pod_composition;
-            if (!comp || !Object.keys(comp).length) return '';
+            const comp = (g.pod_composition && Object.keys(g.pod_composition).length) ? g.pod_composition : (podCompByGroup[g.id] || {});
+            if (!Object.keys(comp).length) return '';
             const rows = (types || []).flatMap(t =>
               (t.type_directions || []).map(d => {
                 const key = `${t.id}_${d.id}`;

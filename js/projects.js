@@ -1154,12 +1154,20 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
   }
 
   const composition = existingComposition || {};
+  const isEdit = !!groupId;
 
   const typeRows = (types || []).flatMap(t =>
     (t.type_directions || []).map(d => {
       const key = `${t.id}_${d.id}`;
       const dirLabel = d.direction === 'R' ? 'ימין' : d.direction === 'L' ? 'שמאל' : d.direction;
       const val = composition[key] || '';
+      if (isEdit) {
+        return val ? `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+            <span style="font-weight:500">T${t.type_number} — ${dirLabel}</span>
+            <span style="font-weight:700;color:var(--primary)">${val}</span>
+          </div>` : '';
+      }
       return `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
           <span style="font-weight:500">T${t.type_number} — ${dirLabel}</span>
@@ -1167,16 +1175,18 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
             value="${val}" style="width:80px;text-align:center" />
         </div>`;
     })
-  ).join('');
+  ).filter(Boolean).join('');
 
-  openModal(groupId ? 'עריכת קבוצה' : 'קבוצת ביצוע חדשה', `
+  openModal(isEdit ? 'עריכת קבוצה' : 'קבוצת ביצוע חדשה', `
     <div class="form-group">
       <label>שם הקבוצה</label>
-      <input type="text" id="grp-name" class="form-control" value="${escHtml(autoName)}" />
+      ${isEdit
+        ? `<div class="form-control" style="background:var(--surface-2);color:var(--text-secondary)">${escHtml(autoName)}</div>`
+        : `<input type="text" id="grp-name" class="form-control" value="${escHtml(autoName)}" />`}
     </div>
     <div class="form-group">
       <label>הרכב פודים בקבוצה</label>
-      ${typeRows || '<div style="color:var(--text-secondary);font-size:13px">אין טיפוסים מוגדרים בפרויקט</div>'}
+      ${typeRows || '<div style="color:var(--text-secondary);font-size:13px">${isEdit ? "לא הוגדר הרכב" : "אין טיפוסים מוגדרים בפרויקט"}</div>'}
     </div>
     <div class="form-group">
       <label>תאריך יציקה</label>
@@ -1193,39 +1203,40 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
 
   document.getElementById('btn-grp-cancel')?.addEventListener('click', closeModal);
   document.getElementById('btn-grp-save')?.addEventListener('click', async () => {
-    const nm = document.getElementById('grp-name')?.value.trim();
     const dt = document.getElementById('grp-date')?.value;
     const cd = document.getElementById('grp-casting-date')?.value;
-    if (!nm) { showToast('יש להזין שם', 'error'); return; }
-
-    // Build composition object and sum total
-    const comp = {};
-    let total = 0;
-    (types || []).forEach(t => {
-      (t.type_directions || []).forEach(d => {
-        const key = `${t.id}_${d.id}`;
-        const val = parseInt(document.getElementById(`grp-comp-${key}`)?.value) || 0;
-        if (val > 0) comp[key] = val;
-        total += val;
-      });
-    });
 
     const btn = document.getElementById('btn-grp-save');
     setLoading(btn, true);
     try {
       let saveError;
-      const payload = {
-        name: nm,
-        target_date: dt || null,
-        casting_target_date: cd || null,
-        max_pods: total || null,
-        pod_composition: Object.keys(comp).length ? comp : null,
-      };
-      if (groupId) {
-        ({ error: saveError } = await supabaseClient.from('production_groups').update(payload).eq('id', groupId));
+      if (isEdit) {
+        // Edit: only dates can change
+        ({ error: saveError } = await supabaseClient.from('production_groups')
+          .update({ target_date: dt || null, casting_target_date: cd || null })
+          .eq('id', groupId));
       } else {
+        const nm = document.getElementById('grp-name')?.value.trim();
+        if (!nm) { showToast('יש להזין שם', 'error'); setLoading(btn, false); return; }
+        // Build composition and total for new group
+        const comp = {};
+        let total = 0;
+        (types || []).forEach(t => {
+          (t.type_directions || []).forEach(d => {
+            const key = `${t.id}_${d.id}`;
+            const val = parseInt(document.getElementById(`grp-comp-${key}`)?.value) || 0;
+            if (val > 0) comp[key] = val;
+            total += val;
+          });
+        });
         const { data: groups } = await supabaseClient.from('production_groups').select('id').eq('project_id', projectId);
-        ({ error: saveError } = await supabaseClient.from('production_groups').insert({ ...payload, project_id: projectId, sort_order: (groups || []).length }));
+        ({ error: saveError } = await supabaseClient.from('production_groups').insert({
+          project_id: projectId, name: nm,
+          target_date: dt || null, casting_target_date: cd || null,
+          max_pods: total || null,
+          pod_composition: Object.keys(comp).length ? comp : null,
+          sort_order: (groups || []).length,
+        }));
       }
       if (saveError) { showToast('שגיאה: ' + saveError.message, 'error'); return; }
       showToast('נשמר בהצלחה', 'success');

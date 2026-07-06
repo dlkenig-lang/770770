@@ -390,6 +390,31 @@ function initProfileModal() {
   });
 }
 
+// ---- LANGUAGE RE-RENDER ----
+// Called by i18n.applyLang after a language switch. Re-runs the loader for
+// whichever view is active so dynamically-generated (JS) content is rebuilt
+// in the new language, preserving the current project/pod context.
+window.rerenderCurrentView = function rerenderCurrentView() {
+  // Nothing to re-render until the user is authenticated and the app is shown.
+  if (!AppState.currentUser) return;
+
+  // Refresh role/name chips (role label is language-dependent).
+  if (AppState.currentProfile) updateUserDisplay(AppState.currentProfile);
+
+  const active = document.querySelector('.view.active');
+  if (!active) return;
+  const view = active.id.replace('view-', '');
+
+  switch (view) {
+    case 'dashboard':       loadDashboard(); break;
+    case 'projects':        loadProjects(); break;
+    case 'users':           loadUsersView(); break;
+    case 'reports':         loadReportsView(); break;
+    case 'project-detail':  if (AppState.currentProject) openProject(AppState.currentProject.id); break;
+    case 'pod-detail':      if (AppState.currentPod) openPod(AppState.currentPod.id); break;
+  }
+};
+
 // ---- INIT ----
 async function init() {
   // Auth

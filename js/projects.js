@@ -521,13 +521,14 @@ async function loadGroupsTab(projectId) {
           <div class="group-name">${escHtml(g.name)}</div>
           <div style="display:flex;gap:12px">
             ${g.max_pods ? `<div class="group-date">קיבולת: ${g.max_pods} פודים</div>` : ''}
+            ${g.casting_target_date ? `<div class="group-date">יציקה: ${formatDate(g.casting_target_date)}</div>` : ''}
             ${g.target_date ? `<div class="group-date">יעד: ${formatDate(g.target_date)}</div>` : ''}
           </div>
         </div>
       </div>
       <div class="group-actions" style="margin-right:auto">
         ${isAdminOrPM() ? `
-          <button class="btn btn-secondary btn-sm btn-edit-group" data-group-id="${g.id}" data-name="${escHtml(g.name)}" data-date="${g.target_date || ''}" data-max-pods="${g.max_pods || ''}">עריכה</button>
+          <button class="btn btn-secondary btn-sm btn-edit-group" data-group-id="${g.id}" data-name="${escHtml(g.name)}" data-date="${g.target_date || ''}" data-casting-date="${g.casting_target_date || ''}" data-max-pods="${g.max_pods || ''}">עריכה</button>
           <button class="btn btn-danger btn-sm btn-delete-group" data-group-id="${g.id}">🗑</button>
         ` : ''}
       </div>
@@ -536,7 +537,7 @@ async function loadGroupsTab(projectId) {
 
   if (isAdminOrPM()) {
     container.querySelectorAll('.btn-edit-group').forEach(btn => {
-      btn.addEventListener('click', () => showGroupModal(projectId, btn.dataset.groupId, btn.dataset.name, btn.dataset.date, btn.dataset.maxPods ? parseInt(btn.dataset.maxPods) : null));
+      btn.addEventListener('click', () => showGroupModal(projectId, btn.dataset.groupId, btn.dataset.name, btn.dataset.date, btn.dataset.maxPods ? parseInt(btn.dataset.maxPods) : null, btn.dataset.castingDate || ''));
     });
     container.querySelectorAll('.btn-delete-group').forEach(btn => {
       btn.addEventListener('click', () => deleteGroup(btn.dataset.groupId, projectId));
@@ -1119,7 +1120,7 @@ function sortGroupsByOption(groups) {
   });
 }
 
-async function showGroupModal(projectId, groupId = null, name = '', date = '', maxPods = null) {
+async function showGroupModal(projectId, groupId = null, name = '', date = '', maxPods = null, castingDate = '') {
   let autoName = name;
   if (!groupId) {
     const { data: existing } = await supabaseClient
@@ -1138,6 +1139,10 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
       <input type="number" id="grp-max-pods" class="form-control" min="1" placeholder="ללא הגבלה" value="${maxPods || ''}" />
     </div>
     <div class="form-group">
+      <label>תאריך יציקה</label>
+      <input type="date" id="grp-casting-date" class="form-control" value="${castingDate}" />
+    </div>
+    <div class="form-group">
       <label>תאריך יעד</label>
       <input type="date" id="grp-date" class="form-control" value="${date}" />
     </div>
@@ -1150,6 +1155,7 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
   document.getElementById('btn-grp-save')?.addEventListener('click', async () => {
     const nm = document.getElementById('grp-name')?.value.trim();
     const dt = document.getElementById('grp-date')?.value;
+    const cd = document.getElementById('grp-casting-date')?.value;
     const mp = parseInt(document.getElementById('grp-max-pods')?.value) || null;
     if (!nm) { showToast('יש להזין שם', 'error'); return; }
     const btn = document.getElementById('btn-grp-save');
@@ -1157,10 +1163,10 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
     try {
       let saveError;
       if (groupId) {
-        ({ error: saveError } = await supabaseClient.from('production_groups').update({ name: nm, target_date: dt || null, max_pods: mp }).eq('id', groupId));
+        ({ error: saveError } = await supabaseClient.from('production_groups').update({ name: nm, target_date: dt || null, casting_target_date: cd || null, max_pods: mp }).eq('id', groupId));
       } else {
         const { data: groups } = await supabaseClient.from('production_groups').select('id').eq('project_id', projectId);
-        ({ error: saveError } = await supabaseClient.from('production_groups').insert({ project_id: projectId, name: nm, target_date: dt || null, max_pods: mp, sort_order: (groups || []).length }));
+        ({ error: saveError } = await supabaseClient.from('production_groups').insert({ project_id: projectId, name: nm, target_date: dt || null, casting_target_date: cd || null, max_pods: mp, sort_order: (groups || []).length }));
       }
       if (saveError) { showToast('שגיאה: ' + saveError.message, 'error'); return; }
       showToast('נשמר בהצלחה', 'success');

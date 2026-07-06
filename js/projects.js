@@ -382,51 +382,6 @@ async function loadPodsTab(projectId, filters = {}) {
     container.querySelectorAll('.btn-delete-pod').forEach(btn => {
       btn.addEventListener('click', (e) => { e.stopPropagation(); deletePod(btn.dataset.podId); });
     });
-    container.querySelectorAll('.pod-card-group-select').forEach(sel => {
-      sel.addEventListener('click', (e) => e.stopPropagation());
-      sel.addEventListener('change', async (e) => {
-        e.stopPropagation();
-        const groupId = e.target.value || null;
-        const podId = e.target.dataset.podId;
-        // Update dot color
-        const dot = container.querySelector(`.pod-group-color-dot[data-pod-id="${podId}"]`);
-        if (dot) {
-          const color = e.target.selectedOptions[0]?.dataset.color || '';
-          dot.style.background = color || 'transparent';
-          dot.style.border = color ? 'none' : '1px solid var(--border)';
-        }
-        let groupSerial = null;
-        if (groupId) {
-          const { data: grpData } = await supabaseClient.from('production_groups').select('max_pods').eq('id', groupId).single();
-          const { data: grpPods } = await supabaseClient.from('pods').select('group_serial').eq('group_id', groupId);
-          const currentCount = (grpPods || []).length;
-          if (grpData?.max_pods && currentCount >= grpData.max_pods) {
-            showToast(`הקבוצה מלאה — קיבולת מקסימלית: ${grpData.max_pods} פודים`, 'error');
-            e.target.value = e.target.dataset.prevValue || '';
-            return;
-          }
-          const usedSerials = new Set((grpPods || []).map(p => p.group_serial).filter(Boolean));
-          let nextSerial = 1;
-          while (usedSerials.has(nextSerial)) nextSerial++;
-          groupSerial = nextSerial;
-        }
-        e.target.dataset.prevValue = groupId || '';
-        const { error } = await supabaseClient.from('pods').update({ group_id: groupId, group_serial: groupSerial }).eq('id', podId);
-        if (error) { showToast('שגיאה בשמירת קבוצה', 'error'); return; }
-        // Update group label badge and barcode button on the card
-        const card = e.target.closest('.pod-card');
-        const idx = allGroups.findIndex(g => g.id === groupId);
-        const newLabel = idx >= 0 ? (allGroups[idx]?.name || '') : '';
-        const labelEl = card?.querySelector('.pod-card-group-label');
-        if (labelEl) {
-          labelEl.textContent = newLabel;
-          labelEl.style.fontWeight = newLabel ? '700' : '';
-        }
-        const barcodeBtn = card?.querySelector('.btn-pod-barcode-tbl');
-        if (barcodeBtn) barcodeBtn.dataset.groupLabel = newLabel;
-        showToast('הקבוצה עודכנה', 'success');
-      });
-    });
   }
 }
 
@@ -464,19 +419,13 @@ function renderPodCard(pod, groups = []) {
         </div>
         <div class="pod-card-meta-item">
           <span class="pod-card-meta-label">קבוצה</span>
-          <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-            ${isAdminOrPM() && groups.length ? (() => {
+          <div style="display:flex;align-items:center;gap:5px">
+            ${(() => {
               const selIdx = groups.findIndex(g => g.id === pod.group_id);
-              const dotColor = selIdx >= 0 ? GROUP_COLORS[selIdx % GROUP_COLORS.length] : 'transparent';
-              return `<div style="display:flex;align-items:center;gap:4px">
-                <span class="pod-group-color-dot" data-pod-id="${pod.id}" style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:${dotColor};${selIdx < 0 ? 'border:1px solid var(--border)' : ''}"></span>
-                <select class="pod-card-group-select" data-pod-id="${pod.id}" style="font-size:12px;border:1px solid var(--border);border-radius:4px;padding:1px 4px;background:var(--bg);color:var(--text);cursor:pointer;max-width:110px" ${pod.group_id ? 'disabled title="לא ניתן להעביר פוד קיים בין קבוצות"' : ''}>
-                  <option value="" data-color="">ללא קבוצה</option>
-                  ${groups.map((g, i) => `<option value="${g.id}" data-color="${GROUP_COLORS[i % GROUP_COLORS.length]}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
-                </select>
-              </div>`;
-            })() : `<span class="pod-card-meta-value">${pod.production_groups?.name ? escHtml(pod.production_groups.name) : '—'}</span>`}
-            ${groupLabel ? `<span class="pod-card-group-label" style="font-weight:700;font-size:13px;color:var(--primary);letter-spacing:0.5px">${escHtml(groupLabel)}</span>` : '<span class="pod-card-group-label"></span>'}
+              const dotColor = selIdx >= 0 ? GROUP_COLORS[selIdx % GROUP_COLORS.length] : '';
+              return `<span style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:${dotColor || 'transparent'};${dotColor ? '' : 'border:1px solid var(--border)'}"></span>`;
+            })()}
+            <span style="font-weight:700;font-size:13px;color:var(--primary)">${groupLabel ? escHtml(groupLabel) : (pod.production_groups?.name ? escHtml(pod.production_groups.name) : '—')}</span>
           </div>
         </div>
       </div>

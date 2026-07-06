@@ -62,7 +62,7 @@ function renderQCTabsUI() {
           <span class="alert-text">
             ${hasFlagged
               ? `${flagged.length} הערה${flagged.length > 1 ? 'ות' : ''} מסומנת${flagged.length > 1 ? 'ות' : ''} לטיפול`
-              : `${unresolved.length} הערה${unresolved.length > 1 ? 'ות' : ''} פתוחה${unresolved.length > 1 ? 'ות' : ''}`}
+              : `${unresolved.length} הערות פתוחות`}
           </span>
           <button class="btn btn-sm alert-btn" onclick="showCommentsModal('${pod.id}')">צפה בהערות</button>
         </div>`;

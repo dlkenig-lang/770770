@@ -48,24 +48,12 @@ async function openPod(podId) {
   const groupLetter = selGroupIdx >= 0 ? String.fromCharCode(65 + selGroupIdx) : '';
   AppState.currentPodGroupLabel = pod.production_groups?.name || '';
 
-  const groupCell = isAdminOrPM() ? `
-    <div class="info-item">
-      <div class="info-label">קבוצה</div>
-      <div class="info-value" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-        <span id="pod-group-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${dotColor || 'transparent'};${dotColor ? '' : 'border:1px solid var(--border)'}"></span>
-        <select id="pod-group-select" class="form-control" style="font-size:13px;padding:2px 6px;height:auto;min-width:120px" ${pod.group_id ? 'disabled title="לא ניתן להעביר פוד קיים בין קבוצות"' : ''}>
-          <option value="" data-color="">ללא קבוצה</option>
-          ${groups.map((g, i) => `<option value="${g.id}" data-color="${GROUP_COLORS[i % GROUP_COLORS.length]}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
-        </select>
-        ${AppState.currentPodGroupLabel ? `<span id="pod-group-label-badge" style="font-weight:700;font-size:15px;color:var(--primary);letter-spacing:0.5px">${escHtml(AppState.currentPodGroupLabel)}</span>` : '<span id="pod-group-label-badge"></span>'}
-      </div>
-    </div>
-  ` : `
+  const groupCell = `
     <div class="info-item">
       <div class="info-label">קבוצה</div>
       <div class="info-value" style="display:flex;align-items:center;gap:6px">
-        <span>${escHtml(pod.production_groups?.name || '—')}</span>
-        ${AppState.currentPodGroupLabel ? `<span style="font-weight:700;font-size:15px;color:var(--primary);letter-spacing:0.5px">${escHtml(AppState.currentPodGroupLabel)}</span>` : ''}
+        <span style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${dotColor || 'transparent'};${dotColor ? '' : 'border:1px solid var(--border)'}"></span>
+        <span style="font-weight:700;font-size:15px;color:var(--primary)">${escHtml(AppState.currentPodGroupLabel || pod.production_groups?.name || '—')}</span>
       </div>
     </div>
   `;
@@ -93,44 +81,6 @@ async function openPod(podId) {
       <div class="info-value">${escHtml(pod.projects?.pipe_type || '—')}</div>
     </div>
   `;
-
-  // Group assignment change handler
-  document.getElementById('pod-group-select')?.addEventListener('change', async (e) => {
-    const groupId = e.target.value || null;
-    const color = e.target.selectedOptions[0]?.dataset.color || '';
-    const dot = document.getElementById('pod-group-dot');
-    if (dot) {
-      dot.style.background = color || 'transparent';
-      dot.style.border = color ? 'none' : '1px solid var(--border)';
-    }
-    let groupSerial = null;
-    if (groupId) {
-      const grp = groups.find(g => g.id === groupId);
-      const { data: grpPods } = await supabaseClient.from('pods').select('group_serial').eq('group_id', groupId);
-      const currentCount = (grpPods || []).length;
-      if (grp?.max_pods && currentCount >= grp.max_pods) {
-        showToast(`הקבוצה מלאה — קיבולת מקסימלית: ${grp.max_pods} פודים`, 'error');
-        e.target.value = AppState.currentPod.group_id || '';
-        return;
-      }
-      const usedSerials = new Set((grpPods || []).map(p => p.group_serial).filter(Boolean));
-      let nextSerial = 1;
-      while (usedSerials.has(nextSerial)) nextSerial++;
-      groupSerial = nextSerial;
-    }
-    const { error: updErr } = await supabaseClient
-      .from('pods')
-      .update({ group_id: groupId, group_serial: groupSerial })
-      .eq('id', podId);
-    if (updErr) { showToast('שגיאה בשמירת קבוצה', 'error'); return; }
-    AppState.currentPod.group_id = groupId;
-    AppState.currentPod.group_serial = groupSerial;
-    const idx = groups.findIndex(g => g.id === groupId);
-    AppState.currentPodGroupLabel = idx >= 0 && groupSerial ? String.fromCharCode(65 + idx) + groupSerial : '';
-    const badge = document.getElementById('pod-group-label-badge');
-    if (badge) badge.textContent = AppState.currentPodGroupLabel;
-    showToast('הקבוצה עודכנה', 'success');
-  });
 
   showView('pod-detail');
 

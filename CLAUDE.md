@@ -1,5 +1,27 @@
 # CLAUDE.md — הנחיות לעבודה על הפרויקט
 
+## רב-לשוניות (i18n) — עברית / אנגלית
+
+המערכת תומכת בעברית (RTL) ובאנגלית (LTR). כל התשתית ב-`js/i18n.js` (נטען **ראשון** ב-`<head>`).
+
+- **שפה נשמרת ב-localStorage** במפתח `app_lang` (`'he'` ברירת מחדל). מתג עב/EN ב-navbar ובמסכי ההתחברות.
+- **כיוון נגזר מהשפה**: עברית=`rtl`, אנגלית=`ltr`. `body { direction: rtl }` נעקף ע"י `[dir="ltr"] body { direction: ltr }`, ויש בלוק עקיפות `[dir="ltr"]` ב-`css/styles.css` (sidebar, margins, יישור טקסט, כפתור עין).
+- **החלפת שפה** מפעילה `applyLang` → מרעננת תרגומים סטטיים, בונה מחדש `ROLE_LABELS`/`STATUS_LABELS` (`refreshI18nLabels` ב-`config.js`), משדרת `languagechange:app`, ומרנדרת מחדש את התצוגה הפעילה דרך `window.rerenderCurrentView` (ב-`app.js`) — בלי reload, תוך שמירת ההקשר (פרויקט/פוד).
+
+### כללים בעת הוספת/שינוי טקסט
+1. **אין לקודד טקסט קשיח.** כל מחרוזת מוצגת עוברת דרך `t('namespace.key')`. מוסיפים מפתח **גם ל-`he` וגם ל-`en`** ב-`js/i18n.js`.
+2. **HTML סטטי ב-`index.html`**: משתמשים ב-`data-i18n`, `data-i18n-placeholder`, `data-i18n-title`, `data-i18n-aria-label`.
+3. **פרמטרים**: `t('key', { name })` מחליף `{name}` במחרוזת.
+4. **⚠️ התנגשות שם `t`**: בקוד יש לולאות רבות עם משתנה `t` (טיפוס) שמסתיר את פונקציית התרגום `t()`. בתוך `.map(t => ...)`/`forEach(t => ...)` **יש לשנות את משתנה הלולאה ל-`ty`** אם קוראים ל-`t()` בפנים.
+5. **תוכן QC**: מתורגם דרך `qcStageName` / `qcItemLabel` / `qcItemInstruction` / `qcItemUnit` ב-`qc-data.js` (שדות `labelEn`/`instructionEn`/`nameEn`/`unitEn` לצד העברית).
+
+### מה נשאר בעברית בכוונה (קנוני — לא לתרגם)
+- **כתיבות ל-DB** (`stage_name`, `item_label`) — עברית קנונית; התצוגה נגזרת מחדש לפי `item_key`/`stage_number`.
+- **`GROUP_NAME_OPTIONS`** ב-`projects.js` — משמש להתאמה/מיון של שמות קבוצות קיימים.
+- הערות קוד.
+
+**בעת החלפת גרסת קובץ**: יש לעדכן את מספר ה-`?v=` ב-`index.html`.
+
 ## חשוב: לוגיקת מיספור פודים — אין לשנות
 
 מיספור הפודים (`globalSerial`) רץ ברצף אחד רציף על פני **כל** הטיפוסים והכיוונים בפרויקט, לפי סדר הוספתם.

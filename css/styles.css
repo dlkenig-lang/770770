@@ -1309,7 +1309,7 @@ table tbody tr:hover { background: #f8fafc; }
   margin-left: var(--sidebar-w);
 }
 [dir="ltr"] .form-control { direction: ltr; }
-[dir="ltr"] .qc-comment-input { direction: ltr; }
+[dir="ltr"] .qc-row-notes textarea.qc-notes-inline { direction: ltr; }
 
 /* Inputs / text alignment */
 [dir="ltr"] th,

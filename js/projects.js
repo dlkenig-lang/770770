@@ -1242,13 +1242,59 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
           });
         });
         const { data: groups } = await supabaseClient.from('production_groups').select('id').eq('project_id', projectId);
-        ({ error: saveError } = await supabaseClient.from('production_groups').insert({
+        const { data: newGroup, error: grpErr } = await supabaseClient.from('production_groups').insert({
           project_id: projectId, name: nm,
           target_date: dt || null, casting_target_date: cd || null,
           max_pods: total || null,
           pod_composition: Object.keys(comp).length ? comp : null,
           sort_order: (groups || []).length,
-        }));
+        }).select().single();
+        saveError = grpErr;
+
+        // Auto-create pods based on composition
+        if (!saveError && newGroup && Object.keys(comp).length > 0) {
+          // Fetch project details for pod code generation
+          const { data: proj } = await supabaseClient
+            .from('projects').select('code, date_received').eq('id', projectId).single();
+          // Find max existing global serial in this project
+          const { data: existingPods } = await supabaseClient
+            .from('pods').select('pod_code').eq('project_id', projectId);
+          let globalSerial = 0;
+          (existingPods || []).forEach(p => {
+            const s = parseInt((p.pod_code || '').slice(-3)) || 0;
+            if (s > globalSerial) globalSerial = s;
+          });
+
+          const podsToInsert = [];
+          // Process in stable order (sort by type_id then direction_id)
+          const compKeys = Object.keys(comp).sort();
+          for (const key of compKeys) {
+            const count = comp[key];
+            const [typeId, dirId] = key.split('_');
+            const typeObj = (types || []).find(t => t.id === typeId);
+            const dirObj = (typeObj?.type_directions || []).find(d => d.id === dirId);
+            if (!typeObj || !dirObj) continue;
+            let groupSerial = 0;
+            for (let s = 1; s <= count; s++) {
+              globalSerial++;
+              groupSerial++;
+              podsToInsert.push({
+                project_id: projectId,
+                type_id: typeId,
+                direction_id: dirId,
+                group_id: newGroup.id,
+                group_serial: groupSerial,
+                serial_number: globalSerial,
+                pod_code: generatePodCode(proj.code, proj.date_received, typeObj.type_number, dirObj.direction, globalSerial),
+                status: 'pending',
+              });
+            }
+          }
+          if (podsToInsert.length > 0) {
+            const { error: podsErr } = await supabaseClient.from('pods').insert(podsToInsert);
+            if (podsErr) { showToast('שגיאה ביצירת פודים: ' + podsErr.message, 'error'); return; }
+          }
+        }
       }
       if (saveError) { showToast('שגיאה: ' + saveError.message, 'error'); return; }
       showToast('נשמר בהצלחה', 'success');

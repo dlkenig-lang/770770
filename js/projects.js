@@ -1153,8 +1153,20 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
     autoName = `G${count + 1}`;
   }
 
-  const composition = existingComposition || {};
   const isEdit = !!groupId;
+
+  // For edit: build composition from actual pods in group (since pod_composition may be null for old groups)
+  let composition = existingComposition || {};
+  if (isEdit && !Object.keys(composition).length) {
+    const { data: groupPods } = await supabaseClient
+      .from('pods')
+      .select('type_id, direction_id')
+      .eq('group_id', groupId);
+    (groupPods || []).forEach(p => {
+      const key = `${p.type_id}_${p.direction_id}`;
+      composition[key] = (composition[key] || 0) + 1;
+    });
+  }
 
   const typeRows = (types || []).flatMap(t =>
     (t.type_directions || []).map(d => {

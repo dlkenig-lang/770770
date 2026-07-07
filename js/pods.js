@@ -20,7 +20,7 @@ async function openPod(podId) {
     .eq('id', podId)
     .single();
 
-  if (error || !pod) { showToast(t('pod.loadError'), 'error'); return; }
+  if (error || !pod) { showToast('שגיאה בטעינת פוד', 'error'); return; }
 
   AppState.currentPod = pod;
 
@@ -48,39 +48,89 @@ async function openPod(podId) {
   const groupLetter = selGroupIdx >= 0 ? String.fromCharCode(65 + selGroupIdx) : '';
   AppState.currentPodGroupLabel = pod.production_groups?.name || '';
 
-  const groupCell = `
+  const groupCell = isAdminOrPM() ? `
     <div class="info-item">
-      <div class="info-label">${t('proj.group')}</div>
+      <div class="info-label">קבוצה</div>
+      <div class="info-value" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span id="pod-group-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${dotColor || 'transparent'};${dotColor ? '' : 'border:1px solid var(--border)'}"></span>
+        <select id="pod-group-select" class="form-control" style="font-size:13px;padding:2px 6px;height:auto;min-width:120px" ${pod.group_id ? 'disabled title="לא ניתן להעביר פוד קיים בין קבוצות"' : ''}>
+          <option value="" data-color="">ללא קבוצה</option>
+          ${groups.map((g, i) => `<option value="${g.id}" data-color="${GROUP_COLORS[i % GROUP_COLORS.length]}" ${pod.group_id === g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('')}
+        </select>
+        ${AppState.currentPodGroupLabel ? `<span id="pod-group-label-badge" style="font-weight:700;font-size:15px;color:var(--primary);letter-spacing:0.5px">${escHtml(AppState.currentPodGroupLabel)}</span>` : '<span id="pod-group-label-badge"></span>'}
+      </div>
+    </div>
+  ` : `
+    <div class="info-item">
+      <div class="info-label">קבוצה</div>
       <div class="info-value" style="display:flex;align-items:center;gap:6px">
-        <span style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${dotColor || 'transparent'};${dotColor ? '' : 'border:1px solid var(--border)'}"></span>
-        <span style="font-weight:700;font-size:15px;color:var(--primary)">${escHtml(AppState.currentPodGroupLabel || pod.production_groups?.name || '—')}</span>
+        <span>${escHtml(pod.production_groups?.name || '—')}</span>
+        ${AppState.currentPodGroupLabel ? `<span style="font-weight:700;font-size:15px;color:var(--primary);letter-spacing:0.5px">${escHtml(AppState.currentPodGroupLabel)}</span>` : ''}
       </div>
     </div>
   `;
 
   document.getElementById('pod-info-bar').innerHTML = `
     <div class="info-item">
-      <div class="info-label">${t('pod.projectLabel')}</div>
+      <div class="info-label">פרויקט</div>
       <div class="info-value">${escHtml(pod.projects?.name || '')}</div>
     </div>
     <div class="info-item">
-      <div class="info-label">${t('proj.type')}</div>
+      <div class="info-label">טיפוס</div>
       <div class="info-value">T${pod.project_types?.type_number || ''}</div>
     </div>
     <div class="info-item">
-      <div class="info-label">${t('proj.direction')}</div>
+      <div class="info-label">כיוון</div>
       <div class="info-value">${pod.type_directions?.direction || ''}</div>
     </div>
     <div class="info-item">
-      <div class="info-label">${t('pod.dimensions')}</div>
+      <div class="info-label">מידות</div>
       <div class="info-value">${escHtml(pod.project_types?.dimensions || '—')}</div>
     </div>
     ${groupCell}
     <div class="info-item">
-      <div class="info-label">${t('proj.pipeType')}</div>
+      <div class="info-label">סוג צנרת</div>
       <div class="info-value">${escHtml(pod.projects?.pipe_type || '—')}</div>
     </div>
   `;
+
+  // Group assignment change handler
+  document.getElementById('pod-group-select')?.addEventListener('change', async (e) => {
+    const groupId = e.target.value || null;
+    const color = e.target.selectedOptions[0]?.dataset.color || '';
+    const dot = document.getElementById('pod-group-dot');
+    if (dot) {
+      dot.style.background = color || 'transparent';
+      dot.style.border = color ? 'none' : '1px solid var(--border)';
+    }
+    let groupSerial = null;
+    if (groupId) {
+      const grp = groups.find(g => g.id === groupId);
+      const { data: grpPods } = await supabaseClient.from('pods').select('group_serial').eq('group_id', groupId);
+      const currentCount = (grpPods || []).length;
+      if (grp?.max_pods && currentCount >= grp.max_pods) {
+        showToast(`הקבוצה מלאה — קיבולת מקסימלית: ${grp.max_pods} פודים`, 'error');
+        e.target.value = AppState.currentPod.group_id || '';
+        return;
+      }
+      const usedSerials = new Set((grpPods || []).map(p => p.group_serial).filter(Boolean));
+      let nextSerial = 1;
+      while (usedSerials.has(nextSerial)) nextSerial++;
+      groupSerial = nextSerial;
+    }
+    const { error: updErr } = await supabaseClient
+      .from('pods')
+      .update({ group_id: groupId, group_serial: groupSerial })
+      .eq('id', podId);
+    if (updErr) { showToast('שגיאה בשמירת קבוצה', 'error'); return; }
+    AppState.currentPod.group_id = groupId;
+    AppState.currentPod.group_serial = groupSerial;
+    const idx = groups.findIndex(g => g.id === groupId);
+    AppState.currentPodGroupLabel = idx >= 0 && groupSerial ? String.fromCharCode(65 + idx) + groupSerial : '';
+    const badge = document.getElementById('pod-group-label-badge');
+    if (badge) badge.textContent = AppState.currentPodGroupLabel;
+    showToast('הקבוצה עודכנה', 'success');
+  });
 
   showView('pod-detail');
 
@@ -99,7 +149,7 @@ async function openPod(podId) {
   }
   if (unresolvedCount > 0) {
     bannerEl.className = 'pod-unresolved-banner';
-    bannerEl.innerHTML = `⚠️ ${t('pod.unresolvedBannerPre')} <strong>${unresolvedCount}</strong> ${t('pod.unresolvedBannerPost')} — <button class="btn btn-sm btn-ghost" onclick="showCommentsModal('${podId}')">${t('pod.addressBtn')}</button>`;
+    bannerEl.innerHTML = `⚠️ לפוד זה יש <strong>${unresolvedCount}</strong> הערות שלא טופלו — <button class="btn btn-sm btn-ghost" onclick="showCommentsModal('${podId}')">לטיפול</button>`;
   } else {
     bannerEl.className = '';
     bannerEl.innerHTML = '';
@@ -127,7 +177,7 @@ function showBarcodeModal(podCode, groupLabel = '') {
       margin: 10,
     });
   } catch (e) {
-    display.innerHTML = `<div style="color:var(--danger)">${t('pod.barcodeError')}</div>`;
+    display.innerHTML = `<div style="color:var(--danger)">שגיאה ביצירת ברקוד</div>`;
   }
 
   codeEl.textContent = podCode;
@@ -184,7 +234,7 @@ function showBarcodeModal(podCode, groupLabel = '') {
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const pw = window.open(url, '_blank');
-    if (!pw) { showToast(t('proj.popupBlocked'), 'error'); return; }
+    if (!pw) { showToast('חסום חלונות קופצים — אפשר חלונות קופצים בדפדפן', 'error'); return; }
     pw.addEventListener('load', () => { pw.print(); URL.revokeObjectURL(url); });
   };
 }
@@ -210,11 +260,11 @@ async function loadComments(podId) {
 
   if (commentsErr) {
     console.error('loadComments error:', commentsErr);
-    list.innerHTML = `<div class="empty-state" style="padding:24px"><div class="empty-state-text">${t('comments.loadError')}</div></div>`;
+    list.innerHTML = '<div class="empty-state" style="padding:24px"><div class="empty-state-text">שגיאה בטעינת הערות</div></div>';
     return;
   }
   if (!comments || comments.length === 0) {
-    list.innerHTML = `<div class="empty-state" style="padding:24px"><div class="empty-state-text">${t('comments.none')}</div></div>`;
+    list.innerHTML = '<div class="empty-state" style="padding:24px"><div class="empty-state-text">אין הערות עדיין</div></div>';
     return;
   }
 
@@ -222,16 +272,16 @@ async function loadComments(podId) {
     <div class="comment-item ${c.is_flagged ? 'flagged' : ''} ${c.is_resolved ? 'resolved' : ''}">
       <div class="comment-header">
         ${c.is_flagged ? '<span class="comment-flag-icon">🚩</span>' : ''}
-        <span class="comment-author">${escHtml(c.author?.full_name || c.author?.username || t('comments.userFallback'))}</span>
+        <span class="comment-author">${escHtml(c.author?.full_name || c.author?.username || 'משתמש')}</span>
         <span class="nav-role-badge" style="background:var(--primary-light);color:var(--primary)">${ROLE_LABELS[c.author?.role] || ''}</span>
         <span class="comment-time">${formatDateTime(c.created_at)}</span>
-        ${c.is_resolved ? `<span style="color:var(--success);font-size:12px">${t('comments.resolvedTag')}</span>` : ''}
+        ${c.is_resolved ? '<span style="color:var(--success);font-size:12px">✓ טופל</span>' : ''}
       </div>
       <div class="comment-content">${escHtml(c.content)}</div>
       ${(!c.is_resolved && (canEdit() || isAdminOrPM())) || isAdmin() ? `
         <div class="comment-actions">
-          ${!c.is_resolved && (canEdit() || isAdminOrPM()) ? `<button class="btn btn-success btn-sm btn-resolve-comment" data-comment-id="${c.id}">${t('comments.resolveBtn')}</button>` : ''}
-          ${isAdmin() ? `<button class="btn btn-danger btn-sm btn-delete-comment" data-comment-id="${c.id}">${t('comments.deleteBtn')}</button>` : ''}
+          ${!c.is_resolved && (canEdit() || isAdminOrPM()) ? `<button class="btn btn-success btn-sm btn-resolve-comment" data-comment-id="${c.id}">✓ סמן כטופל</button>` : ''}
+          ${isAdmin() ? `<button class="btn btn-danger btn-sm btn-delete-comment" data-comment-id="${c.id}">🗑 מחק</button>` : ''}
         </div>
       ` : ''}
     </div>
@@ -246,19 +296,19 @@ async function loadComments(podId) {
 }
 
 async function deleteComment(commentId, podId) {
-  if (!confirm(t('comments.confirmDelete'))) return;
+  if (!confirm('האם למחוק הערה זו לצמיתות?')) return;
   const { error, count } = await supabaseClient
     .from('comments').delete({ count: 'exact' }).eq('id', commentId);
   if (error) {
     console.error('deleteComment error:', error);
-    showToast(t('comments.deleteError') + (error.message || error.code || ''), 'error');
+    showToast('שגיאה במחיקת הערה: ' + (error.message || error.code || ''), 'error');
     return;
   }
   if (count === 0) {
-    showToast(t('comments.deleteBlocked'), 'error');
+    showToast('המחיקה נחסמה — יש להפעיל את מדיניות RLS ב-Supabase', 'error');
     return;
   }
-  showToast(t('comments.deleted'), 'success');
+  showToast('הערה נמחקה', 'success');
   await loadComments(podId);
 }
 
@@ -266,8 +316,8 @@ async function resolveComment(commentId, podId) {
   const { error } = await supabaseClient.from('comments').update({
     is_resolved: true, resolved_by: AppState.currentProfile.id, resolved_at: new Date().toISOString()
   }).eq('id', commentId);
-  if (error) { showToast(t('common.error'), 'error'); return; }
-  showToast(t('comments.resolved'), 'success');
+  if (error) { showToast('שגיאה', 'error'); return; }
+  showToast('הוערה סומנה כטופלה', 'success');
   await loadComments(podId);
 }
 
@@ -306,17 +356,17 @@ function initPodDetailButtons() {
   document.getElementById('btn-submit-comment')?.addEventListener('click', async () => {
     const text = document.getElementById('new-comment-text')?.value.trim();
     const flagged = document.getElementById('comment-flag-cb')?.checked;
-    if (!text) { showToast(t('comments.enterContent'), 'error'); return; }
+    if (!text) { showToast('יש להזין תוכן', 'error'); return; }
     const { error } = await supabaseClient.from('comments').insert({
       pod_id: currentCommentsModal.podId,
       author_id: AppState.currentProfile.id,
       content: text,
       is_flagged: flagged,
     });
-    if (error) { console.error('comment insert error:', error); showToast(t('comments.sendError') + (error.message || error.code || ''), 'error'); return; }
+    if (error) { console.error('comment insert error:', error); showToast('שגיאה בשליחת הערה: ' + (error.message || error.code || ''), 'error'); return; }
     document.getElementById('new-comment-text').value = '';
     document.getElementById('comment-flag-cb').checked = false;
-    showToast(t('comments.added'), 'success');
+    showToast('הערה נוספה', 'success');
     await loadComments(currentCommentsModal.podId);
   });
 

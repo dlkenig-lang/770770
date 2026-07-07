@@ -61,10 +61,10 @@ function renderQCTabsUI() {
           <span class="alert-icon">${hasFlagged ? '🚩' : '💬'}</span>
           <span class="alert-text">
             ${hasFlagged
-              ? (flagged.length > 1 ? t('qc.commentsFlaggedMany', { n: flagged.length }) : t('qc.commentsFlaggedOne'))
-              : t('qc.commentsOpen', { n: unresolved.length })}
+              ? `${flagged.length} הערה${flagged.length > 1 ? 'ות' : ''} מסומנת${flagged.length > 1 ? 'ות' : ''} לטיפול`
+              : `${unresolved.length} הערה${unresolved.length > 1 ? 'ות' : ''} פתוחה${unresolved.length > 1 ? 'ות' : ''}`}
           </span>
-          <button class="btn btn-sm alert-btn" onclick="showCommentsModal('${pod.id}')">${t('qc.viewComments')}</button>
+          <button class="btn btn-sm alert-btn" onclick="showCommentsModal('${pod.id}')">צפה בהערות</button>
         </div>`;
     } else {
       alertEl.innerHTML = '';
@@ -78,7 +78,7 @@ function renderQCTabsUI() {
   if (podProgressEl) {
     podProgressEl.innerHTML = `
       <div class="page-progress-header">
-        <span class="page-progress-label">${t('qc.podProgress', { done: completedStages, total: totalStages })}</span>
+        <span class="page-progress-label">התקדמות פוד &mdash; ${completedStages}/${totalStages} שלבים</span>
         <span class="page-progress-pct ${pct===100?'pct-done':''}">${pct}%</span>
       </div>
       <div class="progress-bar-outer progress-bar-lg">
@@ -93,7 +93,7 @@ function renderQCTabsUI() {
       ${_qcStages.map((stage, i) => `
         <button class="qc-tab-btn ${i === _activeStageIdx ? 'active' : ''}" data-idx="${i}">
           <span class="qc-tab-letter">${STAGE_LETTERS[i] || stage.stage_number}</span>
-          <span class="qc-tab-name">${escHtml(qcStageName(stage.stage_number))}</span>
+          <span class="qc-tab-name">${escHtml(stage.stage_name)}</span>
           <span class="qc-tab-dot qc-dot-${stage.status}"></span>
         </button>
       `).join('')}
@@ -129,17 +129,17 @@ function renderActiveStage() {
     <div class="qc-stage-panel">
       <div class="qc-stage-panel-header">
         <div>
-          <div class="qc-stage-panel-title">${t('qc.stage')} ${letter} – ${escHtml(qcStageName(stage.stage_number))}</div>
+          <div class="qc-stage-panel-title">שלב ${letter} – ${escHtml(stage.stage_name)}</div>
           ${stage.inspection_date ? `<div class="qc-stage-panel-subtitle">📅 ${formatDate(stage.inspection_date)}</div>` : ''}
         </div>
         <span class="status-badge status-${stage.status}">${STATUS_LABELS[stage.status] || stage.status}</span>
       </div>
       ${pod?.projects?.pipe_type ? `
-        <div class="qc-pipe-type-bar">${t('qc.pipeType')} <strong>${escHtml(pod.projects.pipe_type)}</strong></div>
+        <div class="qc-pipe-type-bar">דגם צנרת: <strong>${escHtml(pod.projects.pipe_type)}</strong></div>
       ` : ''}
       ${!_castingBaseApproved && stage.stage_number > 1 ? `
         <div class="qc-casting-block-banner">
-          ${t('qc.lockedBanner')}
+          🔒 שלב זה נעול עד לאישור סעיפים 1–7 ביציקת הרצפה (שלב A)
         </div>
       ` : ''}
       <div class="qc-items-table-wrapper">
@@ -147,10 +147,10 @@ function renderActiveStage() {
           <thead>
             <tr>
               <th style="width:36px">#</th>
-              <th>${t('qc.colItem')}</th>
-              <th style="width:72px;text-align:center">${t('qc.colPass')}</th>
-              <th style="width:72px;text-align:center">${t('qc.colFail')}</th>
-              <th>${t('qc.colNotes')}</th>
+              <th>פרט לבדיקה</th>
+              <th style="width:72px;text-align:center">עבר ✓</th>
+              <th style="width:72px;text-align:center">נכשל ✗</th>
+              <th>הערות</th>
             </tr>
           </thead>
           <tbody>
@@ -168,26 +168,26 @@ function renderActiveStage() {
       ${renderInspectorSection(stage)}
       <div class="qc-stage-nav-row">
         ${_activeStageIdx > 0
-          ? `<button class="btn btn-secondary btn-stage-nav" data-idx="${_activeStageIdx - 1}">${t('qc.prevStage')}</button>`
+          ? `<button class="btn btn-secondary btn-stage-nav" data-idx="${_activeStageIdx - 1}">→ שלב קודם</button>`
           : '<div></div>'}
-        <div class="text-sm text-muted">${t('qc.stageSummary', { passed, total, failed })}</div>
+        <div class="text-sm text-muted">${passed}/${total} עברו · ${failed} נכשלו</div>
         ${_activeStageIdx < _qcStages.length - 1
-          ? `<button class="btn btn-primary btn-stage-nav" data-idx="${_activeStageIdx + 1}">${t('qc.nextStage')}</button>`
+          ? `<button class="btn btn-primary btn-stage-nav" data-idx="${_activeStageIdx + 1}">שלב הבא ←</button>`
           : '<div></div>'}
       </div>
       ${canEdit() ? `
         <div class="qc-admin-actions">
           <button class="btn btn-ghost btn-sm btn-edit-stage" data-stage-id="${stage.id}">
-            ${t('qc.editForm')}
+            ✏️ עריכת טופס
           </button>
           <button class="btn btn-ghost btn-sm btn-clear-stage" data-stage-id="${stage.id}">
-            ${t('qc.clearForm')}
+            🗑 ניקוי טופס
           </button>
         </div>
       ` : ''}
       <div class="qc-share-row">
         <button class="btn btn-ghost btn-sm btn-share-stage" data-stage-idx="${_activeStageIdx}">
-          ${t('qc.shareStagePage')}
+          ✉️ שיתוף עמוד שלב
         </button>
       </div>
     </div>
@@ -232,7 +232,7 @@ function renderActiveStage() {
         const name = nameEl?.value.trim() || '';
         const warningsEl = document.getElementById(`qc-stage-warnings-${btn.dataset.stageId}`);
         const warnings = [];
-        if (!name) warnings.push(t('qc.needInspectorName'));
+        if (!name) warnings.push('יש למלא שם בודק');
         if (warningsEl) {
           warningsEl.innerHTML = warnings.map(w => `<div class="qc-warning-msg">⚠️ ${w}</div>`).join('');
         }
@@ -285,11 +285,11 @@ function renderQCTableRow(itemDef, rowIdx, stage, items, readonly) {
     <tr class="qc-table-row qc-row-${status}" id="qc-row-${itemDef.key}-${stage.id}">
       <td class="qc-row-num">${rowIdx + 1}</td>
       <td class="qc-row-label">
-        <div class="qc-row-label-text">${escHtml(qcItemLabel(itemDef))}</div>
-        ${qcItemInstruction(itemDef) ? `<div class="qc-row-instruction">💡 ${escHtml(qcItemInstruction(itemDef))}</div>` : ''}
+        <div class="qc-row-label-text">${escHtml(itemDef.label)}</div>
+        ${itemDef.instruction ? `<div class="qc-row-instruction">💡 ${escHtml(itemDef.instruction)}</div>` : ''}
         ${itemDef.hasTwoTimes && !readonly ? `
           <div class="qc-time-inline">
-            <label>${t('qc.time')}</label>
+            <label>שעה:</label>
             <input type="time" class="qc-time-1 qc-time-input" value="${escHtml(time1)}"
               data-stage-id="${stage.id}" data-item-key="${itemDef.key}" data-item-id="${itemId}" />
             <label>+60:</label>
@@ -299,13 +299,13 @@ function renderQCTableRow(itemDef, rowIdx, stage, items, readonly) {
         ` : (itemDef.hasTwoTimes && time1 ? `<div class="qc-row-instruction">⏰ ${time1}${time2 ? ' → ' + time2 : ''}</div>` : '')}
         ${itemDef.hasValue && !readonly ? `
           <div class="qc-time-inline">
-            <label>${t('qc.value')} (${qcItemUnit(itemDef)}):</label>
+            <label>ערך (${itemDef.unit || ''}):</label>
             <input type="number" step="0.1" class="qc-value-field qc-time-input" style="width:80px"
               value="${escHtml(val)}"
               data-stage-id="${stage.id}" data-item-key="${itemDef.key}" data-item-id="${itemId}" />
-            ${itemDef.minValue ? `<span class="text-sm ${parseFloat(val) >= itemDef.minValue ? 'text-success' : 'text-danger'}">${t('qc.min', { min: itemDef.minValue })}</span>` : ''}
+            ${itemDef.minValue ? `<span class="text-sm ${parseFloat(val) >= itemDef.minValue ? 'text-success' : 'text-danger'}">(מינ' ${itemDef.minValue})</span>` : ''}
           </div>
-        ` : (itemDef.hasValue && val ? `<div class="qc-row-instruction">📊 ${val} ${qcItemUnit(itemDef)}</div>` : '')}
+        ` : (itemDef.hasValue && val ? `<div class="qc-row-instruction">📊 ${val} ${itemDef.unit || ''}</div>` : '')}
       </td>
       <td class="qc-row-check">
         ${!readonly ? `
@@ -323,25 +323,25 @@ function renderQCTableRow(itemDef, rowIdx, stage, items, readonly) {
       </td>
       <td class="qc-row-notes">
         ${!readonly ? `
-          <textarea class="qc-notes-inline" rows="1" placeholder="${t('qc.notesPlaceholder')}"
+          <textarea class="qc-notes-inline" rows="1" placeholder="הערות..."
             data-stage-id="${stage.id}" data-item-key="${itemDef.key}" data-item-id="${itemId}"
           >${escHtml(notes)}</textarea>
           <div class="qc-img-row">
-            <label class="btn-img-upload" title="${t('qc.addImage')}">
+            <label class="btn-img-upload" title="הוסף תמונה">
               📷
               <input type="file" accept="image/*" class="qc-img-input" hidden
                 data-item-id="${itemId}" data-stage-id="${stage.id}" data-item-key="${itemDef.key}" />
             </label>
             ${imageUrl ? `
               <div class="qc-img-thumb-wrap">
-                <img src="${imageUrl}" class="qc-img-thumb" alt="${t('qc.image')}" data-url="${escHtml(imageUrl)}" />
+                <img src="${imageUrl}" class="qc-img-thumb" alt="תמונה" data-url="${escHtml(imageUrl)}" />
                 <button type="button" class="qc-img-del" data-item-id="${itemId}" data-storage-path="${escHtml(imagePath)}">✕</button>
               </div>
             ` : ''}
           </div>
         ` : `
           ${notes ? `<span class="text-sm text-muted">${escHtml(notes)}</span>` : ''}
-          ${imageUrl ? `<img src="${imageUrl}" class="qc-img-thumb qc-img-thumb--readonly" alt="${t('qc.image')}" data-url="${escHtml(imageUrl)}" style="margin-top:4px;display:block" />` : ''}
+          ${imageUrl ? `<img src="${imageUrl}" class="qc-img-thumb qc-img-thumb--readonly" alt="תמונה" data-url="${escHtml(imageUrl)}" style="margin-top:4px;display:block" />` : ''}
         `}
       </td>
     </tr>
@@ -355,10 +355,10 @@ function renderInspectorSection(stage) {
         <div class="qc-inspector-info-row">
           <span>👤 <strong>${escHtml(stage.inspector_name || '—')}</strong></span>
           <span>📅 ${formatDate(stage.inspection_date)}</span>
-          ${stage.inspector_signature ? `<img src="${stage.inspector_signature}" class="signed-sig-preview" alt="${t('qc.signature')}" />` : ''}
+          ${stage.inspector_signature ? `<img src="${stage.inspector_signature}" class="signed-sig-preview" alt="חתימה" />` : ''}
         </div>
         <div class="text-sm mt-2" style="color:${stage.status === 'completed' ? 'var(--success)' : 'var(--danger)'}">
-          ${stage.status === 'completed' ? t('qc.stageCompletedApproved') : t('qc.stageFailedApproved')}
+          ✓ השלב ${stage.status === 'completed' ? 'הושלם' : 'נכשל'} ואושר
         </div>
       </div>
     `;
@@ -368,7 +368,7 @@ function renderInspectorSection(stage) {
     <div class="qc-inspector-bar" id="qc-inspector-bar-${stage.id}">
       <div class="qc-inspector-fields">
         <div class="qc-inspector-field">
-          <label>${t('qc.inspectorName')}</label>
+          <label>שם הבודק</label>
           <input type="text" id="qc-inspector-name-${stage.id}" class="form-control"
             style="max-width:220px" readonly
             value="${escHtml(stage.inspector_name || AppState.currentProfile?.full_name || AppState.currentProfile?.username || '')}" />
@@ -376,7 +376,7 @@ function renderInspectorSection(stage) {
         <div class="qc-inspector-field" style="align-self:flex-end">
           <button class="btn btn-primary btn-complete-stage"
             data-stage-id="${stage.id}" data-stage-num="${stage.stage_number}">
-            ${t('qc.signApprove')}
+            ✍️ חתום ואשר שלב
           </button>
         </div>
       </div>
@@ -387,7 +387,7 @@ function renderInspectorSection(stage) {
 
 // ---- CLEAR STAGE ----
 async function clearStage(stageId) {
-  if (!confirm(t('qc.confirmClear'))) return;
+  if (!confirm('האם לנקות את השלב ולאפשר עריכה מחדש? כל הנתונים שהוזנו יימחקו.')) return;
 
   // Reset all items for this stage
   await supabaseClient.from('qc_items').update({
@@ -419,7 +419,7 @@ async function clearStage(stageId) {
     if (castingBadge) castingBadge.style.display = 'none';
   }
 
-  showToast(t('qc.stageCleared'), 'success');
+  showToast('השלב נוקה — ניתן להזין נתונים מחדש', 'success');
   await updatePodStatus(_qcPodId);
   await loadQCStages(_qcPodId);
 }
@@ -429,10 +429,10 @@ async function editStage(stageId) {
   const stage = _qcStages.find(s => s.id === stageId);
   if (!stage) return;
   if (stage.status !== 'completed' && stage.status !== 'failed') {
-    showToast(t('qc.stageAlreadyOpen'), 'success');
+    showToast('השלב כבר פתוח לעריכה', 'success');
     return;
   }
-  if (!confirm(t('qc.confirmEdit'))) return;
+  if (!confirm('האם לפתוח את השלב לעריכה מחדש? הנתונים שהוזנו יישמרו, אך האישור והחתימה יוסרו.')) return;
 
   await supabaseClient.from('qc_stages').update({
     status: 'in_progress',
@@ -442,7 +442,7 @@ async function editStage(stageId) {
     completed_at: null,
   }).eq('id', stageId);
 
-  showToast(t('qc.stageReopened'), 'success');
+  showToast('השלב פתוח לעריכה — הנתונים נשמרו', 'success');
   await updatePodStatus(_qcPodId);
   await loadQCStages(_qcPodId);
 }
@@ -535,7 +535,7 @@ async function handleItemStatusChange(btn) {
     if (AppState.currentPod) AppState.currentPod.casting_approved = false;
     const castingBadge = document.getElementById('pod-casting-badge');
     if (castingBadge) castingBadge.style.display = 'none';
-    showToast(t('qc.podRemovedFromCasting'), 'warning');
+    showToast('הפוד הוצא מרשימת מאושרי ליציקה — יש להשלים את שלב A', 'warning');
   }
 }
 
@@ -554,7 +554,7 @@ async function checkCastingApprovalTrigger(stageId, itemKey) {
 
   if (!allPassed) return;
 
-  const confirmed = confirm(t('qc.confirmCastingApproval'));
+  const confirmed = confirm('כל סעיפי הבסיס 1–7 אושרו ✓\nהאם לאשר את רצפת הפוד ליציקה?');
   if (!confirmed) return;
 
   const { error } = await supabaseClient.from('pods').update({
@@ -562,12 +562,12 @@ async function checkCastingApprovalTrigger(stageId, itemKey) {
     casting_approved_at: new Date().toISOString(),
   }).eq('id', _qcPodId);
 
-  if (error) { showToast(t('qc.castingSaveError'), 'error'); return; }
+  if (error) { showToast('שגיאה בשמירת אישור יציקה', 'error'); return; }
 
   _qcCastingApproved = true;
   _castingBaseApproved = true;
   if (AppState.currentPod) AppState.currentPod.casting_approved = true;
-  showToast(t('qc.podCastingApproved'), 'success');
+  showToast('הפוד אושר ליציקה! 🏗️', 'success');
 
   // Update casting badge in pod header if visible
   const castingBadge = document.getElementById('pod-casting-badge');
@@ -587,7 +587,7 @@ async function openShareStageModal(stageIdx) {
   const stage = _qcStages[stageIdx];
   const stageRef = QC_STAGES[stageIdx];
   const letter = STAGE_LETTERS[stageIdx] || (stageIdx + 1);
-  const stageName = `${t('qc.stage')} ${letter} – ${qcStageName(stage?.stage_number ?? stageRef?.number) || ''}`;
+  const stageName = `שלב ${letter} – ${stage?.stage_name || stageRef?.name || ''}`;
 
   // Fetch active users with email
   const { data: users } = await supabaseClient
@@ -600,7 +600,7 @@ async function openShareStageModal(stageIdx) {
   document.getElementById('share-stage-title').textContent = stageName;
 
   const sel = document.getElementById('share-user-select');
-  sel.innerHTML = `<option value="">${t('qc.selectUser')}</option>`;
+  sel.innerHTML = '<option value="">בחר משתמש...</option>';
   (users || []).forEach(u => {
     if (!u.email) return;
     const opt = document.createElement('option');
@@ -625,18 +625,18 @@ function sendShareEmail() {
   const stageIdx = modal.dataset.stageIdx;
 
   if (!toEmail) {
-    alert(t('qc.pleaseSelectUser'));
+    alert('יש לבחור משתמש');
     return;
   }
 
   // Use pod-only URL (no & in query string) so email clients detect it as a hyperlink
   const podUrl = `${window.location.origin}${window.location.pathname}?pod=${_qcPodId}`;
   const podCode = AppState.currentPod?.pod_code || '';
-  const subject = encodeURIComponent(`${t('qc.emailShare')}: ${stageName}${podCode ? ` [${podCode}]` : ''}`);
+  const subject = encodeURIComponent(`שיתוף: ${stageName}${podCode ? ` [${podCode}]` : ''}`);
   const body = encodeURIComponent(
-    `${t('qc.emailGreeting')}\n\n${t('qc.emailBodyLine', { stage: stageName })}${podCode ? `\n${t('qc.emailPod')}: ${podCode}` : ''}\n\n${podUrl}` +
-    (note ? `\n\n${t('qc.emailNote', { note })}` : '') +
-    `\n\n${t('qc.emailSignature')}`
+    `שלום,\n\nשותף איתך עמוד בדיקה: ${stageName}${podCode ? `\nפוד: ${podCode}` : ''}\n\n${podUrl}` +
+    (note ? `\n\nהערה: ${note}` : '') +
+    `\n\n-- נשלח מאפליקציית בקרת האיכות`
   );
 
   window.location.href = `mailto:${toEmail}?subject=${subject}&body=${body}`;
@@ -650,7 +650,7 @@ function openImageLightbox(url) {
 
   const lb = document.createElement('div');
   lb.id = 'img-lightbox';
-  lb.innerHTML = `<img src="${url}" alt="${t('qc.image')}" />`;
+  lb.innerHTML = `<img src="${url}" alt="תמונה" />`;
   lb.addEventListener('click', () => lb.remove());
   document.body.appendChild(lb);
 }
@@ -660,15 +660,15 @@ async function uploadQcImage(input) {
   const file = input.files[0];
   if (!file) return;
   const itemId = input.dataset.itemId;
-  if (!itemId) { showToast(t('qc.saveItemFirst'), 'error'); return; }
-  if (file.size > 10 * 1024 * 1024) { showToast(t('qc.fileTooLarge'), 'error'); return; }
+  if (!itemId) { showToast('שמור את הפריט תחילה', 'error'); return; }
+  if (file.size > 10 * 1024 * 1024) { showToast('הקובץ גדול מ-10MB', 'error'); return; }
 
-  showToast(t('qc.uploadingImage'), 'info');
+  showToast('מעלה תמונה...', 'info');
   const ext = file.name.split('.').pop() || 'jpg';
   const storagePath = `${itemId}/${Date.now()}.${ext}`;
 
   const { error: upErr } = await supabaseClient.storage.from('qc-images').upload(storagePath, file);
-  if (upErr) { showToast(t('qc.uploadError') + upErr.message, 'error'); return; }
+  if (upErr) { showToast('שגיאה בהעלאה: ' + upErr.message, 'error'); return; }
 
   const { data: { publicUrl } } = supabaseClient.storage.from('qc-images').getPublicUrl(storagePath);
   await supabaseClient.from('qc_items').update({ image_url: publicUrl, image_storage_path: storagePath }).eq('id', itemId);
@@ -679,7 +679,7 @@ async function uploadQcImage(input) {
   const wrap = document.createElement('div');
   wrap.className = 'qc-img-thumb-wrap';
   wrap.innerHTML = `
-    <img src="${publicUrl}" class="qc-img-thumb" alt="${t('qc.image')}" data-url="${publicUrl}" />
+    <img src="${publicUrl}" class="qc-img-thumb" alt="תמונה" data-url="${publicUrl}" />
     <button type="button" class="qc-img-del" data-item-id="${itemId}" data-storage-path="${storagePath}">✕</button>
   `;
   wrap.querySelector('.qc-img-thumb').addEventListener('click', (e) => window.open(e.target.dataset.url, '_blank'));
@@ -687,11 +687,11 @@ async function uploadQcImage(input) {
   row.appendChild(wrap);
 
   input.value = '';
-  showToast(t('qc.imageUploaded'), 'success');
+  showToast('תמונה הועלתה', 'success');
 }
 
 async function deleteQcImage(btn) {
-  if (!confirm(t('qc.confirmDeleteImage'))) return;
+  if (!confirm('למחוק את התמונה?')) return;
   const itemId = btn.dataset.itemId;
   const storagePath = btn.dataset.storagePath;
 
@@ -699,7 +699,7 @@ async function deleteQcImage(btn) {
   if (storagePath) await supabaseClient.storage.from('qc-images').remove([storagePath]);
 
   btn.closest('.qc-img-thumb-wrap').remove();
-  showToast(t('qc.imageDeleted'), 'success');
+  showToast('תמונה נמחקה', 'success');
 }
 
 // ---- UPDATE STAGE STATUS ----
@@ -813,19 +813,19 @@ function initSignatureModal() {
     if (pendingStageCompletion.stageNum > 1) {
       const stageA = _qcStages.find(s => s.stage_number === 1);
       if (stageA && stageA.status !== 'completed' && _qcCastingApproved) {
-        errEl.textContent = t('qc.cannotApproveStage');
+        errEl.textContent = 'לא ניתן לאשר שלב זה — יש להשלים את כל פרטי שלב A (כולל סעיפים 7–9) תחילה';
         errEl.classList.remove('hidden');
         return;
       }
     }
 
     if (!inspectorName) {
-      errEl.textContent = t('qc.needInspectorName');
+      errEl.textContent = 'יש להזין שם בודק';
       errEl.classList.remove('hidden');
       return;
     }
     if (!signaturePad || signaturePad.isEmpty()) {
-      errEl.textContent = t('qc.needSignature');
+      errEl.textContent = 'יש לחתום בשדה החתימה';
       errEl.classList.remove('hidden');
       return;
     }
@@ -849,12 +849,12 @@ function initSignatureModal() {
 
     setLoading(btn, false);
 
-    if (error) { showToast(t('qc.saveError'), 'error'); return; }
+    if (error) { showToast('שגיאה בשמירה', 'error'); return; }
 
     document.getElementById('signature-modal').classList.add('hidden');
     pendingStageCompletion = null;
 
-    showToast(anyFailed ? t('qc.stageFailedToast', { n: stageNum }) : t('qc.stageCompletedToast', { n: stageNum }), anyFailed ? 'warning' : 'success');
+    showToast(`שלב ${stageNum} ${anyFailed ? 'נכשל' : 'הושלם'} ואושר!`, anyFailed ? 'warning' : 'success');
     await updatePodStatus(podId);
     await loadQCStages(podId); // Full re-render
   });

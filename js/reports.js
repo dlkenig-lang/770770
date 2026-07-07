@@ -9,36 +9,33 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, 
     s === 'passed' ? '#4a8c60' : s === 'failed' ? '#a05050' : '#8899aa';
   const itemIcon = s =>
     s === 'passed' ? '✓' : s === 'failed' ? '✗' : '○';
-  const _dir = (typeof langDir === 'function') ? langDir(getLang()) : 'rtl';
-  const _ta = _dir === 'ltr' ? 'left' : 'right';
-  const _taOpp = _dir === 'ltr' ? 'right' : 'left';
   const wrap = c =>
-    `<div style="font-family:Arial,sans-serif;direction:${_dir};color:#1e293b;width:794px;background:#fff;">${c}</div>`;
+    `<div style="font-family:Arial,sans-serif;direction:rtl;color:#1e293b;width:794px;background:#fff;">${c}</div>`;
 
   const sections = [];
 
   // Header + pod info
   sections.push(wrap(`
     <div style="background:#7ab8b6;color:#1a1a1a;padding:14px 24px;">
-      <div style="font-size:13px;font-weight:bold;letter-spacing:2px;margin-bottom:10px;text-align:${_ta};">MODUSYSTEMS LTD.</div>
+      <div style="font-size:13px;font-weight:bold;letter-spacing:2px;margin-bottom:10px;text-align:right;">MODUSYSTEMS LTD.</div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="text-align:${_taOpp};">
-          <div style="font-size:22px;font-weight:bold;">${t('rep.pdfTitle')}</div>
-          <div style="font-size:14px;margin-top:4px;">${t('rep.podLabel')} ${escHtml(pod.pod_code)}</div>
-          <div style="font-size:12px;margin-top:2px;opacity:0.7;">${t('rep.created')} ${formatDate(new Date().toISOString().split('T')[0])}</div>
+        <div style="text-align:left;">
+          <div style="font-size:22px;font-weight:bold;">דוח בקרת איכות</div>
+          <div style="font-size:14px;margin-top:4px;">פוד: ${escHtml(pod.pod_code)}</div>
+          <div style="font-size:12px;margin-top:2px;opacity:0.7;">נוצר: ${formatDate(new Date().toISOString().split('T')[0])}</div>
         </div>
-        <div style="text-align:${_ta};">
+        <div style="text-align:right;">
           ${barcodeDataUrl ? `
-            <img src="${barcodeDataUrl}" style="height:50px;width:auto;display:block;margin-${_dir==='ltr'?'right':'left'}:auto;image-rendering:pixelated;" />
+            <img src="${barcodeDataUrl}" style="height:50px;width:auto;display:block;margin-left:auto;image-rendering:pixelated;" />
             <div style="font-size:9px;margin-top:2px;text-align:center;font-weight:600;">${escHtml(pod.pod_code)}</div>
           ` : ''}
         </div>
       </div>
     </div>
-    <div style="background:#f1f5f9;padding:12px 24px;text-align:${_ta};border-bottom:2px solid #e2e8f0;">
-      <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">${t('rep.podDetails')}</div>
-      <div style="font-size:12px;">${t('rep.projectColon')} ${escHtml(pod.projects?.name || '')} | ${t('rep.codeColon')} ${escHtml(pod.pod_code)}${groupLabel ? ` | ${t('rep.groupMark')} <strong style="font-size:14px">${escHtml(groupLabel)}</strong>` : ''}</div>
-      <div style="font-size:12px;margin-top:3px;">${t('rep.typeColon')} T${escHtml(String(pod.project_types?.type_number || ''))} | ${t('rep.dirColon')} ${escHtml(pod.type_directions?.direction || '')} | ${t('rep.pipeColon')} ${escHtml(pod.projects?.pipe_type || '')}${pod.production_groups?.name ? ` | ${t('rep.groupColon')} ${escHtml(pod.production_groups.name)}` : ''}</div>
+    <div style="background:#f1f5f9;padding:12px 24px;text-align:right;border-bottom:2px solid #e2e8f0;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">פרטי פוד</div>
+      <div style="font-size:12px;">פרויקט: ${escHtml(pod.projects?.name || '')} | קוד: ${escHtml(pod.pod_code)}${groupLabel ? ` | סימון קבוצה: <strong style="font-size:14px">${escHtml(groupLabel)}</strong>` : ''}</div>
+      <div style="font-size:12px;margin-top:3px;">טיפוס: T${escHtml(String(pod.project_types?.type_number || ''))} | כיוון: ${escHtml(pod.type_directions?.direction || '')} | צינור: ${escHtml(pod.projects?.pipe_type || '')}${pod.production_groups?.name ? ` | קבוצה: ${escHtml(pod.production_groups.name)}` : ''}</div>
     </div>
   `));
 
@@ -58,9 +55,9 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, 
         <div style="display:flex;align-items:flex-start;padding:5px 10px;border-bottom:1px solid #f1f5f9;">
           <span style="color:${color};font-weight:bold;font-size:14px;min-width:20px;">${itemIcon(status)}</span>
           <div style="flex:1;">
-            <div style="font-size:12px;color:#1e293b;">${escHtml(qcItemLabel(itemDef))}</div>
-            ${item?.notes ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${t('rep.noteColon')} ${escHtml(item.notes)}</div>` : ''}
-            ${item?.time_entry_1 ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${t('rep.time1')} ${escHtml(item.time_entry_1)}  ${t('rep.time2')} ${escHtml(item.time_entry_2 || '—')}</div>` : ''}
+            <div style="font-size:12px;color:#1e293b;">${escHtml(itemDef.label)}</div>
+            ${item?.notes ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">הערה: ${escHtml(item.notes)}</div>` : ''}
+            ${item?.time_entry_1 ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">זמן 1: ${escHtml(item.time_entry_1)}  זמן 2: ${escHtml(item.time_entry_2 || '—')}</div>` : ''}
           </div>
         </div>`;
     }
@@ -68,14 +65,14 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, 
     sections.push(wrap(`
       <div style="margin:8px 24px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
         <div style="background:${bgColor};color:#1a1a1a;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:12px;">${passed}/${items.length} ${t('rep.passedWord')}</span>
-          <span style="font-size:13px;font-weight:bold;">${stage.stage_number}. ${escHtml(qcStageName(stage.stage_number))}</span>
+          <span style="font-size:12px;">${passed}/${items.length} עברו</span>
+          <span style="font-size:13px;font-weight:bold;">${stage.stage_number}. ${escHtml(stage.stage_name)}</span>
         </div>
         ${stage.inspector_name ? `
         <div style="background:#c8dfd2;padding:6px 12px;font-size:11px;color:#2d5540;display:flex;align-items:center;justify-content:space-between;">
-          <div style="text-align:${_ta};">${t('rep.inspectorColon')} <strong>${escHtml(stage.inspector_name)}</strong> | ${t('rep.dateColon')} ${escHtml(formatDate(stage.inspection_date))}</div>
+          <div style="text-align:right;">בודק: <strong>${escHtml(stage.inspector_name)}</strong> | תאריך: ${escHtml(formatDate(stage.inspection_date))}</div>
           <div>
-            ${stage.inspector_signature ? `<img src="${stage.inspector_signature}" style="height:38px;background:#fff;border-radius:3px;padding:2px;border:1px solid #a0c4b0;" alt="${t('qc.signature')}" />` : ''}
+            ${stage.inspector_signature ? `<img src="${stage.inspector_signature}" style="height:38px;background:#fff;border-radius:3px;padding:2px;border:1px solid #a0c4b0;" alt="חתימה" />` : ''}
           </div>
         </div>` : ''}
         ${itemsHTML}
@@ -88,21 +85,21 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, 
     <div style="padding:8px 24px 28px;">
       <div style="border-top:2px solid #e2e8f0;padding-top:16px;">
         <div style="display:flex;gap:24px;margin-bottom:16px;">
-          <div style="flex:1;text-align:${_ta};">
-            <div style="font-size:11px;color:#64748b;margin-bottom:6px;">${t('proj.name')}</div>
+          <div style="flex:1;text-align:right;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px;">שם</div>
             <div style="border-bottom:1px solid #94a3b8;height:24px;"></div>
           </div>
-          <div style="flex:1;text-align:${_ta};">
-            <div style="font-size:11px;color:#64748b;margin-bottom:6px;">${t('rep.role')}</div>
+          <div style="flex:1;text-align:right;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px;">תפקיד</div>
             <div style="border-bottom:1px solid #94a3b8;height:24px;"></div>
           </div>
-          <div style="flex:1;text-align:${_ta};">
-            <div style="font-size:11px;color:#64748b;margin-bottom:6px;">${t('common.date')}</div>
+          <div style="flex:1;text-align:right;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px;">תאריך</div>
             <div style="border-bottom:1px solid #94a3b8;height:24px;"></div>
           </div>
         </div>
-        <div style="text-align:${_ta};">
-          <div style="font-size:11px;color:#64748b;margin-bottom:6px;">${t('qc.signature')}</div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:#64748b;margin-bottom:6px;">חתימה</div>
           <div style="border:1px solid #94a3b8;height:18px;width:33%;border-radius:4px;"></div>
         </div>
       </div>
@@ -206,9 +203,9 @@ async function generatePodPDF(pod) {
     }
 
     await buildAndDownloadPDF(pod, stages || [], stageItems);
-    showToast(t('rep.pdfSaved'), 'success');
+    showToast('PDF נוצר ונשמר', 'success');
   } catch (err) {
-    showToast(t('rep.pdfError') + err.message, 'error');
+    showToast('שגיאה ביצירת PDF: ' + err.message, 'error');
   } finally {
     setLoading(btn, false);
   }
@@ -218,16 +215,15 @@ function buildExcelFromPods(pods, label) {
   const wb = XLSX.utils.book_new();
 
   const summaryData = [
-    [t('rep.hPodCode'), t('rep.hProject'), t('rep.hType'), t('rep.hDirection'), t('rep.hGroup'), t('rep.hStatus'),
-     t('rep.hStage', { n: 1 }), t('rep.hStage', { n: 2 }), t('rep.hStage', { n: 3 }),
-     t('rep.hStage', { n: 4 }), t('rep.hStage', { n: 5 }), t('rep.hStage', { n: 6 }), t('rep.hProgress')],
+    ['קוד פוד', 'פרויקט', 'טיפוס', 'כיוון', 'קבוצה', 'סטטוס',
+     'שלב 1', 'שלב 2', 'שלב 3', 'שלב 4', 'שלב 5', 'שלב 6', 'התקדמות %'],
   ];
 
   for (const pod of pods) {
     const stages = pod.qc_stages || [];
     const stageStatuses = QC_STAGES.map(qs => {
       const s = stages.find(st => st.stage_number === qs.number);
-      return STATUS_LABELS[s?.status] || t('status.pending');
+      return STATUS_LABELS[s?.status] || 'ממתין';
     });
     const completedStages = stages.filter(s => s.status === 'completed').length;
     summaryData.push([
@@ -242,11 +238,11 @@ function buildExcelFromPods(pods, label) {
     ]);
   }
 
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), t('rep.sheetSummary'));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'סיכום');
 
   for (const stageDef of QC_STAGES) {
-    const headers = [t('rep.hPodCode'), t('rep.hProject'), t('rep.hType'), t('rep.hDirection'), t('rep.hInspector'), t('rep.hDate')];
-    stageDef.items.forEach(item => headers.push(qcItemLabel(item)));
+    const headers = ['קוד פוד', 'פרויקט', 'טיפוס', 'כיוון', 'בודק', 'תאריך'];
+    stageDef.items.forEach(item => headers.push(item.label));
     const rows = [headers];
 
     for (const pod of pods) {
@@ -262,12 +258,12 @@ function buildExcelFromPods(pods, label) {
       ];
       stageDef.items.forEach(itemDef => {
         const item = items.find(i => i.item_key === itemDef.key);
-        row.push(STATUS_LABELS[item?.status] || t('status.pending'));
+        row.push(STATUS_LABELS[item?.status] || 'ממתין');
       });
       rows.push(row);
     }
 
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), t('rep.hStage', { n: stageDef.number }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), `שלב ${stageDef.number}`);
   }
 
   const filename = `QC_${label.replace(/[^a-zA-Z0-9א-ת]/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -276,7 +272,7 @@ function buildExcelFromPods(pods, label) {
 
 async function loadReportsView() {
   const container = document.getElementById('reports-content');
-  container.innerHTML = `<div style="text-align:center;padding:32px;color:#64748b;">${t('proj.loadingData')}</div>`;
+  container.innerHTML = '<div style="text-align:center;padding:32px;color:#64748b;">טוען נתונים...</div>';
 
   const [{ data: projects }, { data: allPods }] = await Promise.all([
     supabaseClient.from('projects').select('id, name, code').eq('is_active', true).order('name'),
@@ -303,49 +299,49 @@ async function loadReportsView() {
 
   container.innerHTML = `
     <div class="card" style="margin-bottom:16px;">
-      <div class="card-header"><h3>${t('rep.filterTitle')}</h3></div>
+      <div class="card-header"><h3>סינון פודים לייצוא</h3></div>
       <div class="card-body">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;">
           <div>
-            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">${t('pod.projectLabel')}</label>
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">פרויקט</label>
             <select id="rf-project" class="form-control form-control-sm">
-              <option value="">${t('rep.all')}</option>
+              <option value="">הכל</option>
               ${(projects || []).map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('')}
             </select>
           </div>
           <div>
-            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">${t('proj.type')}</label>
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">טיפוס</label>
             <select id="rf-type" class="form-control form-control-sm">
-              <option value="">${t('rep.all')}</option>
-              ${types.map(ty => `<option value="${ty}">T${ty}</option>`).join('')}
+              <option value="">הכל</option>
+              ${types.map(t => `<option value="${t}">T${t}</option>`).join('')}
             </select>
           </div>
           <div>
-            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">${t('proj.group')}</label>
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">קבוצה</label>
             <select id="rf-group" class="form-control form-control-sm">
-              <option value="">${t('rep.all')}</option>
+              <option value="">הכל</option>
               ${groups.map(g => `<option value="${escHtml(g)}">${escHtml(g)}</option>`).join('')}
             </select>
           </div>
           <div>
-            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">${t('proj.direction')}</label>
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">כיוון</label>
             <select id="rf-direction" class="form-control form-control-sm">
-              <option value="">${t('rep.all')}</option>
+              <option value="">הכל</option>
               ${directions.map(d => `<option value="${escHtml(d)}">${escHtml(d)}</option>`).join('')}
             </select>
           </div>
           <div>
-            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">${t('rep.statusLabel')}</label>
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">סטטוס</label>
             <select id="rf-status" class="form-control form-control-sm">
-              <option value="">${t('rep.all')}</option>
+              <option value="">הכל</option>
               ${Object.entries(STATUS_LABELS).map(([v,l]) => `<option value="${v}">${l}</option>`).join('')}
             </select>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <span id="rf-count" style="font-size:13px;color:#64748b;"></span>
-          <button id="rf-btn-pdf" class="btn btn-primary btn-sm">${t('rep.exportPdfSelected')}</button>
-          <button id="rf-btn-excel" class="btn btn-primary btn-sm">${t('rep.exportExcelSelected')}</button>
+          <button id="rf-btn-pdf" class="btn btn-primary btn-sm">📄 ייצוא PDF לנבחרים</button>
+          <button id="rf-btn-excel" class="btn btn-primary btn-sm">📊 ייצוא Excel לנבחרים</button>
         </div>
       </div>
     </div>
@@ -369,26 +365,25 @@ async function loadReportsView() {
 
   function renderTable() {
     const filtered = getFiltered();
-    document.getElementById('rf-count').textContent = t('rep.podsSelected', { n: filtered.length });
+    document.getElementById('rf-count').textContent = `${filtered.length} פודים נבחרו`;
     const tbl = document.getElementById('rf-table');
     if (!filtered.length) {
-      tbl.innerHTML = `<p style="text-align:center;color:#64748b;padding:24px;">${t('rep.noResults')}</p>`;
+      tbl.innerHTML = '<p style="text-align:center;color:#64748b;padding:24px;">אין תוצאות</p>';
       return;
     }
-    const _ta = (typeof langDir === 'function' && langDir(getLang()) === 'ltr') ? 'left' : 'right';
     tbl.innerHTML = `
       <div class="card">
         <div style="overflow-x:auto;">
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead>
-              <tr style="background:#f1f5f9;text-align:${_ta};">
-                <th style="padding:8px 12px;">${t('rep.hPodCode')}</th>
-                <th style="padding:8px 12px;">${t('rep.hProject')}</th>
-                <th style="padding:8px 12px;">${t('rep.hType')}</th>
-                <th style="padding:8px 12px;">${t('rep.hDirection')}</th>
-                <th style="padding:8px 12px;">${t('rep.hGroup')}</th>
-                <th style="padding:8px 12px;">${t('rep.hStatus')}</th>
-                <th style="padding:8px 12px;">${t('proj.progress')}</th>
+              <tr style="background:#f1f5f9;text-align:right;">
+                <th style="padding:8px 12px;">קוד פוד</th>
+                <th style="padding:8px 12px;">פרויקט</th>
+                <th style="padding:8px 12px;">טיפוס</th>
+                <th style="padding:8px 12px;">כיוון</th>
+                <th style="padding:8px 12px;">קבוצה</th>
+                <th style="padding:8px 12px;">סטטוס</th>
+                <th style="padding:8px 12px;">התקדמות</th>
               </tr>
             </thead>
             <tbody>
@@ -419,7 +414,7 @@ async function loadReportsView() {
 
   document.getElementById('rf-btn-pdf').addEventListener('click', async () => {
     const filtered = getFiltered();
-    if (!filtered.length) { showToast(t('rep.noPodsSelected'), 'warning'); return; }
+    if (!filtered.length) { showToast('אין פודים נבחרים', 'warning'); return; }
     const btn = document.getElementById('rf-btn-pdf');
     setLoading(btn, true);
     try {
@@ -431,9 +426,9 @@ async function loadReportsView() {
         await buildAndDownloadPDF(pod, stages, stageItems);
         if (i < filtered.length - 1) await new Promise(r => setTimeout(r, 300));
       }
-      showToast(t('rep.pdfExported', { n: filtered.length }), 'success');
+      showToast(`${filtered.length} קבצי PDF יוצאו`, 'success');
     } catch (err) {
-      showToast(t('proj.errorPrefix') + err.message, 'error');
+      showToast('שגיאה: ' + err.message, 'error');
     } finally {
       setLoading(btn, false);
     }
@@ -441,7 +436,7 @@ async function loadReportsView() {
 
   document.getElementById('rf-btn-excel').addEventListener('click', () => {
     const filtered = getFiltered();
-    if (!filtered.length) { showToast(t('rep.noPodsSelected'), 'warning'); return; }
+    if (!filtered.length) { showToast('אין פודים נבחרים', 'warning'); return; }
 
     // Highlight selected rows in blue
     const selectedIds = new Set(filtered.map(p => p.id));
@@ -456,12 +451,12 @@ async function loadReportsView() {
 
     try {
       const label = document.getElementById('rf-project').value
-        ? (projects || []).find(p => p.id === document.getElementById('rf-project').value)?.name || t('rep.filterLabel')
-        : t('rep.allPodsLabel');
+        ? (projects || []).find(p => p.id === document.getElementById('rf-project').value)?.name || 'סינון'
+        : 'כל_הפודים';
       buildExcelFromPods(filtered, label);
-      showToast(t('rep.excelCreated'), 'success');
+      showToast('קובץ Excel נוצר', 'success');
     } catch (err) {
-      showToast(t('proj.errorPrefix') + err.message, 'error');
+      showToast('שגיאה: ' + err.message, 'error');
     }
   });
 }

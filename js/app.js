@@ -112,7 +112,7 @@ async function loadUsersView() {
   const container = document.getElementById('users-list');
 
   if (!users || users.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-text">${t('users.none')}</div></div>`;
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-text">אין משתמשים</div></div>';
     return;
   }
 
@@ -121,7 +121,7 @@ async function loadUsersView() {
       <table>
         <thead>
           <tr>
-            <th>${t('users.hName')}</th><th>${t('users.hUsername')}</th><th>${t('users.hEmail')}</th><th>${t('users.hRole')}</th><th>${t('users.hActive')}</th><th>${t('users.hCreated')}</th><th>${t('users.hActions')}</th>
+            <th>שם</th><th>שם משתמש</th><th>אימייל</th><th>תפקיד</th><th>פעיל</th><th>נוצר ב</th><th>פעולות</th>
           </tr>
         </thead>
         <tbody>
@@ -143,9 +143,9 @@ async function loadUsersView() {
                 <div class="table-actions">
                   ${u.id !== AppState.currentProfile?.id ? `
                     <button class="btn btn-secondary btn-sm btn-toggle-active" data-user-id="${u.id}" data-active="${u.is_active}">
-                      ${u.is_active ? t('users.deactivate') : t('users.activate')}
+                      ${u.is_active ? 'השבת' : 'הפעל'}
                     </button>
-                  ` : `<span class="text-muted text-sm">${t('common.you')}</span>`}
+                  ` : '<span class="text-muted text-sm">אתה</span>'}
                 </div>
               </td>
             </tr>
@@ -182,11 +182,11 @@ async function loadUsersView() {
       const { data, error } = await supabaseClient.from('profiles')
         .update({ role: newRole }).eq('id', sel.dataset.userId).select('id');
       if (error || !data?.length) {
-        showToast(t('users.roleUpdateError'), 'error');
+        showToast('שגיאה בעדכון תפקיד — אין הרשאה', 'error');
         sel.value = prevValue || sel.value;
         return;
       }
-      showToast(t('users.roleUpdated'), 'success');
+      showToast('תפקיד עודכן', 'success');
       updateSingleRoleOptions();
       // Refresh navbar if current user's role was changed
       if (sel.dataset.userId === AppState.currentProfile?.id) {
@@ -203,8 +203,8 @@ async function loadUsersView() {
       const newActive = btn.dataset.active !== 'true';
       const { error } = await supabaseClient.from('profiles')
         .update({ is_active: newActive }).eq('id', btn.dataset.userId);
-      if (error) { showToast(t('common.error'), 'error'); return; }
-      showToast(t('users.updated'), 'success');
+      if (error) { showToast('שגיאה', 'error'); return; }
+      showToast('עודכן', 'success');
       await loadUsersView();
     });
   });
@@ -360,7 +360,7 @@ function initProfileModal() {
     const newName = nameInput.value.trim();
     errEl.classList.add('hidden');
     if (!newName) {
-      errEl.textContent = t('profile.enterName');
+      errEl.textContent = 'יש להזין שם תצוגה';
       errEl.classList.remove('hidden');
       return;
     }
@@ -378,7 +378,7 @@ function initProfileModal() {
     }
 
     if (error) {
-      errEl.textContent = t('proj.saveErrorColon') + (error.message || error);
+      errEl.textContent = 'שגיאה בשמירה: ' + (error.message || error);
       errEl.classList.remove('hidden');
       return;
     }
@@ -386,34 +386,9 @@ function initProfileModal() {
     AppState.currentProfile.full_name = newName;
     updateUserDisplay(AppState.currentProfile);
     closeModal();
-    showToast(t('profile.updated'), 'success');
+    showToast('שם תצוגה עודכן', 'success');
   });
 }
-
-// ---- LANGUAGE RE-RENDER ----
-// Called by i18n.applyLang after a language switch. Re-runs the loader for
-// whichever view is active so dynamically-generated (JS) content is rebuilt
-// in the new language, preserving the current project/pod context.
-window.rerenderCurrentView = function rerenderCurrentView() {
-  // Nothing to re-render until the user is authenticated and the app is shown.
-  if (!AppState.currentUser) return;
-
-  // Refresh role/name chips (role label is language-dependent).
-  if (AppState.currentProfile) updateUserDisplay(AppState.currentProfile);
-
-  const active = document.querySelector('.view.active');
-  if (!active) return;
-  const view = active.id.replace('view-', '');
-
-  switch (view) {
-    case 'dashboard':       loadDashboard(); break;
-    case 'projects':        loadProjects(); break;
-    case 'users':           loadUsersView(); break;
-    case 'reports':         loadReportsView(); break;
-    case 'project-detail':  if (AppState.currentProject) openProject(AppState.currentProject.id); break;
-    case 'pod-detail':      if (AppState.currentPod) openPod(AppState.currentPod.id); break;
-  }
-};
 
 // ---- INIT ----
 async function init() {

@@ -12,7 +12,7 @@ function openScannerModal() {
   statusEl.className = 'scanner-status hidden';
 
   if (typeof Quagga === 'undefined') {
-    statusEl.textContent = t('scan.libLoading');
+    statusEl.textContent = 'הספרייה עדיין נטענת, נסה שוב עוד רגע';
     statusEl.className = 'scanner-status scanner-status-error';
     return;
   }
@@ -39,7 +39,7 @@ function openScannerModal() {
     locate: true
   }, function (err) {
     if (err) {
-      statusEl.textContent = t('scan.cameraError');
+      statusEl.textContent = 'לא ניתן לגשת למצלמה. ודא שהענקת הרשאת מצלמה.';
       statusEl.className = 'scanner-status scanner-status-error';
       return;
     }
@@ -72,7 +72,7 @@ function openScannerModal() {
 
 async function _onBarcodeScanned(podCode) {
   const statusEl = document.getElementById('scanner-status');
-  statusEl.textContent = t('scan.searching', { code: podCode });
+  statusEl.textContent = `מחפש פוד: ${podCode}…`;
   statusEl.className = 'scanner-status scanner-status-info';
 
   const { data: pod } = await supabaseClient
@@ -82,7 +82,7 @@ async function _onBarcodeScanned(podCode) {
     .maybeSingle();
 
   if (!pod) {
-    statusEl.textContent = t('scan.podNotFound', { code: podCode });
+    statusEl.textContent = `פוד לא נמצא: ${podCode}`;
     statusEl.className = 'scanner-status scanner-status-error';
     setTimeout(() => {
       if (!document.getElementById('scanner-modal').classList.contains('hidden')) {

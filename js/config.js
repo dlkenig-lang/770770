@@ -25,13 +25,6 @@ const ROLES = {
   VIEWER: 'viewer',
 };
 
-const ROLE_LABELS = {
-  admin: 'מנהל מערכת',
-  project_manager: 'מנהל פרויקט',
-  inspector: 'בודק',
-  viewer: 'צופה',
-};
-
 const ROLE_COLORS = {
   admin: '#dc2626',
   project_manager: '#2563eb',
@@ -39,13 +32,27 @@ const ROLE_COLORS = {
   viewer: '#64748b',
 };
 
-const STATUS_LABELS = {
-  pending: 'ממתין',
-  in_progress: 'בביצוע',
-  completed: 'הושלם',
-  failed: 'נכשל',
-  passed: 'עבר',
-};
+// Language-aware label maps. Rebuilt from the i18n dictionary on load and
+// on every language switch (see refreshI18nLabels + applyLang). Kept as
+// plain objects so existing bracket-access and Object.entries() call sites
+// keep working unchanged.
+// NOTE: declared with `var` (not let/const) so they are properties of the
+// global object and free of temporal-dead-zone issues when accessed across
+// the separately-loaded script files.
+var ROLE_LABELS = {};
+var STATUS_LABELS = {};
+
+function refreshI18nLabels() {
+  var roleKeys = ['admin', 'project_manager', 'inspector', 'viewer'];
+  var statusKeys = ['pending', 'in_progress', 'completed', 'failed', 'passed'];
+  ROLE_LABELS = {};
+  roleKeys.forEach(function (r) { ROLE_LABELS[r] = t('role.' + r); });
+  STATUS_LABELS = {};
+  statusKeys.forEach(function (s) { STATUS_LABELS[s] = t('status.' + s); });
+}
+
+// Populate immediately (i18n.js loads before config.js).
+refreshI18nLabels();
 
 function canEdit() {
   const role = AppState.currentProfile?.role;

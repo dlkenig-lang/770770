@@ -3,11 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>בקרת איכות - ייצור פודים</title>
+  <title data-i18n="app.title">בקרת איכות - ייצור פודים</title>
+  <!-- i18n — load early so language/direction are set before render -->
+  <script src="js/i18n.js?v=5"></script>
   <link rel="icon" type="image/svg+xml" href="images/favicon.svg">
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
   <link rel="mask-icon" href="images/safari-pinned-tab.svg" color="#3DD4CE">
-  <link rel="stylesheet" href="css/styles.css?v=56" />
+  <link rel="stylesheet" href="css/styles.css?v=59" />
   <!-- Supabase - must load synchronously before app scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <!-- JsBarcode - defer, used only when printing barcodes -->
@@ -44,14 +46,18 @@
       <img src="images/logo.svg" alt="Modusystems" class="navbar-logo" />
     </div>
     <div class="navbar-menu">
-      <button class="btn btn-ghost btn-sm nav-user-btn" id="btn-edit-profile" title="ערוך שם תצוגה">
+      <div class="lang-switcher" id="lang-switcher" title="בחר שפה" data-i18n-title="lang.title">
+        <button type="button" class="lang-btn" data-lang="he" data-i18n="lang.he">עב</button>
+        <button type="button" class="lang-btn" data-lang="en" data-i18n="lang.en">EN</button>
+      </div>
+      <button class="btn btn-ghost btn-sm nav-user-btn" id="btn-edit-profile" title="ערוך שם תצוגה" data-i18n-title="nav.editProfileTitle">
         <span id="nav-user-name" class="nav-user"></span> ✏️
       </button>
       <span id="nav-user-role" class="nav-role-badge"></span>
-      <button class="btn btn-ghost btn-sm" id="btn-logout">התנתק</button>
+      <button class="btn btn-ghost btn-sm" id="btn-logout" data-i18n="nav.logout">התנתק</button>
     </div>
     <!-- hamburger — mobile only -->
-    <button class="hamburger-btn" id="btn-hamburger" aria-label="תפריט">
+    <button class="hamburger-btn" id="btn-hamburger" aria-label="תפריט" data-i18n-aria-label="nav.menu">
       <span></span><span></span><span></span>
     </button>
   </nav>
@@ -65,31 +71,31 @@
       <!-- Mobile drawer header: user info + scan -->
       <div class="sidebar-user-header">
         <div class="sidebar-user-info">
-          <button class="btn btn-ghost btn-sm sidebar-user-btn" id="btn-edit-profile-mobile" title="ערוך שם תצוגה">
+          <button class="btn btn-ghost btn-sm sidebar-user-btn" id="btn-edit-profile-mobile" title="ערוך שם תצוגה" data-i18n-title="nav.editProfileTitle">
             <span id="sidebar-user-name" class="nav-user"></span> ✏️
           </button>
           <span id="sidebar-user-role" class="nav-role-badge"></span>
         </div>
-        <button class="btn btn-ghost btn-sm sidebar-scan-btn" id="btn-scan-barcode" title="סרוק ברקוד פוד">📷 סרוק</button>
+        <button class="btn btn-ghost btn-sm sidebar-scan-btn" id="btn-scan-barcode" title="סרוק ברקוד פוד" data-i18n="sidebar.scan" data-i18n-title="sidebar.scanTitle">📷 סרוק</button>
       </div>
 
       <nav class="sidebar-nav">
         <a href="#" class="sidebar-item active" data-view="dashboard">
-          <span class="sidebar-icon">🏠</span><span>לוח בקרה</span>
+          <span class="sidebar-icon">🏠</span><span data-i18n="nav.dashboard">לוח בקרה</span>
         </a>
         <a href="#" class="sidebar-item" data-view="projects">
-          <span class="sidebar-icon">📋</span><span>פרויקטים</span>
+          <span class="sidebar-icon">📋</span><span data-i18n="nav.projects">פרויקטים</span>
         </a>
         <a href="#" class="sidebar-item admin-only mobile-hidden" data-view="users">
-          <span class="sidebar-icon">👥</span><span>ניהול משתמשים</span>
+          <span class="sidebar-icon">👥</span><span data-i18n="nav.users">ניהול משתמשים</span>
         </a>
         <a href="#" class="sidebar-item" data-view="reports">
-          <span class="sidebar-icon">📊</span><span>דוחות</span>
+          <span class="sidebar-icon">📊</span><span data-i18n="nav.reports">דוחות</span>
         </a>
       </nav>
       <!-- Logout — visible only in mobile drawer -->
       <div class="sidebar-footer">
-        <button class="btn btn-ghost btn-sm sidebar-logout-btn" id="btn-logout-mobile">🚪 התנתק</button>
+        <button class="btn btn-ghost btn-sm sidebar-logout-btn" id="btn-logout-mobile" data-i18n="sidebar.logout">🚪 התנתק</button>
       </div>
     </aside>
 
@@ -99,11 +105,11 @@
       <!-- ===== DASHBOARD VIEW ===== -->
       <div id="view-dashboard" class="view active">
         <div class="page-header">
-          <h1>לוח בקרה</h1>
+          <h1 data-i18n="dashboard.title">לוח בקרה</h1>
         </div>
         <div class="stats-grid" id="dashboard-stats"></div>
         <div class="dashboard-recent">
-          <h2>פרויקטים פעילים</h2>
+          <h2 data-i18n="dashboard.activeProjects">פרויקטים פעילים</h2>
           <div id="dashboard-projects-list" class="projects-grid"></div>
         </div>
       </div>
@@ -111,15 +117,15 @@
       <!-- ===== PROJECTS VIEW ===== -->
       <div id="view-projects" class="view">
         <div class="page-header">
-          <h1>פרויקטים</h1>
-          <button class="btn btn-primary admin-only pm-only" id="btn-new-project">+ פרויקט חדש</button>
+          <h1 data-i18n="projects.title">פרויקטים</h1>
+          <button class="btn btn-primary admin-only pm-only" id="btn-new-project" data-i18n="projects.new">+ פרויקט חדש</button>
         </div>
         <div id="projects-list" class="projects-grid"></div>
 
         <!-- Archive section -->
         <div class="archive-section admin-only pm-only">
           <button class="archive-toggle-btn" id="btn-toggle-archive">
-            <span>📦 ארכיון פרויקטים</span>
+            <span data-i18n="projects.archive">📦 ארכיון פרויקטים</span>
             <span class="archive-toggle-arrow">▸</span>
           </button>
           <div id="archived-projects-list" class="projects-grid archive-grid hidden"></div>
@@ -129,51 +135,51 @@
       <!-- ===== PROJECT DETAIL VIEW ===== -->
       <div id="view-project-detail" class="view">
         <div class="page-header">
-          <button class="btn btn-ghost" id="btn-back-projects">← חזרה</button>
+          <button class="btn btn-ghost" id="btn-back-projects" data-i18n="common.back">← חזרה</button>
           <h1 id="project-detail-title">פרויקט</h1>
           <div class="header-actions">
-            <button class="btn btn-secondary admin-only pm-only" id="btn-edit-project">עריכה</button>
-            <button class="btn btn-ghost admin-only" id="btn-project-actions" title="ארכיון / מחיקה">⋯</button>
+            <button class="btn btn-secondary admin-only pm-only" id="btn-edit-project" data-i18n="common.edit">עריכה</button>
+            <button class="btn btn-ghost admin-only" id="btn-project-actions" title="ארכיון / מחיקה" data-i18n-title="projectDetail.actionsTitle">⋯</button>
           </div>
         </div>
         <div id="project-info-bar" class="project-info-bar"></div>
         <div id="project-pods-stats" class="pods-stats-strip"></div>
         <div class="tabs">
-          <button class="tab-btn active" data-tab="pods">פודים</button>
-          <button class="tab-btn" data-tab="groups">קבוצות ביצוע</button>
-          <button class="tab-btn" data-tab="details">פרטים נוספים</button>
-          <button class="tab-btn" data-tab="plans">תוכניות</button>
+          <button class="tab-btn active" data-tab="pods" data-i18n="tabs.pods">פודים</button>
+          <button class="tab-btn" data-tab="groups" data-i18n="tabs.groups">קבוצות ביצוע</button>
+          <button class="tab-btn" data-tab="details" data-i18n="tabs.details">פרטים נוספים</button>
+          <button class="tab-btn" data-tab="plans" data-i18n="tabs.plans">תוכניות</button>
         </div>
         <div id="tab-pods" class="tab-content active">
           <div class="filter-bar">
             <select id="filter-group" class="form-control filter-select">
-              <option value="">כל הקבוצות</option>
+              <option value="" data-i18n="filter.allGroups">כל הקבוצות</option>
             </select>
             <select id="filter-type" class="form-control filter-select">
-              <option value="">כל הטיפוסים</option>
+              <option value="" data-i18n="filter.allTypes">כל הטיפוסים</option>
             </select>
             <select id="filter-direction" class="form-control filter-select">
-              <option value="">כל הכיוונים</option>
+              <option value="" data-i18n="filter.allDirections">כל הכיוונים</option>
             </select>
             <select id="filter-status" class="form-control filter-select">
-              <option value="">כל הסטטוסים</option>
-              <option value="pending">ממתין</option>
-              <option value="in_progress">בביצוע</option>
-              <option value="completed">הושלם</option>
-              <option value="failed">נכשל</option>
+              <option value="" data-i18n="filter.allStatuses">כל הסטטוסים</option>
+              <option value="pending" data-i18n="status.pending">ממתין</option>
+              <option value="in_progress" data-i18n="status.in_progress">בביצוע</option>
+              <option value="completed" data-i18n="status.completed">הושלם</option>
+              <option value="failed" data-i18n="status.failed">נכשל</option>
             </select>
             <select id="filter-casting" class="form-control filter-select">
-              <option value="">כל הפודים</option>
-              <option value="true">מאושרים ליציקה</option>
-              <option value="false">לא מאושרים ליציקה</option>
+              <option value="" data-i18n="filter.allPods">כל הפודים</option>
+              <option value="true" data-i18n="filter.castingApproved">מאושרים ליציקה</option>
+              <option value="false" data-i18n="filter.castingNotApproved">לא מאושרים ליציקה</option>
             </select>
-            <button class="btn btn-secondary" id="btn-print-all-barcodes" title="הדפס ברקודים לפי סינון">🖨️ הדפס ברקודים</button>
+            <button class="btn btn-secondary" id="btn-print-all-barcodes" title="הדפס ברקודים לפי סינון" data-i18n="pods.printBarcodes" data-i18n-title="pods.printBarcodesTitle">🖨️ הדפס ברקודים</button>
           </div>
           <div id="pods-table-container"></div>
         </div>
         <div id="tab-groups" class="tab-content">
           <div class="groups-header">
-            <button class="btn btn-primary admin-only pm-only" id="btn-add-group">+ הוסף קבוצה</button>
+            <button class="btn btn-primary admin-only pm-only" id="btn-add-group" data-i18n="groups.add">+ הוסף קבוצה</button>
           </div>
           <div id="groups-list"></div>
         </div>
@@ -188,16 +194,16 @@
       <!-- ===== POD DETAIL / QC VIEW ===== -->
       <div id="view-pod-detail" class="view">
         <div class="page-header">
-          <button class="btn btn-ghost" id="btn-back-project">← חזרה לפרויקט</button>
+          <button class="btn btn-ghost" id="btn-back-project" data-i18n="pod.backToProject">← חזרה לפרויקט</button>
           <div class="pod-header-info">
             <h1 id="pod-detail-code" class="pod-code-title"></h1>
             <span id="pod-detail-status" class="status-badge"></span>
-            <span id="pod-casting-badge" class="casting-approved-badge" style="display:none" title="מאושר ליציקה">🏗️ מאושר ליציקה</span>
+            <span id="pod-casting-badge" class="casting-approved-badge" style="display:none" title="מאושר ליציקה" data-i18n="pod.castingApproved" data-i18n-title="pod.castingApprovedTitle">🏗️ מאושר ליציקה</span>
           </div>
           <div class="header-actions">
-            <button class="btn btn-secondary" id="btn-pod-comments">💬 הערות</button>
-            <button class="btn btn-secondary" id="btn-pod-barcode">🔲 ברקוד</button>
-            <button class="btn btn-primary" id="btn-pod-pdf">📄 ייצוא PDF</button>
+            <button class="btn btn-secondary" id="btn-pod-comments" data-i18n="pod.comments">💬 הערות</button>
+            <button class="btn btn-secondary" id="btn-pod-barcode" data-i18n="pod.barcode">🔲 ברקוד</button>
+            <button class="btn btn-primary" id="btn-pod-pdf" data-i18n="pod.exportPdf">📄 ייצוא PDF</button>
           </div>
         </div>
         <div id="pod-info-bar" class="pod-info-bar"></div>
@@ -209,7 +215,7 @@
       <!-- ===== USERS VIEW ===== -->
       <div id="view-users" class="view">
         <div class="page-header">
-          <h1>ניהול משתמשים</h1>
+          <h1 data-i18n="users.title">ניהול משתמשים</h1>
         </div>
         <div id="users-list"></div>
       </div>
@@ -217,7 +223,7 @@
       <!-- ===== REPORTS VIEW ===== -->
       <div id="view-reports" class="view">
         <div class="page-header">
-          <h1>דוחות</h1>
+          <h1 data-i18n="reports.title">דוחות</h1>
         </div>
         <div id="reports-content"></div>
       </div>
@@ -228,31 +234,36 @@
 
 <!-- ========== AUTH SCREENS ========== -->
 <div id="auth-screen" class="auth-screen">
+  <!-- Language switcher (visible on all auth panels, before login) -->
+  <div class="lang-switcher auth-lang-switcher" title="בחר שפה" data-i18n-title="lang.title">
+    <button type="button" class="lang-btn" data-lang="he" data-i18n="lang.he">עב</button>
+    <button type="button" class="lang-btn" data-lang="en" data-i18n="lang.en">EN</button>
+  </div>
   <!-- Login -->
   <div id="auth-login" class="auth-panel active">
     <div class="auth-card">
       <div class="auth-logo">
         <img src="images/logo.svg" alt="Modusystems" class="auth-logo-img" />
-        <p>כניסה למערכת</p>
+        <p data-i18n="auth.loginSubtitle">כניסה למערכת</p>
       </div>
       <form id="form-login" class="auth-form">
         <div class="form-group">
-          <label>אימייל או שם משתמש</label>
+          <label data-i18n="auth.emailOrUsername">אימייל או שם משתמש</label>
           <input type="text" id="login-email" class="form-control" placeholder="your@email.com" required autocomplete="username" />
         </div>
         <div class="form-group">
-          <label>סיסמה</label>
+          <label data-i18n="auth.password">סיסמה</label>
           <div class="input-password-wrapper">
             <input type="password" id="login-password" class="form-control" placeholder="••••••••" required />
             <button type="button" class="btn-show-pass" data-target="login-password">👁</button>
           </div>
         </div>
         <div id="login-error" class="error-msg hidden"></div>
-        <button type="submit" class="btn btn-primary btn-full">כניסה</button>
+        <button type="submit" class="btn btn-primary btn-full" data-i18n="auth.login">כניסה</button>
       </form>
       <div class="auth-links">
-        <a href="#" id="link-forgot">שכחתי סיסמה</a>
-        <a href="#" id="link-register">הרשמה</a>
+        <a href="#" id="link-forgot" data-i18n="auth.forgot">שכחתי סיסמה</a>
+        <a href="#" id="link-register" data-i18n="auth.register">הרשמה</a>
       </div>
     </div>
   </div>
@@ -262,42 +273,42 @@
     <div class="auth-card">
       <div class="auth-logo">
         <img src="images/logo.svg" alt="Modusystems" class="auth-logo-img" />
-        <p>הרשמה למערכת</p>
+        <p data-i18n="auth.registerSubtitle">הרשמה למערכת</p>
       </div>
       <form id="form-register" class="auth-form">
         <div class="form-group">
-          <label>שם מלא</label>
-          <input type="text" id="reg-name" class="form-control" placeholder="ישראל ישראלי" required />
+          <label data-i18n="auth.fullName">שם מלא</label>
+          <input type="text" id="reg-name" class="form-control" placeholder="ישראל ישראלי" data-i18n-placeholder="auth.fullNamePlaceholder" required />
         </div>
         <div class="form-group">
-          <label>שם משתמש</label>
+          <label data-i18n="auth.username">שם משתמש</label>
           <input type="text" id="reg-username" class="form-control" placeholder="username123" required autocomplete="username" />
-          <small class="form-hint">ישמש לזיהוי בהערות ובדיקות QC · אנגלית בלבד, ללא רווחים</small>
+          <small class="form-hint" data-i18n="auth.usernameHint">ישמש לזיהוי בהערות ובדיקות QC · אנגלית בלבד, ללא רווחים</small>
         </div>
         <div class="form-group">
-          <label>אימייל</label>
+          <label data-i18n="auth.email">אימייל</label>
           <input type="email" id="reg-email" class="form-control" placeholder="your@email.com" required />
         </div>
         <div class="form-group">
-          <label>סיסמה</label>
+          <label data-i18n="auth.password">סיסמה</label>
           <div class="input-password-wrapper">
-            <input type="password" id="reg-password" class="form-control" placeholder="לפחות 6 תווים" required minlength="6" />
+            <input type="password" id="reg-password" class="form-control" placeholder="לפחות 6 תווים" data-i18n-placeholder="auth.passwordMinPlaceholder" required minlength="6" />
             <button type="button" class="btn-show-pass" data-target="reg-password">👁</button>
           </div>
         </div>
         <div class="form-group">
-          <label>אימות סיסמה</label>
+          <label data-i18n="auth.confirmPassword">אימות סיסמה</label>
           <div class="input-password-wrapper">
-            <input type="password" id="reg-password2" class="form-control" placeholder="חזור על הסיסמה" required />
+            <input type="password" id="reg-password2" class="form-control" placeholder="חזור על הסיסמה" data-i18n-placeholder="auth.repeatPassword" required />
             <button type="button" class="btn-show-pass" data-target="reg-password2">👁</button>
           </div>
         </div>
         <div id="register-error" class="error-msg hidden"></div>
         <div id="register-success" class="success-msg hidden"></div>
-        <button type="submit" class="btn btn-primary btn-full">הרשמה</button>
+        <button type="submit" class="btn btn-primary btn-full" data-i18n="auth.register">הרשמה</button>
       </form>
       <div class="auth-links">
-        <a href="#" id="link-login-back">חזרה לכניסה</a>
+        <a href="#" id="link-login-back" data-i18n="auth.backToLogin">חזרה לכניסה</a>
       </div>
     </div>
   </div>
@@ -307,19 +318,19 @@
     <div class="auth-card">
       <div class="auth-logo">
         <img src="images/logo.svg" alt="Modusystems" class="auth-logo-img" />
-        <p>שחזור סיסמה</p>
+        <p data-i18n="auth.forgotSubtitle">שחזור סיסמה</p>
       </div>
       <form id="form-forgot" class="auth-form">
         <div class="form-group">
-          <label>אימייל</label>
+          <label data-i18n="auth.email">אימייל</label>
           <input type="email" id="forgot-email" class="form-control" placeholder="your@email.com" required />
         </div>
         <div id="forgot-error" class="error-msg hidden"></div>
         <div id="forgot-success" class="success-msg hidden"></div>
-        <button type="submit" class="btn btn-primary btn-full">שלח קישור לאיפוס</button>
+        <button type="submit" class="btn btn-primary btn-full" data-i18n="auth.sendReset">שלח קישור לאיפוס</button>
       </form>
       <div class="auth-links">
-        <a href="#" id="link-login-from-forgot">חזרה לכניסה</a>
+        <a href="#" id="link-login-from-forgot" data-i18n="auth.backToLogin">חזרה לכניסה</a>
       </div>
     </div>
   </div>
@@ -329,26 +340,26 @@
     <div class="auth-card">
       <div class="auth-logo">
         <img src="images/logo.svg" alt="Modusystems" class="auth-logo-img" />
-        <p>הגדרת סיסמה חדשה</p>
+        <p data-i18n="auth.resetSubtitle">הגדרת סיסמה חדשה</p>
       </div>
       <form id="form-reset" class="auth-form">
         <div class="form-group">
-          <label>סיסמה חדשה</label>
+          <label data-i18n="auth.newPassword">סיסמה חדשה</label>
           <div class="input-password-wrapper">
-            <input type="password" id="reset-password" class="form-control" placeholder="לפחות 6 תווים" required minlength="6" />
+            <input type="password" id="reset-password" class="form-control" placeholder="לפחות 6 תווים" data-i18n-placeholder="auth.passwordMinPlaceholder" required minlength="6" />
             <button type="button" class="btn-show-pass" data-target="reset-password">👁</button>
           </div>
         </div>
         <div class="form-group">
-          <label>אימות סיסמה</label>
+          <label data-i18n="auth.confirmPassword">אימות סיסמה</label>
           <div class="input-password-wrapper">
-            <input type="password" id="reset-password2" class="form-control" placeholder="חזור על הסיסמה" required />
+            <input type="password" id="reset-password2" class="form-control" placeholder="חזור על הסיסמה" data-i18n-placeholder="auth.repeatPassword" required />
             <button type="button" class="btn-show-pass" data-target="reset-password2">👁</button>
           </div>
         </div>
         <div id="reset-error" class="error-msg hidden"></div>
         <div id="reset-success" class="success-msg hidden"></div>
-        <button type="submit" class="btn btn-primary btn-full">שמור סיסמה חדשה</button>
+        <button type="submit" class="btn btn-primary btn-full" data-i18n="auth.saveNewPassword">שמור סיסמה חדשה</button>
       </form>
     </div>
   </div>
@@ -372,14 +383,14 @@
 <div id="barcode-modal" class="modal-overlay hidden">
   <div class="modal-container modal-sm">
     <div class="modal-header">
-      <h2>ברקוד פוד</h2>
+      <h2 data-i18n="modal.barcodeTitle">ברקוד פוד</h2>
       <button class="modal-close" id="barcode-modal-close">✕</button>
     </div>
     <div class="modal-body barcode-modal-body">
       <div id="barcode-display" class="barcode-display"></div>
       <p id="barcode-pod-code" class="barcode-pod-code"></p>
       <p id="barcode-group-label" style="text-align:center;font-size:22px;font-weight:900;color:var(--primary);letter-spacing:1px;margin:0;display:none"></p>
-      <button class="btn btn-primary btn-full" id="btn-print-barcode">🖨️ הדפס</button>
+      <button class="btn btn-primary btn-full" id="btn-print-barcode" data-i18n="common.print">🖨️ הדפס</button>
     </div>
   </div>
 </div>
@@ -388,30 +399,30 @@
 <div id="signature-modal" class="modal-overlay hidden">
   <div class="modal-container modal-md">
     <div class="modal-header">
-      <h2>חתימת בודק</h2>
+      <h2 data-i18n="modal.signatureTitle">חתימת בודק</h2>
       <button class="modal-close" id="sig-modal-close">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label>שם הבודק *</label>
-        <input type="text" id="sig-inspector-name" class="form-control" placeholder="שם מלא" />
+        <label data-i18n="sig.inspectorName">שם הבודק *</label>
+        <input type="text" id="sig-inspector-name" class="form-control" placeholder="שם מלא" data-i18n-placeholder="sig.fullNamePlaceholder" />
       </div>
       <div class="form-group">
-        <label>חתימה *</label>
+        <label data-i18n="sig.signature">חתימה *</label>
         <div class="signature-wrapper">
           <canvas id="signature-canvas" class="signature-canvas"></canvas>
-          <button class="btn btn-ghost btn-sm sig-clear-btn" id="sig-clear">נקה</button>
+          <button class="btn btn-ghost btn-sm sig-clear-btn" id="sig-clear" data-i18n="common.clear">נקה</button>
         </div>
       </div>
       <div class="form-group">
-        <label>תאריך</label>
+        <label data-i18n="common.date">תאריך</label>
         <input type="date" id="sig-date" class="form-control" />
       </div>
       <div id="sig-error" class="error-msg hidden"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" id="sig-cancel">ביטול</button>
-      <button class="btn btn-primary" id="sig-confirm">אשר ושמור</button>
+      <button class="btn btn-ghost" id="sig-cancel" data-i18n="common.cancel">ביטול</button>
+      <button class="btn btn-primary" id="sig-confirm" data-i18n="sig.confirm">אשר ושמור</button>
     </div>
   </div>
 </div>
@@ -420,19 +431,19 @@
 <div id="comments-modal" class="modal-overlay hidden">
   <div class="modal-container modal-md">
     <div class="modal-header">
-      <h2>הערות לפוד</h2>
+      <h2 data-i18n="modal.commentsTitle">הערות לפוד</h2>
       <button class="modal-close" id="comments-modal-close">✕</button>
     </div>
     <div class="modal-body">
       <div id="comments-list" class="comments-list"></div>
       <div class="comment-input-area">
-        <textarea id="new-comment-text" class="form-control" rows="3" placeholder="הוסף הערה..."></textarea>
+        <textarea id="new-comment-text" class="form-control" rows="3" placeholder="הוסף הערה..." data-i18n-placeholder="comments.addPlaceholder"></textarea>
         <div class="comment-actions-row">
           <label class="checkbox-label viewer-flag-option">
             <input type="checkbox" id="comment-flag-cb" />
-            <span>סמן כדגל אדום (חייב להתייחס)</span>
+            <span data-i18n="comments.redFlag">סמן כדגל אדום (חייב להתייחס)</span>
           </label>
-          <button class="btn btn-primary" id="btn-submit-comment">שלח הערה</button>
+          <button class="btn btn-primary" id="btn-submit-comment" data-i18n="comments.submit">שלח הערה</button>
         </div>
       </div>
     </div>
@@ -443,23 +454,23 @@
 <div id="share-stage-modal" class="modal-overlay hidden">
   <div class="modal-container modal-sm">
     <div class="modal-header">
-      <h2>שיתוף שלב</h2>
+      <h2 data-i18n="modal.shareTitle">שיתוף שלב</h2>
       <button class="modal-close" onclick="document.getElementById('share-stage-modal').classList.add('hidden')">✕</button>
     </div>
     <div class="modal-body">
       <p id="share-stage-title" class="share-stage-name"></p>
       <div class="form-group">
-        <label class="form-label">שלח אל</label>
+        <label class="form-label" data-i18n="share.sendTo">שלח אל</label>
         <select id="share-user-select" class="form-control"></select>
       </div>
       <div class="form-group">
-        <label class="form-label">הערה (אופציונלי)</label>
-        <textarea id="share-note-text" class="form-control" rows="3" placeholder="הוסף הערה..."></textarea>
+        <label class="form-label" data-i18n="share.noteOptional">הערה (אופציונלי)</label>
+        <textarea id="share-note-text" class="form-control" rows="3" placeholder="הוסף הערה..." data-i18n-placeholder="comments.addPlaceholder"></textarea>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="document.getElementById('share-stage-modal').classList.add('hidden')">ביטול</button>
-      <button class="btn btn-primary" onclick="sendShareEmail()">✉️ שלח מייל</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('share-stage-modal').classList.add('hidden')" data-i18n="common.cancel">ביטול</button>
+      <button class="btn btn-primary" onclick="sendShareEmail()" data-i18n="share.sendEmail">✉️ שלח מייל</button>
     </div>
   </div>
 </div>
@@ -468,19 +479,19 @@
 <div id="profile-modal" class="modal-overlay hidden">
   <div class="modal-container modal-sm">
     <div class="modal-header">
-      <h2>עריכת שם תצוגה</h2>
+      <h2 data-i18n="modal.profileTitle">עריכת שם תצוגה</h2>
       <button class="modal-close" id="profile-modal-close">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label class="form-label">שם תצוגה</label>
-        <input type="text" id="profile-display-name" class="form-control" placeholder="הכנס שם מלא" />
+        <label class="form-label" data-i18n="profile.displayName">שם תצוגה</label>
+        <input type="text" id="profile-display-name" class="form-control" placeholder="הכנס שם מלא" data-i18n-placeholder="profile.displayNamePlaceholder" />
       </div>
       <div id="profile-modal-error" class="alert alert-danger hidden"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" id="profile-modal-cancel">ביטול</button>
-      <button class="btn btn-primary" id="profile-modal-save">שמור</button>
+      <button class="btn btn-secondary" id="profile-modal-cancel" data-i18n="common.cancel">ביטול</button>
+      <button class="btn btn-primary" id="profile-modal-save" data-i18n="common.save">שמור</button>
     </div>
   </div>
 </div>
@@ -489,11 +500,11 @@
 <div id="scanner-modal" class="modal-overlay hidden">
   <div class="modal-container modal-md">
     <div class="modal-header">
-      <h2>סריקת ברקוד פוד</h2>
+      <h2 data-i18n="modal.scannerTitle">סריקת ברקוד פוד</h2>
       <button class="modal-close" id="scanner-modal-close">✕</button>
     </div>
     <div class="modal-body scanner-modal-body">
-      <p class="scanner-hint">הצב את ברקוד הפוד מול המצלמה</p>
+      <p class="scanner-hint" data-i18n="scanner.hint">הצב את ברקוד הפוד מול המצלמה</p>
       <div id="scanner-reader"></div>
       <div id="scanner-status" class="scanner-status hidden"></div>
     </div>
@@ -504,14 +515,14 @@
 <div id="toast-container" class="toast-container"></div>
 
 <!-- Scripts -->
-<script src="js/config.js?v=56"></script>
-<script src="js/auth.js?v=56"></script>
-<script src="js/qc-data.js?v=62"></script>
-<script src="js/projects.js?v=62"></script>
-<script src="js/pods.js?v=62"></script>
-<script src="js/qc.js?v=56"></script>
-<script src="js/reports.js?v=56"></script>
-<script src="js/scanner.js?v=56"></script>
-<script src="js/app.js?v=58"></script>
+<script src="js/config.js?v=57"></script>
+<script src="js/auth.js?v=58"></script>
+<script src="js/qc-data.js?v=63"></script>
+<script src="js/projects.js?v=73"></script>
+<script src="js/pods.js?v=64"></script>
+<script src="js/qc.js?v=58"></script>
+<script src="js/reports.js?v=57"></script>
+<script src="js/scanner.js?v=57"></script>
+<script src="js/app.js?v=60"></script>
 </body>
 </html>

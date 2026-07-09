@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="images/favicon.svg">
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
   <link rel="mask-icon" href="images/safari-pinned-tab.svg" color="#3DD4CE">
-  <link rel="stylesheet" href="css/styles.css?v=59" />
+  <link rel="stylesheet" href="css/styles.css?v=60" />
   <!-- Supabase - must load synchronously before app scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <!-- JsBarcode - defer, used only when printing barcodes -->
@@ -77,6 +77,10 @@
           <span id="sidebar-user-role" class="nav-role-badge"></span>
         </div>
         <button class="btn btn-ghost btn-sm sidebar-scan-btn" id="btn-scan-barcode" title="סרוק ברקוד פוד" data-i18n="sidebar.scan" data-i18n-title="sidebar.scanTitle">📷 סרוק</button>
+        <div class="lang-switcher sidebar-lang-switcher" title="בחר שפה" data-i18n-title="lang.title">
+          <button type="button" class="lang-btn" data-lang="he" data-i18n="lang.he">עב</button>
+          <button type="button" class="lang-btn" data-lang="en" data-i18n="lang.en">EN</button>
+        </div>
       </div>
 
       <nav class="sidebar-nav">

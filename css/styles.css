@@ -1278,6 +1278,10 @@ table tbody tr:hover { background: #f8fafc; }
   background: var(--primary);
   color: #fff;
 }
+/* Drawer switcher: centered, comfortable tap targets (mobile only) */
+.sidebar-lang-switcher { align-self: center; }
+.sidebar-lang-switcher .lang-btn { padding: 6px 16px; font-size: 13px; }
+
 /* Auth-screen switcher: fixed in the reading-end top corner, above the card */
 .auth-lang-switcher {
   position: fixed;
@@ -1298,15 +1302,20 @@ table tbody tr:hover { background: #f8fafc; }
    html[dir] attribute. Re-assert LTR so flex order and text-align flip. */
 [dir="ltr"] body { direction: ltr; }
 
-[dir="ltr"] .sidebar {
-  right: auto;
-  left: 0;
-  border-left: none;
-  border-right: 1px solid var(--border);
-}
-[dir="ltr"] .main-content {
-  margin-right: 0;
-  margin-left: var(--sidebar-w);
+/* Desktop-only layout flip: on mobile the sidebar is a JS-positioned drawer
+   and main-content has no side margin, so these must NOT apply below 769px
+   (otherwise the LTR margin-left pushes content off-screen on mobile). */
+@media (min-width: 769px) {
+  [dir="ltr"] .sidebar {
+    right: auto;
+    left: 0;
+    border-left: none;
+    border-right: 1px solid var(--border);
+  }
+  [dir="ltr"] .main-content {
+    margin-right: 0;
+    margin-left: var(--sidebar-w);
+  }
 }
 [dir="ltr"] .form-control { direction: ltr; }
 [dir="ltr"] .qc-row-notes textarea.qc-notes-inline { direction: ltr; }

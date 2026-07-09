@@ -4,8 +4,9 @@
 
 המערכת תומכת בעברית (RTL) ובאנגלית (LTR). כל התשתית ב-`js/i18n.js` (נטען **ראשון** ב-`<head>`).
 
-- **שפה נשמרת ב-localStorage** במפתח `app_lang` (`'he'` ברירת מחדל). מתג עב/EN ב-navbar ובמסכי ההתחברות.
+- **שפה נשמרת ב-localStorage** במפתח `app_lang` (`'he'` ברירת מחדל). מתג עב/EN ב-**3 מקומות**: navbar (דסקטופ), מסכי ההתחברות, ו**מגירת המובייל** (`.sidebar-lang-switcher`) — כי ה-navbar מוסתר מתחת ל-769px. כל מתגי `.lang-btn` נקלטים אוטומטית ב-`initLangSwitcher` ומסונכרנים.
 - **כיוון נגזר מהשפה**: עברית=`rtl`, אנגלית=`ltr`. `body { direction: rtl }` נעקף ע"י `[dir="ltr"] body { direction: ltr }`, ויש בלוק עקיפות `[dir="ltr"]` ב-`css/styles.css` (sidebar, margins, יישור טקסט, כפתור עין).
+- **⚠️ עקיפות layout של LTR (sidebar side + `main-content` margin) עטופות ב-`@media (min-width: 769px)`** — במובייל ה-sidebar הוא מגירה והתוכן מלא-רוחב, אז אסור ל-`margin-left` של LTR לחול (אחרת התוכן גולש). כלל mobile ו-LTR באותה specificity — סדר המקור קובע.
 - **החלפת שפה** מפעילה `applyLang` → מרעננת תרגומים סטטיים, בונה מחדש `ROLE_LABELS`/`STATUS_LABELS` (`refreshI18nLabels` ב-`config.js`), משדרת `languagechange:app`, ומרנדרת מחדש את התצוגה הפעילה דרך `window.rerenderCurrentView` (ב-`app.js`) — בלי reload, תוך שמירת ההקשר (פרויקט/פוד).
 
 ### כללים בעת הוספת/שינוי טקסט

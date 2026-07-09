@@ -1225,28 +1225,29 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
           });
 
           const podsToInsert = [];
-          // Process in stable order (sort by type_id then direction_id)
-          const compKeys = Object.keys(comp).sort();
-          for (const key of compKeys) {
-            const count = comp[key];
-            const [typeId, dirId] = key.split('_');
-            const typeObj = (types || []).find(t => t.id === typeId);
-            const dirObj = (typeObj?.type_directions || []).find(d => d.id === dirId);
-            if (!typeObj || !dirObj) continue;
-            let groupSerial = 0;
-            for (let s = 1; s <= count; s++) {
-              globalSerial++;
-              groupSerial++;
-              podsToInsert.push({
-                project_id: projectId,
-                type_id: typeId,
-                direction_id: dirId,
-                group_id: newGroup.id,
-                group_serial: groupSerial,
-                serial_number: globalSerial,
-                pod_code: generatePodCode(proj.code, proj.date_received, typeObj.type_number, dirObj.direction, globalSerial),
-                status: 'pending',
-              });
+          // Process in canonical order: type_number ascending, direction R before L
+          // (matches createProject; comp keys are UUIDs so sorting them is arbitrary)
+          const sortedTypes = [...(types || [])].sort((a, b) => a.type_number - b.type_number);
+          for (const typeObj of sortedTypes) {
+            const sortedDirs = [...(typeObj.type_directions || [])].sort((a, b) =>
+              (a.direction === 'R' ? 0 : 1) - (b.direction === 'R' ? 0 : 1));
+            for (const dirObj of sortedDirs) {
+              const count = comp[`${typeObj.id}_${dirObj.id}`] || 0;
+              let groupSerial = 0;
+              for (let s = 1; s <= count; s++) {
+                globalSerial++;
+                groupSerial++;
+                podsToInsert.push({
+                  project_id: projectId,
+                  type_id: typeObj.id,
+                  direction_id: dirObj.id,
+                  group_id: newGroup.id,
+                  group_serial: groupSerial,
+                  serial_number: globalSerial,
+                  pod_code: generatePodCode(proj.code, proj.date_received, typeObj.type_number, dirObj.direction, globalSerial),
+                  status: 'pending',
+                });
+              }
             }
           }
           if (podsToInsert.length > 0) {

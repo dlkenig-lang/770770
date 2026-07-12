@@ -23,6 +23,16 @@
 
 **בעת החלפת גרסת קובץ**: יש לעדכן את מספר ה-`?v=` ב-`index.html`.
 
+## מודל אבטחה (RLS) — מאז 20260712_critical_security_fixes
+
+המיגרציה `supabase/migrations/20260712000000_critical_security_fixes.sql` מגדירה את מודל ההרשאות. **מיגרציות חייבות להיות מוחלות ידנית ב-Supabase SQL Editor** — פריסת האתר לא מחילה אותן.
+
+- **תפקיד משתמש חדש נקבע רק בשרת** (`handle_new_user` → תמיד `viewer`). אין לשלוח `role` ב-metadata של `signUp`.
+- **משתמש חדש נוצר `is_active=false`** וממתין לאישור אדמין במסך ניהול המשתמשים. עד אז הוא לא רואה נתונים (RLS) ומקבל את מסך `auth.pendingApproval` (`showPendingApprovalScreen` ב-`app.js`).
+- **כל הפוליסות משתמשות ב-`public.current_user_role()`** — פונקציית SECURITY DEFINER שמחזירה את התפקיד רק אם `is_active=true` (אחרת NULL). נטרול משתמש חוסם אותו בפועל. פוליסות חדשות חייבות להשתמש בפונקציה הזו, לא ב-`EXISTS (SELECT ... FROM profiles)` (גורם לרקורסיה בפוליסות של profiles עצמה).
+- **שינוי `role`/`is_active`/`email`/`username` בפרופיל** — רק אדמין פעיל (trigger `protect_profile_privileges`).
+- **כתיבה ל-QC (`qc_stages`/`qc_items`)**: admin + inspector בלבד. **עדכון `pods`** (status/casting) כולל גם inspector. **שם התפקיד בפוליסות הוא `'project_manager'`** — לא `'pm'` (באג היסטורי בפוליסות התוכניות).
+
 ## חשוב: לוגיקת מיספור פודים — אין לשנות
 
 מיספור הפודים (`globalSerial`) רץ ברצף אחד רציף על פני **כל** הטיפוסים והכיוונים בפרויקט, לפי סדר הוספתם.

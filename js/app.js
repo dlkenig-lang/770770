@@ -230,6 +230,30 @@ document.getElementById('btn-project-actions')?.addEventListener('click', () => 
   promptArchiveOrDelete();
 });
 
+// ---- PENDING-APPROVAL / DEACTIVATED HANDLING ----
+// New users register as is_active=false and RLS hides all data from them.
+// Show a clear message on the login screen instead of an empty app.
+async function showPendingApprovalScreen(userId) {
+  try { localStorage.removeItem('modu_profile_' + (userId || '')); } catch (e) {}
+  AppState.currentUser = null;
+  AppState.currentProfile = null;
+  try {
+    await Promise.race([
+      supabaseClient.auth.signOut(),
+      new Promise(resolve => setTimeout(resolve, 3000)),
+    ]);
+  } catch (e) { /* ignore */ }
+  document.getElementById('loading-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('auth-screen').style.display = 'flex';
+  showAuthPanel('login');
+  const errEl = document.getElementById('login-error');
+  if (errEl) {
+    errEl.textContent = t('auth.pendingApproval');
+    errEl.classList.remove('hidden');
+  }
+}
+
 // ---- AUTH STATE CHANGE ----
 async function onAuthStateChange(session) {
   const loadingEl = document.getElementById('loading-screen');
@@ -256,11 +280,19 @@ async function onAuthStateChange(session) {
     }
 
     if (profile) {
+      if (profile.is_active === false) {
+        await showPendingApprovalScreen(session.user.id);
+        return;
+      }
       // Set profile from cache so dashboard loads instantly.
       AppState.currentProfile = profile;
       // Refresh from network in background — no await, no blocking.
       loadCurrentProfile(session.user.id).then(fresh => {
         if (fresh) {
+          if (fresh.is_active === false) {
+            showPendingApprovalScreen(session.user.id);
+            return;
+          }
           try { localStorage.setItem(cacheKey, JSON.stringify(fresh)); } catch (e) {}
           AppState.currentProfile = fresh;
           updateUserDisplay(fresh);
@@ -278,6 +310,7 @@ async function onAuthStateChange(session) {
 
       if (!profile) {
         // New user: upsert profile row then re-fetch once (background, non-blocking).
+        // RLS only allows self-insert as an inactive viewer (pending admin approval).
         profile = {
           id: session.user.id,
           email: session.user.email,
@@ -289,11 +322,16 @@ async function onAuthStateChange(session) {
         console.warn('[LOAD] no profile found, using default role=viewer');
         supabaseClient.from('profiles').upsert({
           id: profile.id, email: profile.email,
-          full_name: profile.full_name, username: profile.username, role: 'viewer',
+          full_name: profile.full_name, username: profile.username,
+          role: 'viewer', is_active: false,
         }, { onConflict: 'id', ignoreDuplicates: true })
           .then(() => loadCurrentProfile(session.user.id))
           .then(fresh => {
             if (fresh) {
+              if (fresh.is_active === false) {
+                showPendingApprovalScreen(session.user.id);
+                return;
+              }
               try { localStorage.setItem(cacheKey, JSON.stringify(fresh)); } catch (e) {}
               AppState.currentProfile = fresh;
               updateUserDisplay(fresh);
@@ -301,6 +339,10 @@ async function onAuthStateChange(session) {
             }
           }).catch(() => {});
       } else {
+        if (profile.is_active === false) {
+          await showPendingApprovalScreen(session.user.id);
+          return;
+        }
         try { localStorage.setItem(cacheKey, JSON.stringify(profile)); } catch (e) {}
       }
       AppState.currentProfile = profile;

@@ -96,9 +96,12 @@ function initAuth() {
         return;
       }
 
+      // NOTE: role is assigned server-side (handle_new_user trigger) and is
+      // never taken from client metadata. New accounts start inactive and
+      // wait for admin approval in the users screen.
       const { data, error } = await supabaseClient.auth.signUp({
         email, password,
-        options: { data: { full_name: fullName, username: username, role: 'viewer' } }
+        options: { data: { full_name: fullName, username: username } }
       });
       if (error) throw error;
       sucEl.textContent = t('auth.registerSuccess');

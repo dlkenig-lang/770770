@@ -34,6 +34,11 @@ async function loadQCStages(podId) {
   _qcStageItems = {};
   _qcStages.forEach((s, i) => { _qcStageItems[s.id] = results[i].data || []; });
 
+  // The qc-images bucket is private: swap stored URLs for fresh signed URLs
+  // (1h expiry) so thumbnails keep working. Falls back to the stored URL for
+  // legacy rows without a storage path.
+  await signQcImageUrls(Object.values(_qcStageItems).flat());
+
   _qcCastingApproved = AppState.currentPod?.casting_approved || false;
   if (_qcCastingApproved) _castingBaseApproved = true;
 
@@ -45,6 +50,25 @@ async function loadQCStages(podId) {
   }
 
   renderQCTabsUI();
+}
+
+// Replace item.image_url with a signed URL for every item that has a
+// storage path (bucket is private since 20260712010000).
+async function signQcImageUrls(items) {
+  const withImages = (items || []).filter(i => i.image_storage_path);
+  if (!withImages.length) return;
+  try {
+    const paths = withImages.map(i => i.image_storage_path);
+    const { data: signed } = await supabaseClient.storage
+      .from('qc-images').createSignedUrls(paths, 3600);
+    const urlByPath = {};
+    (signed || []).forEach(s => { if (s.signedUrl) urlByPath[s.path] = s.signedUrl; });
+    withImages.forEach(i => {
+      if (urlByPath[i.image_storage_path]) i.image_url = urlByPath[i.image_storage_path];
+    });
+  } catch (e) {
+    console.warn('[signQcImageUrls] failed, falling back to stored URLs:', e);
+  }
 }
 
 function renderQCTabsUI() {
@@ -389,9 +413,17 @@ function renderInspectorSection(stage) {
 async function clearStage(stageId) {
   if (!confirm(t('qc.confirmClear'))) return;
 
-  // Reset all items for this stage
+  // Remove uploaded images from storage before wiping their references
+  const imagePaths = (_qcStageItems[stageId] || [])
+    .map(i => i.image_storage_path).filter(Boolean);
+  if (imagePaths.length) {
+    await supabaseClient.storage.from('qc-images').remove(imagePaths);
+  }
+
+  // Reset all items for this stage (including image references)
   await supabaseClient.from('qc_items').update({
     status: 'pending', notes: null, time_entry_1: null, time_entry_2: null, value_entry: null,
+    image_url: null, image_storage_path: null,
   }).eq('stage_id', stageId);
 
   // Reset the stage itself
@@ -575,11 +607,45 @@ async function checkCastingApprovalTrigger(stageId, itemKey) {
 }
 
 // ---- SAVE ITEM FIELD ----
+// The qc_items row is normally created on the first ✓/✗ click. If the user
+// types notes / times / values BEFORE marking pass/fail, create the row on
+// the fly — otherwise the input is silently lost.
 async function saveItemField(field, fieldName, value, podId) {
   const itemId = field.dataset.itemId;
+  const stageId = field.dataset.stageId;
+  const itemKey = field.dataset.itemKey;
+
   if (itemId) {
     await supabaseClient.from('qc_items').update({ [fieldName]: value }).eq('id', itemId);
+  } else {
+    const stage = _qcStages.find(s => s.id === stageId);
+    const stageDef = getStage(stage?.stage_number);
+    const itemDef = stageDef?.items.find(i => i.key === itemKey);
+    // upsert: safe against a concurrent ✓/✗ click creating the same row
+    const { data, error } = await supabaseClient.from('qc_items').upsert({
+      stage_id: stageId,
+      item_key: itemKey,
+      item_label: itemDef?.label || itemKey,
+      [fieldName]: value,
+    }, { onConflict: 'stage_id,item_key' }).select().single();
+    if (error) {
+      console.error('[saveItemField] create error:', error);
+      showToast(t('qc.saveError'), 'error');
+      return;
+    }
+    if (data) {
+      const row = document.getElementById(`qc-row-${itemKey}-${stageId}`);
+      row?.querySelectorAll('[data-item-id]').forEach(el => el.dataset.itemId = data.id);
+      if (!_qcStageItems[stageId]) _qcStageItems[stageId] = [];
+      if (!_qcStageItems[stageId].some(i => i.item_key === itemKey)) {
+        _qcStageItems[stageId].push(data);
+      }
+    }
   }
+
+  // Keep the in-memory cache in sync so tab switches don't lose the value
+  const cachedItem = (_qcStageItems[stageId] || []).find(i => i.item_key === itemKey);
+  if (cachedItem) cachedItem[fieldName] = value;
 }
 
 // ---- SHARE STAGE MODAL ----
@@ -670,8 +736,23 @@ async function uploadQcImage(input) {
   const { error: upErr } = await supabaseClient.storage.from('qc-images').upload(storagePath, file);
   if (upErr) { showToast(t('qc.uploadError') + upErr.message, 'error'); return; }
 
+  // Bucket is private — the stored URL is a legacy fallback; display uses a signed URL
   const { data: { publicUrl } } = supabaseClient.storage.from('qc-images').getPublicUrl(storagePath);
   await supabaseClient.from('qc_items').update({ image_url: publicUrl, image_storage_path: storagePath }).eq('id', itemId);
+
+  let displayUrl = publicUrl;
+  try {
+    const { data: signed } = await supabaseClient.storage.from('qc-images').createSignedUrl(storagePath, 3600);
+    if (signed?.signedUrl) displayUrl = signed.signedUrl;
+  } catch (e) { /* fall back to stored URL */ }
+
+  // Keep the in-memory cache in sync so tab switches keep showing the image
+  const stageId = input.dataset.stageId;
+  const cachedItem = (_qcStageItems[stageId] || []).find(i => i.id === itemId || i.item_key === input.dataset.itemKey);
+  if (cachedItem) {
+    cachedItem.image_url = displayUrl;
+    cachedItem.image_storage_path = storagePath;
+  }
 
   // Update UI
   const row = input.closest('.qc-img-row');
@@ -679,7 +760,7 @@ async function uploadQcImage(input) {
   const wrap = document.createElement('div');
   wrap.className = 'qc-img-thumb-wrap';
   wrap.innerHTML = `
-    <img src="${publicUrl}" class="qc-img-thumb" alt="${t('qc.image')}" data-url="${publicUrl}" />
+    <img src="${displayUrl}" class="qc-img-thumb" alt="${t('qc.image')}" data-url="${displayUrl}" />
     <button type="button" class="qc-img-del" data-item-id="${itemId}" data-storage-path="${storagePath}">✕</button>
   `;
   wrap.querySelector('.qc-img-thumb').addEventListener('click', (e) => window.open(e.target.dataset.url, '_blank'));
@@ -697,6 +778,11 @@ async function deleteQcImage(btn) {
 
   await supabaseClient.from('qc_items').update({ image_url: null, image_storage_path: null }).eq('id', itemId);
   if (storagePath) await supabaseClient.storage.from('qc-images').remove([storagePath]);
+
+  // Keep the in-memory cache in sync so tab switches don't resurrect the thumb
+  Object.values(_qcStageItems).flat().forEach(i => {
+    if (i.id === itemId) { i.image_url = null; i.image_storage_path = null; }
+  });
 
   btn.closest('.qc-img-thumb-wrap').remove();
   showToast(t('qc.imageDeleted'), 'success');

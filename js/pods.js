@@ -278,11 +278,18 @@ function formatDateTime(ts) {
 }
 
 function initPodDetailButtons() {
-  // Back to project
-  document.getElementById('btn-back-project')?.addEventListener('click', () => {
+  // Back to project. When the pod was opened via deep link (?pod=) or a
+  // barcode scan there is no currentProject yet — open it from the pod's
+  // project_id instead of doing nothing.
+  document.getElementById('btn-back-project')?.addEventListener('click', async () => {
     if (AppState.currentProject) {
       showView('project-detail');
       loadPodsTab(AppState.currentProject.id);
+    } else if (AppState.currentPod?.project_id || AppState.currentPod?.projects?.id) {
+      await openProject(AppState.currentPod.project_id || AppState.currentPod.projects.id);
+    } else {
+      showView('projects');
+      loadProjects();
     }
   });
 

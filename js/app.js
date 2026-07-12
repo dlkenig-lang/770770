@@ -175,6 +175,8 @@ async function loadUsersView() {
 
   // Role change
   container.querySelectorAll('.role-select').forEach(sel => {
+    // Track the last confirmed value so a failed update can be reverted
+    sel.dataset.prevValue = sel.value;
     sel.addEventListener('change', async () => {
       const prevValue = sel.dataset.prevValue || sel.querySelector('option[selected]')?.value;
       const newRole = sel.value;
@@ -186,6 +188,7 @@ async function loadUsersView() {
         sel.value = prevValue || sel.value;
         return;
       }
+      sel.dataset.prevValue = newRole;
       showToast(t('users.roleUpdated'), 'success');
       updateSingleRoleOptions();
       // Refresh navbar if current user's role was changed

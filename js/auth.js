@@ -80,10 +80,11 @@ function initAuth() {
 
     setLoading(btn, true);
     try {
-      // Check if username is already taken before hitting signUp
-      const { data: existingEmail } = await supabaseClient
-        .rpc('get_email_by_username', { p_username: username });
-      if (existingEmail) {
+      // Check if username is already taken before hitting signUp.
+      // Uses username_exists (boolean) — never expose emails to anon callers.
+      const { data: usernameTaken } = await supabaseClient
+        .rpc('username_exists', { p_username: username });
+      if (usernameTaken) {
         errEl.textContent = t('auth.usernameTaken');
         errEl.classList.remove('hidden');
         return;

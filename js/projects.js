@@ -92,6 +92,7 @@ async function loadProjects() {
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
     ]);
     if (activeRes.error) throw activeRes.error;
+    if (archRes.error) throw archRes.error;
     active   = activeRes.data  || [];
     archived = archRes.data    || [];
   } catch (e) { error = e; }
@@ -697,6 +698,21 @@ async function loadPlansTab(projectId) {
   }
 
   const canEdit = isAdminOrPM();
+
+  // The plans bucket is private: build signed URLs (1h) for viewing.
+  // Legacy rows without a storage_path fall back to their stored URL.
+  const signedByPath = {};
+  const planPaths = (plans || []).map(p => p.storage_path).filter(Boolean);
+  if (planPaths.length) {
+    try {
+      const { data: signed } = await supabaseClient.storage
+        .from('plans').createSignedUrls(planPaths, 3600);
+      (signed || []).forEach(s => { if (s.signedUrl) signedByPath[s.path] = s.signedUrl; });
+    } catch (e) {
+      console.warn('[loadPlansTab] signed URLs failed, falling back to stored URLs:', e);
+    }
+  }
+
   const plansByType = {};
   (plans || []).forEach(p => {
     if (!plansByType[p.type_id]) plansByType[p.type_id] = [];
@@ -718,7 +734,7 @@ async function loadPlansTab(projectId) {
             <div class="plans-files-list">
               ${typePlans.map(p => `
                 <div class="plan-file-row">
-                  <a href="${escHtml(p.file_url)}" target="_blank" class="plan-file-link">📄 ${escHtml(p.file_name)}</a>
+                  <a href="${escHtml(signedByPath[p.storage_path] || p.file_url)}" target="_blank" class="plan-file-link">📄 ${escHtml(p.file_name)}</a>
                   <span class="plan-file-meta">${escHtml(p.uploader?.full_name || p.uploader?.username || '')} · ${formatDate(p.uploaded_at)}</span>
                   ${canEdit ? `<button class="btn btn-ghost btn-sm btn-delete-plan" data-plan-id="${p.id}" data-storage-path="${escHtml(p.storage_path)}">🗑️</button>` : ''}
                 </div>
@@ -896,6 +912,14 @@ function renderTypeInputs() {
   const count = parseInt(document.getElementById('np-type-count')?.value || 1);
   const container = document.getElementById('np-types-container');
   if (!container) return;
+
+  // Preserve anything already typed — changing the type count used to wipe
+  // every dimension/direction field the user had filled in.
+  const prev = {};
+  container.querySelectorAll('input').forEach(inp => {
+    prev[inp.id] = inp.type === 'checkbox' ? inp.checked : inp.value;
+  });
+
   let html = '';
   for (let i = 1; i <= count; i++) {
     html += `
@@ -936,6 +960,13 @@ function renderTypeInputs() {
     `;
   }
   container.innerHTML = html;
+
+  // Restore previously typed values
+  container.querySelectorAll('input').forEach(inp => {
+    if (!(inp.id in prev)) return;
+    if (inp.type === 'checkbox') inp.checked = prev[inp.id];
+    else inp.value = prev[inp.id];
+  });
 }
 
 async function createProject() {
@@ -1271,10 +1302,18 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
 
 async function deleteGroup(groupId, projectId) {
   if (!confirm(t('proj.confirmDeleteGroup'))) return;
-  await supabaseClient.from('production_groups').delete().eq('id', groupId);
+  // FK is ON DELETE SET NULL (migration 20260712020000): pods in the group
+  // are detached, not deleted.
+  const { error } = await supabaseClient.from('production_groups').delete().eq('id', groupId);
+  if (error) {
+    showToast(t('proj.deleteError') + error.message, 'error');
+    return;
+  }
   showToast(t('proj.groupDeleted'), 'success');
   await loadGroupsTab(projectId);
   await setupPodFilters(projectId);
+  // Refresh pods so detached group labels disappear from the cards
+  await loadPodsTab(projectId);
 }
 
 // ---- ADD POD MODAL ----

@@ -748,14 +748,40 @@ function openImageLightbox(url) {
 }
 
 // ---- QC IMAGE UPLOAD / DELETE ----
+
+// Downscale large camera photos client-side before upload: max 1600px on the
+// long edge, JPEG q0.8. A modern phone photo (~5-10MB) becomes ~200-400KB —
+// much faster to upload on factory Wi-Fi and to display later.
+async function compressImage(file, maxDim = 1600, quality = 0.8) {
+  if (!file.type.startsWith('image/') || file.type === 'image/gif') return file;
+  if (file.size < 400 * 1024) return file; // already small enough
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', quality));
+    if (blob && blob.size < file.size) {
+      return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+    }
+  } catch (e) {
+    console.warn('[compressImage] failed, uploading original:', e);
+  }
+  return file;
+}
+
 async function uploadQcImage(input) {
-  const file = input.files[0];
+  let file = input.files[0];
   if (!file) return;
   const itemId = input.dataset.itemId;
   if (!itemId) { showToast(t('qc.saveItemFirst'), 'error'); return; }
-  if (file.size > 10 * 1024 * 1024) { showToast(t('qc.fileTooLarge'), 'error'); return; }
 
   showToast(t('qc.uploadingImage'), 'info');
+  file = await compressImage(file);
+  if (file.size > 10 * 1024 * 1024) { showToast(t('qc.fileTooLarge'), 'error'); return; }
+
   const ext = file.name.split('.').pop() || 'jpg';
   const storagePath = `${itemId}/${Date.now()}.${ext}`;
 

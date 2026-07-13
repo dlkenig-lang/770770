@@ -314,4 +314,49 @@ function initPodDetailButtons() {
   document.getElementById('btn-pod-pdf')?.addEventListener('click', () => {
     if (AppState.currentPod) generatePodPDF(AppState.currentPod);
   });
+
+  // Audit history (admin only — RLS also enforces this)
+  document.getElementById('btn-pod-history')?.addEventListener('click', showPodHistory);
+}
+
+// ---- AUDIT HISTORY ----
+async function showPodHistory() {
+  const podId = AppState.currentPod?.id;
+  if (!podId) return;
+
+  const { data: logs, error } = await supabaseClient
+    .from('qc_audit_log')
+    .select('*')
+    .eq('pod_id', podId)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    showToast(t('proj.errorPrefix') + error.message, 'error');
+    return;
+  }
+
+  const body = (!logs || logs.length === 0)
+    ? `<div class="empty-state" style="padding:24px"><div class="empty-state-text">${t('audit.none')}</div></div>`
+    : logs.map(l => {
+        const stageNum = l.new_values?.stage_number;
+        const letter = stageNum ? (STAGE_LETTERS[stageNum - 1] || stageNum) : null;
+        const inspector = l.new_values?.inspector_name || l.old_values?.inspector_name;
+        return `
+        <div style="padding:10px 4px;border-bottom:1px solid var(--border);font-size:13px">
+          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+            <strong>${escHtml(t('audit.' + l.action))}${letter ? ` — ${t('qc.stage')} ${letter}` : ''}</strong>
+            <span class="text-muted">${formatDateTime(l.created_at)}</span>
+          </div>
+          <div class="text-muted" style="margin-top:2px">
+            ${l.changed_by_name ? t('audit.by', { name: escHtml(l.changed_by_name) }) : ''}
+            ${inspector && inspector !== l.changed_by_name ? ` · ${t('rep.hInspector')}: ${escHtml(inspector)}` : ''}
+          </div>
+        </div>`;
+      }).join('');
+
+  openModal(t('audit.title'), `<div style="max-height:60vh;overflow-y:auto">${body}</div>`, [
+    { label: t('common.close'), cls: 'btn-ghost', id: 'btn-audit-close' },
+  ]);
+  document.getElementById('btn-audit-close')?.addEventListener('click', closeModal);
 }

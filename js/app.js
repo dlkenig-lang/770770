@@ -494,6 +494,14 @@ window.rerenderCurrentView = function rerenderCurrentView() {
   }
 };
 
+// ---- SERVICE WORKER (PWA) ----
+// App shell + static assets keep working on flaky factory networks.
+// Data calls (Supabase) are never cached — see sw.js.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .catch(e => console.warn('[sw] register failed:', e));
+}
+
 // ---- INIT ----
 async function init() {
   // Auth

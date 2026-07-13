@@ -132,6 +132,20 @@ const CASTING_ITEM_KEYS = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixa
 - מוצגת **נקודה צבעונית + שם הקבוצה בכחול בלבד** — ללא תפריט נגלל.
 - אין אפשרות להעביר פוד בין קבוצות לאחר יצירה.
 
+## Audit trail (qc_audit_log)
+
+מיגרציה `20260713000000_qc_audit_log.sql`. Triggers ברמת ה-DB על `qc_stages` ו-`mold_checks` מתעדים מעברי סטטוס מהותיים (חתימה / פתיחה מחדש / ניקוי) עם המשתמש המבצע. **אין ללקוח שום הרשאת כתיבה על הטבלה** (אין פוליסות INSERT/UPDATE/DELETE); צפייה לאדמין בלבד — כפתור 📜 במסך פוד (`showPodHistory` ב-`pods.js`). מעברי שגרה `pending→in_progress` לא מתועדים בכוונה (רעש).
+
+## PWA / Service Worker
+
+- `manifest.json` + `sw.js` + רישום ב-`app.js`. אסטרטגיה: קריאות Supabase/HIBP לעולם לא נשמרות ב-cache; ניווטים network-first עם fallback ל-shell; נכסים סטטיים (מקומיים + jsdelivr) stale-while-revalidate.
+- **לאחר deploy ייתכן שרענון ראשון יגיש גרסה קודמת של נכס סטטי** (הרענון מתבצע ברקע) — רענון שני מקבל את החדש. מספרי `?v=` עדיין חובה.
+- אייקונים: `images/icon-192.png` / `icon-512.png` (נוצרו מ-apple-touch-icon).
+
+## דחיסת תמונות QC
+
+`compressImage` ב-`qc.js` מקטין תמונות לפני העלאה (מקס' 1600px, JPEG q0.8, מדלג על קבצים מתחת ל-400KB). כשל בדחיסה ⇒ העלאת המקור.
+
 ## בדיקות תבניות (mold_checks)
 
 פיצ'ר שהוחזר לשימוש (נוצר במקור ב-Bolt; הקוד המקורי לא היה ב-repo). מודול `js/molds.js`, טאב "בדיקות תבניות" במסך פרויקט.

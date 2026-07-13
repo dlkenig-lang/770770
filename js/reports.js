@@ -274,23 +274,50 @@ function buildExcelFromPods(pods, label) {
   XLSX.writeFile(wb, filename);
 }
 
+// Fetch qc_items for the given pods (post-filter) and attach them to each
+// stage as stage.qc_items. Chunked to keep request URLs within limits.
+async function fetchItemsForPods(pods) {
+  const stages = pods.flatMap(p => p.qc_stages || []);
+  const missing = stages.filter(s => !Array.isArray(s.qc_items));
+  if (!missing.length) return;
+
+  const stageIds = missing.map(s => s.id);
+  const CHUNK = 100;
+  const itemsByStage = {};
+  for (let i = 0; i < stageIds.length; i += CHUNK) {
+    const { data: items, error } = await supabaseClient
+      .from('qc_items').select('*')
+      .in('stage_id', stageIds.slice(i, i + CHUNK));
+    if (error) throw error;
+    (items || []).forEach(item => {
+      if (!itemsByStage[item.stage_id]) itemsByStage[item.stage_id] = [];
+      itemsByStage[item.stage_id].push(item);
+    });
+  }
+  missing.forEach(s => { s.qc_items = itemsByStage[s.id] || []; });
+}
+
 async function loadReportsView() {
   const container = document.getElementById('reports-content');
   container.innerHTML = `<div style="text-align:center;padding:32px;color:#64748b;">${t('proj.loadingData')}</div>`;
 
+  // Lightweight query: the table/filters only need stage statuses.
+  // Individual qc_items are fetched lazily (fetchItemsForPods) only when
+  // exporting, for the filtered pods — loading them for every pod in the
+  // system made this view slower with every project added.
   const [{ data: projects }, { data: allPods }] = await Promise.all([
     supabaseClient.from('projects').select('id, name, code').eq('is_active', true).order('name'),
     supabaseClient.from('pods').select(`
       *,
-      projects(id, name, code, pipe_type, is_active),
+      projects!inner(id, name, code, pipe_type, is_active),
       project_types(type_number, dimensions),
       type_directions(direction),
       production_groups(name),
-      qc_stages(id, stage_number, stage_name, status, inspector_name, inspection_date, qc_items(*))
-    `).order('pod_code'),
+      qc_stages(id, stage_number, stage_name, status, inspector_name, inspection_date)
+    `).eq('projects.is_active', true).order('pod_code'),
   ]);
 
-  // Exclude pods belonging to archived projects
+  // Belt-and-braces: exclude pods belonging to archived projects
   const getSerial = code => parseInt((code || '').slice(-3)) || 0;
   const pods = (allPods || []).filter(p => p.projects?.is_active !== false);
   const types = [...new Set(pods.map(p => p.project_types?.type_number).filter(Boolean))].sort((a,b) => a-b);
@@ -423,6 +450,7 @@ async function loadReportsView() {
     const btn = document.getElementById('rf-btn-pdf');
     setLoading(btn, true);
     try {
+      await fetchItemsForPods(filtered);
       for (let i = 0; i < filtered.length; i++) {
         const pod = filtered[i];
         const stages = pod.qc_stages || [];
@@ -439,9 +467,20 @@ async function loadReportsView() {
     }
   });
 
-  document.getElementById('rf-btn-excel').addEventListener('click', () => {
+  document.getElementById('rf-btn-excel').addEventListener('click', async () => {
     const filtered = getFiltered();
     if (!filtered.length) { showToast(t('rep.noPodsSelected'), 'warning'); return; }
+
+    const excelBtn = document.getElementById('rf-btn-excel');
+    setLoading(excelBtn, true);
+    try {
+      await fetchItemsForPods(filtered);
+    } catch (err) {
+      setLoading(excelBtn, false);
+      showToast(t('proj.errorPrefix') + err.message, 'error');
+      return;
+    }
+    setLoading(excelBtn, false);
 
     // Highlight selected rows in blue
     const selectedIds = new Set(filtered.map(p => p.id));

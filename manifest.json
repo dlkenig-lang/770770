@@ -1,0 +1,17 @@
+{
+  "name": "בקרת איכות - ייצור פודים | Modusystems",
+  "short_name": "QC Pods",
+  "description": "מערכת בקרת איכות לייצור פודים",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "dir": "rtl",
+  "lang": "he",
+  "background_color": "#f1f5f9",
+  "theme_color": "#3DD4CE",
+  "icons": [
+    { "src": "images/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "images/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "images/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

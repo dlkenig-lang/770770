@@ -184,7 +184,9 @@ async function loadUsersView() {
       const { data, error } = await supabaseClient.from('profiles')
         .update({ role: newRole }).eq('id', sel.dataset.userId).select('id');
       if (error || !data?.length) {
-        showToast(t('users.roleUpdateError'), 'error');
+        console.error('[role-change] error:', error);
+        const detail = error?.message || t('users.noRowUpdated');
+        showToast(t('users.roleUpdateError') + ': ' + detail, 'error');
         sel.value = prevValue || sel.value;
         return;
       }
@@ -204,9 +206,15 @@ async function loadUsersView() {
   container.querySelectorAll('.btn-toggle-active').forEach(btn => {
     btn.addEventListener('click', async () => {
       const newActive = btn.dataset.active !== 'true';
-      const { error } = await supabaseClient.from('profiles')
-        .update({ is_active: newActive }).eq('id', btn.dataset.userId);
-      if (error) { showToast(t('common.error'), 'error'); return; }
+      // .select() so an RLS-silent no-op (0 rows) is detected, not just errors
+      const { data, error } = await supabaseClient.from('profiles')
+        .update({ is_active: newActive }).eq('id', btn.dataset.userId).select('id');
+      if (error || !data?.length) {
+        console.error('[toggle-active] error:', error);
+        const detail = error?.message || t('users.noRowUpdated');
+        showToast(t('common.error') + ': ' + detail, 'error');
+        return;
+      }
       showToast(t('users.updated'), 'success');
       await loadUsersView();
     });

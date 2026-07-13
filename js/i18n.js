@@ -473,6 +473,7 @@ const I18N = {
     'users.roleUpdateError': 'שגיאה בעדכון תפקיד — אין הרשאה',
     'users.roleUpdated': 'תפקיד עודכן',
     'users.updated': 'עודכן',
+    'users.noRowUpdated': 'שום רשומה לא עודכנה (כנראה חסימת הרשאות RLS)',
 
     // Profile modal messages
     'profile.enterName': 'יש להזין שם תצוגה',
@@ -940,6 +941,7 @@ const I18N = {
     'users.roleUpdateError': 'Error updating role — not permitted',
     'users.roleUpdated': 'Role updated',
     'users.updated': 'Updated',
+    'users.noRowUpdated': 'No row was updated (likely blocked by RLS permissions)',
 
     // Profile modal messages
     'profile.enterName': 'Please enter a display name',

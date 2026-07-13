@@ -132,6 +132,16 @@ const CASTING_ITEM_KEYS = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixa
 - מוצגת **נקודה צבעונית + שם הקבוצה בכחול בלבד** — ללא תפריט נגלל.
 - אין אפשרות להעביר פוד בין קבוצות לאחר יצירה.
 
+## בדיקות תבניות (mold_checks)
+
+פיצ'ר שהוחזר לשימוש (נוצר במקור ב-Bolt; הקוד המקורי לא היה ב-repo). מודול `js/molds.js`, טאב "בדיקות תבניות" במסך פרויקט.
+
+- **מבנה**: בדיקה לפי `type_id` (טיפוס בפרויקט) + `direction` (R/L/ללא) + `mold_number`. 9 סעיפים בעמודות שטוחות `<key>_status/_notes` (+`_value` לאורך/רוחב) — מוגדרים ב-`MOLD_CHECK_ITEMS` ב-`molds.js`; תוויות ב-i18n תחת `mold.item.*`.
+- **שאילתות בלי FK embedding**: הטבלה ב-DB החי נוצרה ב-Bolt וייתכן שאין בה constraint מוצהר — לכן `loadMoldsTab` שולף types ואז `mold_checks` עם `.in('type_id', ...)`, לא join של PostgREST.
+- **הרשאות**: כתיבה admin+inspector (מיגרציה 20260712040000), כפתור ההוספה `.inspector-only`. מחיקה ב-UI לאדמין בלבד.
+- **שמירה**: הטופס נשמר בלחיצת "שמור" (לא autosave); "חתום וסיים" עובר לשלב חתימה בתוך אותו מודאל (SignaturePad נפרד — `_moldSigPad`), וכישלון בסעיף כלשהו ⇒ `status='failed'`.
+- הגדרת הטבלה מתועדת ב-`20260712050000_mold_checks_table.sql` (no-op על ה-DB החי).
+
 ## שינויים שבוצעו
 
 ### שלב F — התקנת אביזרי קצה (`js/qc-data.js`)

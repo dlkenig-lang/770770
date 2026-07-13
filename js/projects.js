@@ -278,6 +278,7 @@ async function openProject(projectId) {
       loadGroupsTab(projectId).catch(e => console.error('[openProject] groups tab error:', e)),
       loadProjectDetailsTab(project).catch(e => console.error('[openProject] details tab error:', e)),
       loadPlansTab(projectId).catch(e => console.error('[openProject] plans tab error:', e)),
+      loadMoldsTab(projectId).catch(e => console.error('[openProject] molds tab error:', e)),
       setupPodFilters(projectId).catch(e => console.error('[openProject] filters error:', e)),
     ]);
   } catch (e) {

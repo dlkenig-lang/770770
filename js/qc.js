@@ -11,7 +11,11 @@ let _qcStages = [];
 let _qcStageItems = {};
 let _qcPodId = null;
 let _qcCastingApproved = false;
-let _castingBaseApproved = false; // never resets once set; used to lock casting items 1-6
+// Per-pod flag: casting gate passed (approved OR stage A already signed).
+// Unlocks stages B-F and locks casting items 1-7. MUST be recomputed from
+// scratch in loadQCStages for every pod — it used to leak between pods,
+// wrongly unlocking B-F on fresh pods. Cleared only by clearStage(A).
+let _castingBaseApproved = false;
 
 // Notes are saved with a debounce — warn before leaving the page while a
 // save is still pending so typed text isn't silently lost.
@@ -56,8 +60,9 @@ async function loadQCStages(podId) {
   // legacy rows without a storage path.
   await signQcImageUrls(Object.values(_qcStageItems).flat());
 
+  // Recompute the casting gate for THIS pod only (see note on declaration)
   _qcCastingApproved = AppState.currentPod?.casting_approved || false;
-  if (_qcCastingApproved) _castingBaseApproved = true;
+  _castingBaseApproved = _qcCastingApproved;
 
   // If Stage A is already signed (completed/failed), unlock downstream stages
   // even if casting_approved flag was never explicitly set on the pod
@@ -183,6 +188,12 @@ function renderActiveStage() {
           ${t('qc.lockedBanner')}
         </div>
       ` : ''}
+      ${stage.stage_number === 1 && !_castingBaseApproved && canEdit() && castingItemsAllPassed() ? `
+        <div class="qc-casting-ready-banner">
+          <span>🏗️ ${t('qc.castingReadyBanner')}</span>
+          <button class="btn btn-primary btn-sm" id="btn-approve-casting">${t('qc.approveCastingBtn')}</button>
+        </div>
+      ` : ''}
       <div class="qc-items-table-wrapper">
         <table class="qc-items-table">
           <thead>
@@ -290,6 +301,19 @@ function renderActiveStage() {
   // Image thumbnails — clickable for all roles
   content.querySelectorAll('.qc-img-thumb').forEach(img => {
     img.addEventListener('click', () => openImageLightbox(img.dataset.url));
+  });
+
+  // Manual casting approval (shown when all 7 casting items passed but the
+  // approval dialog was declined/missed)
+  document.getElementById('btn-approve-casting')?.addEventListener('click', async () => {
+    // Re-validate: an item may have been unchecked since the banner rendered
+    if (!castingItemsAllPassed()) { renderActiveStage(); return; }
+    const ok = await uiConfirm(t('qc.confirmCastingApproval'), {
+      danger: false, okLabel: t('qc.approveCastingBtn'),
+    });
+    if (!ok) return;
+    await approveCasting();
+    renderActiveStage();
   });
 
   // Admin actions (always visible to admin/PM)
@@ -569,60 +593,77 @@ async function handleItemStatusChange(btn) {
   await updateStageStatus(stageId, _qcPodId, _qcStages);
   await checkCastingApprovalTrigger(stageId, itemKey);
 
-  // If one of the post-casting items (7-9) in stage A is answered, remove casting approval
+  // If one of the post-casting items (8-9) in stage A is answered, remove
+  // casting approval — the pod has been cast, so it should leave the
+  // "approved for casting" list. The update is conditioned on the DB value
+  // (not the local flag) so it also works when another user approved after
+  // this page was loaded.
   const postCastingKeys = ['segregation', 'drainage_test'];
   const stageForItem = _qcStages.find(s => s.id === stageId);
   if (
-    _qcCastingApproved &&
     stageForItem?.stage_number === 1 &&
     postCastingKeys.includes(itemKey) &&
     newStatus !== 'pending'
   ) {
-    await supabaseClient.from('pods').update({
+    const { data: removed } = await supabaseClient.from('pods').update({
       casting_approved: false,
       casting_approved_at: null,
-    }).eq('id', _qcPodId);
-    _qcCastingApproved = false;
-    if (AppState.currentPod) AppState.currentPod.casting_approved = false;
-    const castingBadge = document.getElementById('pod-casting-badge');
-    if (castingBadge) castingBadge.style.display = 'none';
-    showToast(t('qc.podRemovedFromCasting'), 'warning');
+    }).eq('id', _qcPodId).eq('casting_approved', true).select('id');
+    if (removed?.length) {
+      _qcCastingApproved = false;
+      if (AppState.currentPod) AppState.currentPod.casting_approved = false;
+      const castingBadge = document.getElementById('pod-casting-badge');
+      if (castingBadge) castingBadge.style.display = 'none';
+      showToast(t('qc.podRemovedFromCasting'), 'warning');
+    }
   }
 }
 
-// ---- CASTING APPROVAL TRIGGER ----
-async function checkCastingApprovalTrigger(stageId, itemKey) {
-  if (_qcCastingApproved || _castingBaseApproved) return;
-  const stage = _qcStages.find(s => s.id === stageId);
-  if (!stage || stage.stage_number !== 1) return;
+// ---- CASTING APPROVAL ----
 
-  if (!CASTING_ITEM_KEYS.includes(itemKey)) return;
-  const stageItems = _qcStageItems[stageId] || [];
-  const allPassed = CASTING_ITEM_KEYS.every(key => {
-    const item = stageItems.find(i => i.item_key === key);
-    return item?.status === 'passed';
-  });
+// All 7 casting items of Stage A currently passed (from the local cache)?
+function castingItemsAllPassed() {
+  const stageA = _qcStages.find(s => s.stage_number === 1);
+  if (!stageA) return false;
+  const stageItems = _qcStageItems[stageA.id] || [];
+  return CASTING_ITEM_KEYS.every(key =>
+    stageItems.find(i => i.item_key === key)?.status === 'passed');
+}
 
-  if (!allPassed) return;
-
-  const confirmed = await uiConfirm(t('qc.confirmCastingApproval'), { danger: false });
-  if (!confirmed) return;
-
+// Persist casting approval and update all local state/UI.
+async function approveCasting() {
   const { error } = await supabaseClient.from('pods').update({
     casting_approved: true,
     casting_approved_at: new Date().toISOString(),
   }).eq('id', _qcPodId);
 
-  if (error) { showToast(t('qc.castingSaveError'), 'error'); return; }
+  if (error) { showToast(t('qc.castingSaveError'), 'error'); return false; }
 
   _qcCastingApproved = true;
   _castingBaseApproved = true;
   if (AppState.currentPod) AppState.currentPod.casting_approved = true;
   showToast(t('qc.podCastingApproved'), 'success');
 
-  // Update casting badge in pod header if visible
   const castingBadge = document.getElementById('pod-casting-badge');
   if (castingBadge) castingBadge.style.display = '';
+  return true;
+}
+
+async function checkCastingApprovalTrigger(stageId, itemKey) {
+  if (_qcCastingApproved || _castingBaseApproved) return;
+  const stage = _qcStages.find(s => s.id === stageId);
+  if (!stage || stage.stage_number !== 1) return;
+
+  if (!CASTING_ITEM_KEYS.includes(itemKey)) return;
+  if (!castingItemsAllPassed()) return;
+
+  const confirmed = await uiConfirm(t('qc.confirmCastingApproval'), {
+    danger: false, okLabel: t('qc.approveCastingBtn'),
+  });
+  // Declined: renderActiveStage shows a "ready for casting approval" banner
+  // with a manual approve button, so the decision can be made later.
+  if (confirmed) await approveCasting();
+  renderActiveStage();
 }
 
 // ---- SAVE ITEM FIELD ----

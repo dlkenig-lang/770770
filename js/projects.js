@@ -442,7 +442,7 @@ function renderPodCard(pod, groups = []) {
       </div>
       <div class="pod-card-actions">
         <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}" data-group-label="${escHtml(groupLabel)}">${t('pod.barcode')}</button>
-        ${isAdminOrPM() ? `<button class="btn btn-danger btn-sm btn-delete-pod" data-pod-id="${pod.id}">🗑</button>` : ''}
+        ${isAdminOrPM() ? `<button class="btn btn-danger btn-sm btn-delete-pod" data-pod-id="${pod.id}" title="${t('common.delete')}" aria-label="${t('common.delete')}">🗑</button>` : ''}
       </div>
     </div>
   `;
@@ -503,7 +503,7 @@ async function loadGroupsTab(projectId) {
       <div class="group-actions" style="margin-right:auto">
         ${isAdminOrPM() ? `
           <button class="btn btn-secondary btn-sm btn-edit-group" data-group-id="${g.id}" data-name="${escHtml(g.name)}" data-date="${g.target_date || ''}" data-casting-date="${g.casting_target_date || ''}" data-max-pods="${g.max_pods || ''}" data-composition="${escHtml(JSON.stringify(g.pod_composition || {}))}">${t('common.edit')}</button>
-          <button class="btn btn-danger btn-sm btn-delete-group" data-group-id="${g.id}">🗑</button>
+          <button class="btn btn-danger btn-sm btn-delete-group" data-group-id="${g.id}" title="${t('common.delete')}" aria-label="${t('common.delete')}">🗑</button>
         ` : ''}
       </div>
     </div>
@@ -737,7 +737,7 @@ async function loadPlansTab(projectId) {
                 <div class="plan-file-row">
                   <a href="${escHtml(signedByPath[p.storage_path] || p.file_url)}" target="_blank" class="plan-file-link">📄 ${escHtml(p.file_name)}</a>
                   <span class="plan-file-meta">${escHtml(p.uploader?.full_name || p.uploader?.username || '')} · ${formatDate(p.uploaded_at)}</span>
-                  ${canEdit ? `<button class="btn btn-ghost btn-sm btn-delete-plan" data-plan-id="${p.id}" data-storage-path="${escHtml(p.storage_path)}">🗑️</button>` : ''}
+                  ${canEdit ? `<button class="btn btn-ghost btn-sm btn-delete-plan" data-plan-id="${p.id}" data-storage-path="${escHtml(p.storage_path)}" title="${t('common.delete')}" aria-label="${t('common.delete')}">🗑️</button>` : ''}
                 </div>
               `).join('')}
             </div>
@@ -797,7 +797,7 @@ async function uploadPlan(typeId, file, projectId) {
 }
 
 async function deletePlan(planId, storagePath, projectId) {
-  if (!confirm(t('proj.confirmDeletePlan'))) return;
+  if (!(await uiConfirm(t('proj.confirmDeletePlan')))) return;
 
   const { error: dbErr } = await supabaseClient.from('type_plans').delete().eq('id', planId);
   if (dbErr) { showToast(t('proj.deleteError') + dbErr.message, 'error'); return; }
@@ -1302,7 +1302,7 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
 }
 
 async function deleteGroup(groupId, projectId) {
-  if (!confirm(t('proj.confirmDeleteGroup'))) return;
+  if (!(await uiConfirm(t('proj.confirmDeleteGroup')))) return;
   // FK is ON DELETE SET NULL (migration 20260712020000): pods in the group
   // are detached, not deleted.
   const { error } = await supabaseClient.from('production_groups').delete().eq('id', groupId);
@@ -1453,7 +1453,7 @@ async function showAddPodModal(projectId) {
 }
 
 async function deletePod(podId) {
-  if (!confirm(t('proj.confirmDeletePod'))) return;
+  if (!(await uiConfirm(t('proj.confirmDeletePod')))) return;
   const { error } = await supabaseClient.from('pods').delete().eq('id', podId);
   if (error) { showToast(t('proj.deleteErrorSimple'), 'error'); return; }
   showToast(t('proj.podDeleted'), 'success');

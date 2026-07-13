@@ -63,6 +63,32 @@ document.getElementById('modal-overlay')?.addEventListener('click', (e) => {
   if (e.target === document.getElementById('modal-overlay')) closeModal();
 });
 
+// ESC closes the topmost open overlay (uiConfirm handles its own ESC and
+// stops propagation, so it always wins when open).
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+
+  // Image lightbox first — it sits on top of everything
+  const lightbox = document.getElementById('img-lightbox');
+  if (lightbox) { lightbox.remove(); return; }
+
+  const overlayIds = ['signature-modal', 'scanner-modal', 'barcode-modal',
+    'comments-modal', 'share-stage-modal', 'profile-modal', 'modal-overlay'];
+  for (const id of overlayIds) {
+    const el = document.getElementById(id);
+    if (!el || el.classList.contains('hidden')) continue;
+    if (id === 'scanner-modal') {
+      closeScannerModal(); // stops the camera as well
+    } else if (id === 'signature-modal') {
+      el.classList.add('hidden');
+      pendingStageCompletion = null; // same cleanup as the cancel button
+    } else {
+      el.classList.add('hidden');
+    }
+    return;
+  }
+});
+
 // ---- VIEW ROUTING ----
 function showView(viewName) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));

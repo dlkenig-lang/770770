@@ -1335,3 +1335,9 @@ table tbody tr:hover { background: #f8fafc; }
 [dir="ltr"] #btn-print-all-barcodes { margin-right: 0; margin-left: auto; }
 [dir="ltr"] .archive-toggle-arrow { margin-right: 0; margin-left: auto; }
 [dir="ltr"] .form-group label .required { margin-right: 0; margin-left: 2px; }
+
+/* Green flash after a QC field value was persisted (see flashSaved in qc.js) */
+.qc-field-saved {
+  box-shadow: 0 0 0 2px var(--success) !important;
+  transition: box-shadow 0.25s ease;
+}

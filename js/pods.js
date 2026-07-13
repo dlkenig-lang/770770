@@ -84,26 +84,9 @@ async function openPod(podId) {
 
   showView('pod-detail');
 
-  // Show unresolved comments banner
-  const { data: unresolvedComments } = await supabaseClient
-    .from('comments')
-    .select('id')
-    .eq('pod_id', podId)
-    .eq('is_resolved', false);
-  const unresolvedCount = unresolvedComments?.length || 0;
-  let bannerEl = document.getElementById('pod-unresolved-banner');
-  if (!bannerEl) {
-    bannerEl = document.createElement('div');
-    bannerEl.id = 'pod-unresolved-banner';
-    document.getElementById('pod-info-bar').insertAdjacentElement('afterend', bannerEl);
-  }
-  if (unresolvedCount > 0) {
-    bannerEl.className = 'pod-unresolved-banner';
-    bannerEl.innerHTML = `⚠️ ${t('pod.unresolvedBannerPre')} <strong>${unresolvedCount}</strong> ${t('pod.unresolvedBannerPost')} — <button class="btn btn-sm btn-ghost" onclick="showCommentsModal('${podId}')">${t('pod.addressBtn')}</button>`;
-  } else {
-    bannerEl.className = '';
-    bannerEl.innerHTML = '';
-  }
+  // Unresolved-comments notice is rendered once by renderQCTabsUI (qc.js)
+  // into #pod-comments-alert — a second banner here duplicated it.
+  document.getElementById('pod-unresolved-banner')?.remove();
 
   await loadQCStages(podId);
 }
@@ -246,7 +229,7 @@ async function loadComments(podId) {
 }
 
 async function deleteComment(commentId, podId) {
-  if (!confirm(t('comments.confirmDelete'))) return;
+  if (!(await uiConfirm(t('comments.confirmDelete')))) return;
   const { error, count } = await supabaseClient
     .from('comments').delete({ count: 'exact' }).eq('id', commentId);
   if (error) {

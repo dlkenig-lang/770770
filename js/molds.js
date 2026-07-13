@@ -107,7 +107,7 @@ async function loadMoldsTab(projectId) {
       </div>
       ${isAdmin() ? `
       <div class="pod-card-actions">
-        <button class="btn btn-danger btn-sm btn-delete-mold" data-mold-id="${c.id}">🗑</button>
+        <button class="btn btn-danger btn-sm btn-delete-mold" data-mold-id="${c.id}" title="${t('common.delete')}" aria-label="${t('common.delete')}">🗑</button>
       </div>` : ''}
     </div>`;
   }).join('')}</div>`;
@@ -185,7 +185,7 @@ function showAddMoldModal() {
 }
 
 async function deleteMoldCheck(moldId) {
-  if (!confirm(t('mold.confirmDelete'))) return;
+  if (!(await uiConfirm(t('mold.confirmDelete')))) return;
   const { error } = await supabaseClient.from('mold_checks').delete().eq('id', moldId);
   if (error) { showToast(t('proj.deleteError') + error.message, 'error'); return; }
   showToast(t('mold.deleted'), 'success');
@@ -320,7 +320,7 @@ function openMoldCheckModal(moldId) {
   });
 
   document.getElementById('btn-mold-reopen')?.addEventListener('click', async () => {
-    if (!confirm(t('qc.confirmEdit'))) return;
+    if (!(await uiConfirm(t('qc.confirmEdit'), { danger: false }))) return;
     const { error } = await supabaseClient.from('mold_checks').update({
       status: 'in_progress',
       inspector_name: null, inspector_signature: null,

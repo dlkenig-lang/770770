@@ -140,6 +140,47 @@ function showToast(message, type = 'info') {
   }, 3000);
 }
 
+// Styled confirmation dialog replacing the browser's native confirm().
+// Returns Promise<boolean>. Uses its own overlay so it can appear on top of
+// an already-open modal (e.g. the mold-check form). ESC / backdrop = cancel.
+// opts: { danger: false } for positive actions (blue OK), okLabel: custom text.
+function uiConfirm(message, opts = {}) {
+  return new Promise((resolve) => {
+    document.getElementById('ui-confirm-overlay')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'ui-confirm-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '10000';
+    // escHtml is defined in projects.js — loaded before any user interaction
+    overlay.innerHTML = `
+      <div class="modal-container modal-sm" role="alertdialog" aria-modal="true">
+        <div class="modal-body" style="padding-top:22px">
+          <p style="font-size:15px;line-height:1.5;white-space:pre-line;margin:0">${escHtml(message)}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="ui-confirm-cancel">${t('common.cancel')}</button>
+          <button type="button" class="btn ${opts.danger === false ? 'btn-primary' : 'btn-danger'}" id="ui-confirm-ok">${escHtml(opts.okLabel || t('common.confirm'))}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const done = (val) => {
+      document.removeEventListener('keydown', onKey);
+      overlay.remove();
+      resolve(val);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); done(false); }
+      else if (e.key === 'Enter') { e.stopPropagation(); done(true); }
+    };
+    document.addEventListener('keydown', onKey);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) done(false); });
+    overlay.querySelector('#ui-confirm-cancel').addEventListener('click', () => done(false));
+    const okBtn = overlay.querySelector('#ui-confirm-ok');
+    okBtn.addEventListener('click', () => done(true));
+    okBtn.focus();
+  });
+}
+
 // Show/hide spinner on button
 function setLoading(btn, loading) {
   if (!btn) return;

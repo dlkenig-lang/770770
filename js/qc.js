@@ -13,6 +13,23 @@ let _qcPodId = null;
 let _qcCastingApproved = false;
 let _castingBaseApproved = false; // never resets once set; used to lock casting items 1-6
 
+// Notes are saved with a debounce — warn before leaving the page while a
+// save is still pending so typed text isn't silently lost.
+const _qcPendingSaves = new Set();
+window.addEventListener('beforeunload', (e) => {
+  if (_qcPendingSaves.size > 0) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+// Brief green flash on a field after its value was persisted.
+function flashSaved(field) {
+  if (!field?.classList) return;
+  field.classList.add('qc-field-saved');
+  setTimeout(() => field.classList.remove('qc-field-saved'), 1200);
+}
+
 const STAGE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 // Keys of Stage A items that must all pass before casting approval (items 1–7).
@@ -227,8 +244,12 @@ function renderActiveStage() {
     content.querySelectorAll('.qc-notes-inline').forEach(field => {
       field.addEventListener('input', () => {
         const key = field.dataset.itemKey + field.dataset.stageId;
+        _qcPendingSaves.add(key);
         clearTimeout(notesTimers[key]);
-        notesTimers[key] = setTimeout(() => saveItemField(field, 'notes', field.value, _qcPodId), 800);
+        notesTimers[key] = setTimeout(async () => {
+          await saveItemField(field, 'notes', field.value, _qcPodId);
+          _qcPendingSaves.delete(key);
+        }, 800);
       });
     });
 
@@ -359,7 +380,7 @@ function renderQCTableRow(itemDef, rowIdx, stage, items, readonly) {
             ${imageUrl ? `
               <div class="qc-img-thumb-wrap">
                 <img src="${imageUrl}" class="qc-img-thumb" alt="${t('qc.image')}" data-url="${escHtml(imageUrl)}" />
-                <button type="button" class="qc-img-del" data-item-id="${itemId}" data-storage-path="${escHtml(imagePath)}">✕</button>
+                <button type="button" class="qc-img-del" data-item-id="${itemId}" data-storage-path="${escHtml(imagePath)}" title="${t('common.delete')}" aria-label="${t('common.delete')}">✕</button>
               </div>
             ` : ''}
           </div>
@@ -411,7 +432,7 @@ function renderInspectorSection(stage) {
 
 // ---- CLEAR STAGE ----
 async function clearStage(stageId) {
-  if (!confirm(t('qc.confirmClear'))) return;
+  if (!(await uiConfirm(t('qc.confirmClear')))) return;
 
   // Remove uploaded images from storage before wiping their references
   const imagePaths = (_qcStageItems[stageId] || [])
@@ -464,14 +485,12 @@ async function editStage(stageId) {
     showToast(t('qc.stageAlreadyOpen'), 'success');
     return;
   }
-  if (!confirm(t('qc.confirmEdit'))) return;
+  if (!(await uiConfirm(t('qc.confirmEdit'), { danger: false }))) return;
 
+  // Keep the existing signature/name/date — they stay valid if the user
+  // changes nothing, and are overwritten anyway on the next sign-off.
   await supabaseClient.from('qc_stages').update({
     status: 'in_progress',
-    inspector_name: null,
-    inspector_signature: null,
-    inspection_date: null,
-    completed_at: null,
   }).eq('id', stageId);
 
   showToast(t('qc.stageReopened'), 'success');
@@ -586,7 +605,7 @@ async function checkCastingApprovalTrigger(stageId, itemKey) {
 
   if (!allPassed) return;
 
-  const confirmed = confirm(t('qc.confirmCastingApproval'));
+  const confirmed = await uiConfirm(t('qc.confirmCastingApproval'), { danger: false });
   if (!confirmed) return;
 
   const { error } = await supabaseClient.from('pods').update({
@@ -616,7 +635,13 @@ async function saveItemField(field, fieldName, value, podId) {
   const itemKey = field.dataset.itemKey;
 
   if (itemId) {
-    await supabaseClient.from('qc_items').update({ [fieldName]: value }).eq('id', itemId);
+    const { error } = await supabaseClient.from('qc_items').update({ [fieldName]: value }).eq('id', itemId);
+    if (error) {
+      console.error('[saveItemField] update error:', error);
+      showToast(t('qc.saveError'), 'error');
+      return;
+    }
+    flashSaved(field);
   } else {
     const stage = _qcStages.find(s => s.id === stageId);
     const stageDef = getStage(stage?.stage_number);
@@ -641,6 +666,7 @@ async function saveItemField(field, fieldName, value, podId) {
         _qcStageItems[stageId].push(data);
       }
     }
+    flashSaved(field);
   }
 
   // Keep the in-memory cache in sync so tab switches don't lose the value
@@ -691,7 +717,7 @@ function sendShareEmail() {
   const stageIdx = modal.dataset.stageIdx;
 
   if (!toEmail) {
-    alert(t('qc.pleaseSelectUser'));
+    showToast(t('qc.pleaseSelectUser'), 'warning');
     return;
   }
 
@@ -761,7 +787,7 @@ async function uploadQcImage(input) {
   wrap.className = 'qc-img-thumb-wrap';
   wrap.innerHTML = `
     <img src="${displayUrl}" class="qc-img-thumb" alt="${t('qc.image')}" data-url="${displayUrl}" />
-    <button type="button" class="qc-img-del" data-item-id="${itemId}" data-storage-path="${storagePath}">✕</button>
+    <button type="button" class="qc-img-del" data-item-id="${itemId}" data-storage-path="${storagePath}" title="${t('common.delete')}" aria-label="${t('common.delete')}">✕</button>
   `;
   wrap.querySelector('.qc-img-thumb').addEventListener('click', (e) => window.open(e.target.dataset.url, '_blank'));
   wrap.querySelector('.qc-img-del').addEventListener('click', (e) => deleteQcImage(e.currentTarget));
@@ -772,7 +798,7 @@ async function uploadQcImage(input) {
 }
 
 async function deleteQcImage(btn) {
-  if (!confirm(t('qc.confirmDeleteImage'))) return;
+  if (!(await uiConfirm(t('qc.confirmDeleteImage')))) return;
   const itemId = btn.dataset.itemId;
   const storagePath = btn.dataset.storagePath;
 

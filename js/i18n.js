@@ -44,6 +44,8 @@ const I18N = {
     // Casting approval banner
     'qc.castingReadyBanner': 'כל 7 סעיפי היציקה עברו — ניתן לאשר את הפוד ליציקה',
     'qc.approveCastingBtn': 'אשר ליציקה',
+    'qc.stageIncomplete': 'לא ניתן לחתום — {n} סעיפים טרם נבדקו. יש לסמן ✓ או ✗ בכל סעיף',
+    'mold.incomplete': 'לא ניתן לחתום — {n} סעיפים טרם נבדקו. יש לסמן ✓ או ✗ בכל סעיף',
     'common.clear': 'נקה',
     'common.print': '🖨️ הדפס',
     'common.date': 'תאריך',
@@ -567,6 +569,8 @@ const I18N = {
     // Casting approval banner
     'qc.castingReadyBanner': 'All 7 casting items passed — the pod can be approved for casting',
     'qc.approveCastingBtn': 'Approve for casting',
+    'qc.stageIncomplete': 'Cannot sign — {n} items not yet inspected. Mark ✓ or ✗ on every item',
+    'mold.incomplete': 'Cannot sign — {n} items not yet inspected. Mark ✓ or ✗ on every item',
     'common.clear': 'Clear',
     'common.print': '🖨️ Print',
     'common.date': 'Date',

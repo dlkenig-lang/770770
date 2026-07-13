@@ -60,9 +60,13 @@ async function loadQCStages(podId) {
   // legacy rows without a storage path.
   await signQcImageUrls(Object.values(_qcStageItems).flat());
 
-  // Recompute the casting gate for THIS pod only (see note on declaration)
+  // Recompute the casting gate for THIS pod only (see note on declaration).
+  // casting_approved = the pod is CURRENTLY in the "approved for casting"
+  // list; casting_approved_at is kept even after the pod leaves the list
+  // (work started post-casting) and proves the gate was passed — so stages
+  // B-F stay unlocked. Both are cleared only by clearStage(A).
   _qcCastingApproved = AppState.currentPod?.casting_approved || false;
-  _castingBaseApproved = _qcCastingApproved;
+  _castingBaseApproved = _qcCastingApproved || !!AppState.currentPod?.casting_approved_at;
 
   // If Stage A is already signed (completed/failed), unlock downstream stages
   // even if casting_approved flag was never explicitly set on the pod
@@ -289,10 +293,20 @@ function renderActiveStage() {
         const warningsEl = document.getElementById(`qc-stage-warnings-${btn.dataset.stageId}`);
         const warnings = [];
         if (!name) warnings.push(t('qc.needInspectorName'));
+
+        // A stage may only be signed when EVERY item was answered (✓ or ✗)
+        const stageDefSign = getStage(parseInt(btn.dataset.stageNum));
+        const stageItemsSign = _qcStageItems[btn.dataset.stageId] || [];
+        const unanswered = (stageDefSign?.items || []).filter(d => {
+          const it = stageItemsSign.find(i => i.item_key === d.key);
+          return !it || it.status === 'pending' || !it.status;
+        }).length;
+        if (unanswered > 0) warnings.push(t('qc.stageIncomplete', { n: unanswered }));
+
         if (warningsEl) {
           warningsEl.innerHTML = warnings.map(w => `<div class="qc-warning-msg">⚠️ ${w}</div>`).join('');
         }
-        if (!name) return;
+        if (warnings.length > 0) return;
         showSignatureModal(_qcPodId, btn.dataset.stageId, parseInt(btn.dataset.stageNum), _qcStages, _qcStageItems, name);
       });
     });
@@ -593,21 +607,22 @@ async function handleItemStatusChange(btn) {
   await updateStageStatus(stageId, _qcPodId, _qcStages);
   await checkCastingApprovalTrigger(stageId, itemKey);
 
-  // If one of the post-casting items (8-9) in stage A is answered, remove
-  // casting approval — the pod has been cast, so it should leave the
-  // "approved for casting" list. The update is conditioned on the DB value
-  // (not the local flag) so it also works when another user approved after
-  // this page was loaded.
+  // Post-casting work removes the pod from the "approved for casting" list:
+  // answering items 8-9 of stage A (segregation / drainage test) OR ANY item
+  // in stages B-F means the pod has already been cast. casting_approved_at
+  // is intentionally KEPT — it proves the gate was passed and keeps stages
+  // B-F unlocked (see loadQCStages). The update is conditioned on the DB
+  // value (not the local flag) so it also works when another user approved
+  // after this page was loaded.
   const postCastingKeys = ['segregation', 'drainage_test'];
   const stageForItem = _qcStages.find(s => s.id === stageId);
-  if (
-    stageForItem?.stage_number === 1 &&
-    postCastingKeys.includes(itemKey) &&
-    newStatus !== 'pending'
-  ) {
+  const isPostCastingWork = stageForItem && newStatus !== 'pending' && (
+    (stageForItem.stage_number === 1 && postCastingKeys.includes(itemKey)) ||
+    stageForItem.stage_number > 1
+  );
+  if (isPostCastingWork) {
     const { data: removed } = await supabaseClient.from('pods').update({
       casting_approved: false,
-      casting_approved_at: null,
     }).eq('id', _qcPodId).eq('casting_approved', true).select('id');
     if (removed?.length) {
       _qcCastingApproved = false;
@@ -1013,6 +1028,17 @@ function initSignatureModal() {
     const { podId, stageId, stageNum } = pendingStageCompletion;
 
     const { data: items } = await supabaseClient.from('qc_items').select('status').eq('stage_id', stageId);
+
+    // Authoritative completeness check against fresh DB data: signing is
+    // allowed only when every item in the stage was answered (✓ or ✗)
+    const expectedTotal = getStage(stageNum)?.items.length || 0;
+    const answeredCount = (items || []).filter(i => i.status === 'passed' || i.status === 'failed').length;
+    if (answeredCount < expectedTotal) {
+      errEl.textContent = t('qc.stageIncomplete', { n: expectedTotal - answeredCount });
+      errEl.classList.remove('hidden');
+      return;
+    }
+
     const anyFailed = (items || []).some(i => i.status === 'failed');
 
     const btn = document.getElementById('sig-confirm');

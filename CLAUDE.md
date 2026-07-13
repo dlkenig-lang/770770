@@ -81,14 +81,22 @@ const allPods = (pods || []).sort((a, b) => getSerial(a.pod_code) - getSerial(b.
 - ב-`loadPodsTab`: מחושב לפי **סך שלבים שהושלמו** מכלל השלבים (פודים × 6), כולל שלבים בתוך פודים שבתהליך.
 - ב-`renderProjectCard` (דשבורד): פוד `completed` = 100%, פוד `in_progress` = 50%.
 
-## נעילת שלבים B–F (בדיקות QC)
+## זרימת אישור יציקה ונעילת שלבים B–F (בדיקות QC)
 
-שלבים B–F נעולים עד לאישור סעיפים 1–7 ביציקת הרצפה (שלב A). הנעילה מתבטלת אם:
-1. `pods.casting_approved === true`, **או**
-2. שלב A כבר חתום (`status === 'completed'` או `'failed'`)
+**שני מושגים נפרדים** (מאז תיקוני 20260713):
+- `pods.casting_approved` — הפוד נמצא **כרגע** ברשימת "מאושרים ליציקה".
+- `pods.casting_approved_at` — הפוד **עבר אי-פעם** את שער היציקה. נשאר גם אחרי שהפוד יוצא מהרשימה, ומשמש לפתיחת שלבים B–F. מתאפס רק ב"נקה טופס" של שלב A.
 
-הלוגיקה ב-`loadQCStages` ב-`js/qc.js`:
+**כללי הזרימה:**
+1. לפני אישור: רק סעיפי היציקה 1–7 של שלב A פתוחים. סעיפים 8–9 ושלבים B–F נעולים.
+2. כל 7 הסעיפים ✓ ⇒ דיאלוג אישור; אם בוטל — באנר קבוע עם כפתור "אשר ליציקה" (`castingItemsAllPassed`/`approveCasting` ב-`qc.js`).
+3. אחרי אישור: סעיפים 1–7 ננעלים; 8–9 ו-B–F נפתחים.
+4. **יציאה מהרשימה**: מענה על **כל סעיף** שהוא עבודה שאחרי יציקה — 8/9 בשלב A **או כל סעיף ב-B–F** — מסיר את `casting_approved` (עדכון מותנה ב-DB, עמיד לריבוי משתמשים). `casting_approved_at` נשמר ולכן B–F נשארים פתוחים.
+5. **אין לחתום על שלב שלא הושלם**: חתימה (בשלבי QC ובבדיקות תבניות) חסומה עד שלכל סעיף סומן ✓ או ✗. נבדק גם בכפתור וגם באישור הסופי מול נתוני DB טריים (`qc.stageIncomplete`). האכיפה בצד לקוח בלבד — ל-DB אין את הגדרות הסעיפים.
+
+הנעילה מחושבת **מחדש לכל פוד** ב-`loadQCStages` (`_castingBaseApproved` — אסור שיזלוג בין פודים):
 ```js
+_castingBaseApproved = _qcCastingApproved || !!AppState.currentPod?.casting_approved_at;
 const stageA = _qcStages.find(s => s.stage_number === 1);
 if (stageA?.status === 'completed' || stageA?.status === 'failed') {
   _castingBaseApproved = true;

@@ -316,14 +316,7 @@ function openMoldCheckModal(moldId) {
   });
 
   document.getElementById('btn-mold-sign')?.addEventListener('click', () => {
-    const payload = collectFromDom();
-    // Same rule as pod QC stages: signing requires every item answered
-    const unanswered = MOLD_CHECK_ITEMS.filter(it => payload[`${it.key}_status`] === 'pending').length;
-    if (unanswered > 0) {
-      showToast(t('mold.incomplete', { n: unanswered }), 'error');
-      return;
-    }
-    showMoldSignatureStep(moldId, payload);
+    showMoldSignatureStep(moldId, collectFromDom());
   });
 
   document.getElementById('btn-mold-reopen')?.addEventListener('click', async () => {

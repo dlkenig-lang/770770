@@ -1341,20 +1341,3 @@ table tbody tr:hover { background: #f8fafc; }
   box-shadow: 0 0 0 2px var(--success) !important;
   transition: box-shadow 0.25s ease;
 }
-
-/* "Ready for casting approval" banner in Stage A (see renderActiveStage) */
-.qc-casting-ready-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 10px 14px;
-  margin-bottom: 12px;
-  background: #ecfdf5;
-  border: 1.5px solid var(--success);
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #065f46;
-}

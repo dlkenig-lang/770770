@@ -38,14 +38,6 @@ const I18N = {
     'audit.mold_reopened': 'בדיקת תבנית נפתחה מחדש לעריכה',
     'audit.mold_cleared': 'בדיקת תבנית נוקתה',
     'audit.mold_updated': 'סטטוס בדיקת תבנית עודכן',
-    'audit.casting_approved': 'הפוד אושר ליציקה',
-    'audit.casting_removed': 'אישור היציקה הוסר',
-
-    // Casting approval banner
-    'qc.castingReadyBanner': 'כל 7 סעיפי היציקה עברו — ניתן לאשר את הפוד ליציקה',
-    'qc.approveCastingBtn': 'אשר ליציקה',
-    'qc.stageIncomplete': 'לא ניתן לחתום — {n} סעיפים טרם נבדקו. יש לסמן ✓ או ✗ בכל סעיף',
-    'mold.incomplete': 'לא ניתן לחתום — {n} סעיפים טרם נבדקו. יש לסמן ✓ או ✗ בכל סעיף',
     'common.clear': 'נקה',
     'common.print': '🖨️ הדפס',
     'common.date': 'תאריך',
@@ -563,14 +555,6 @@ const I18N = {
     'audit.mold_reopened': 'Mold check reopened for editing',
     'audit.mold_cleared': 'Mold check cleared',
     'audit.mold_updated': 'Mold check status updated',
-    'audit.casting_approved': 'Pod approved for casting',
-    'audit.casting_removed': 'Casting approval removed',
-
-    // Casting approval banner
-    'qc.castingReadyBanner': 'All 7 casting items passed — the pod can be approved for casting',
-    'qc.approveCastingBtn': 'Approve for casting',
-    'qc.stageIncomplete': 'Cannot sign — {n} items not yet inspected. Mark ✓ or ✗ on every item',
-    'mold.incomplete': 'Cannot sign — {n} items not yet inspected. Mark ✓ or ✗ on every item',
     'common.clear': 'Clear',
     'common.print': '🖨️ Print',
     'common.date': 'Date',

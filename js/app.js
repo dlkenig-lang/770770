@@ -167,6 +167,9 @@ async function loadUsersView() {
               <td>${formatDate(u.created_at?.split('T')[0])}</td>
               <td>
                 <div class="table-actions">
+                  <button class="btn btn-secondary btn-sm btn-edit-email" data-user-id="${u.id}" data-email="${escHtml(u.email || '')}">
+                    ${t('users.editEmail')}
+                  </button>
                   ${u.id !== AppState.currentProfile?.id ? `
                     <button class="btn btn-secondary btn-sm btn-toggle-active" data-user-id="${u.id}" data-active="${u.is_active}">
                       ${u.is_active ? t('users.deactivate') : t('users.activate')}
@@ -243,6 +246,43 @@ async function loadUsersView() {
       }
       showToast(t('users.updated'), 'success');
       await loadUsersView();
+    });
+  });
+
+  // Edit email
+  container.querySelectorAll('.btn-edit-email').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const userId = btn.dataset.userId;
+      const currentEmail = btn.dataset.email;
+      openModal(t('users.editEmailTitle'), `
+        <div class="form-group">
+          <label>${t('users.editEmailLabel')}</label>
+          <input type="email" id="edit-email-input" class="form-control" value="${escHtml(currentEmail)}">
+        </div>
+        <p class="text-muted text-sm">${t('users.editEmailNote')}</p>
+      `, [
+        { id: 'edit-email-cancel', cls: 'btn-secondary', label: t('users.editEmailCancel') },
+        { id: 'edit-email-save', cls: 'btn-primary', label: t('users.editEmailSave') },
+      ]);
+      document.getElementById('edit-email-cancel').addEventListener('click', closeModal);
+      document.getElementById('edit-email-save').addEventListener('click', async () => {
+        const newEmail = document.getElementById('edit-email-input').value.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+          showToast(t('users.invalidEmail'), 'error');
+          return;
+        }
+        const { data, error } = await supabaseClient.from('profiles')
+          .update({ email: newEmail }).eq('id', userId).select('id');
+        if (error || !data?.length) {
+          console.error('[edit-email] error:', error);
+          const detail = error?.message || t('users.noRowUpdated');
+          showToast(t('users.emailUpdateError') + ': ' + detail, 'error');
+          return;
+        }
+        closeModal();
+        showToast(t('users.emailUpdated'), 'success');
+        await loadUsersView();
+      });
     });
   });
 }

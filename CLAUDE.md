@@ -31,7 +31,7 @@
 - **משתמש חדש נוצר `is_active=false`** וממתין לאישור אדמין במסך ניהול המשתמשים. עד אז הוא לא רואה נתונים (RLS) ומקבל את מסך `auth.pendingApproval` (`showPendingApprovalScreen` ב-`app.js`).
 - **כל הפוליסות משתמשות ב-`public.current_user_role()`** — פונקציית SECURITY DEFINER שמחזירה את התפקיד רק אם `is_active=true` (אחרת NULL). נטרול משתמש חוסם אותו בפועל. פוליסות חדשות חייבות להשתמש בפונקציה הזו, לא ב-`EXISTS (SELECT ... FROM profiles)` (גורם לרקורסיה בפוליסות של profiles עצמה).
 - **שינוי `role`/`is_active`/`email`/`username` בפרופיל** — רק אדמין פעיל (trigger `protect_profile_privileges`).
-- **כתיבה ל-QC (`qc_stages`/`qc_items`)**: admin + inspector בלבד. **עדכון `pods`** (status/casting) כולל גם inspector. **שם התפקיד בפוליסות הוא `'project_manager'`** — לא `'pm'` (באג היסטורי בפוליסות התוכניות).
+- **כתיבה ל-QC (`qc_stages`/`qc_items` + תמונות `qc-images`)**: admin + project_manager + inspector (מנהל פרויקט נוסף במיגרציה 20260719010000; בצד לקוח — `canEdit()`). **בדיקות תבניות (`mold_checks`) נשארו admin + inspector בלבד** — בצד לקוח `canEditMolds()`. **עדכון `pods`** (status/casting) כולל גם inspector. **שם התפקיד בפוליסות הוא `'project_manager'`** — לא `'pm'` (באג היסטורי בפוליסות התוכניות).
 - **Buckets פרטיים (מאז 20260712010000)**: `plans` ו-`qc-images` אינם ציבוריים. תצוגה נעשית עם **Signed URLs** (שעה): `signQcImageUrls` ב-`qc.js` (מחליף `image_url` בזיכרון) ו-`signedByPath` ב-`loadPlansTab` ב-`projects.js`. `file_url`/`image_url` ב-DB הם fallback לרשומות ישנות — אין להסתמך עליהם לתצוגה.
 - **בדיקת שם משתמש תפוס בהרשמה**: דרך `username_exists` (boolean). `get_email_by_username` נשארת רק להתחברות עם שם משתמש.
 - **מחיקת קבוצת ביצוע** מנתקת פודים (`pods.group_id` = `ON DELETE SET NULL`, מיגרציה 20260712020000) — לא מוחקת אותם.

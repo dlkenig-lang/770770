@@ -198,7 +198,7 @@ function openMoldCheckModal(moldId) {
   if (!check) return;
 
   const signed = check.status === 'completed' || check.status === 'failed';
-  const readonly = !canEdit() || signed;
+  const readonly = !canEditMolds() || signed;
 
   const rows = MOLD_CHECK_ITEMS.map((it, idx) => {
     const status = check[`${it.key}_status`] || 'pending';
@@ -251,7 +251,7 @@ function openMoldCheckModal(moldId) {
     buttons.push({ label: t('common.save'), cls: 'btn-secondary', id: 'btn-mold-save' });
     buttons.push({ label: t('mold.signFinish'), cls: 'btn-primary', id: 'btn-mold-sign' });
   }
-  if (signed && canEdit()) {
+  if (signed && canEditMolds()) {
     buttons.push({ label: t('mold.reopen'), cls: 'btn-secondary', id: 'btn-mold-reopen' });
   }
 

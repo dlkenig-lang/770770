@@ -158,20 +158,6 @@ const CASTING_ITEM_KEYS = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixa
 
 ## שינויים שבוצעו
 
-### עריכת אימייל במסך ניהול משתמשים (`js/app.js`, `js/i18n.js`)
-
-בכל שורת משתמש ב-`loadUsersView` נוסף כפתור **"ערוך אימייל"** (`.btn-edit-email`) שפותח מודל (`openModal`) לעריכת השדה.
-
-- **מעדכן רק את `public.profiles.email`** — עמודת תצוגה, כפוף לאותו trigger `protect_profile_privileges` (אדמין פעיל בלבד) כמו שינוי role/is_active/username.
-- **אינו משנה את אימייל ההתחברות** ב-`auth.users` (Supabase Auth) — אין ל-client גישת Admin API לכך. עדכון כתובת ההתחברות בפועל נעשה **ידנית ב-Supabase Dashboard או SQL Editor**:
-  ```sql
-  UPDATE auth.users SET email = '...', email_confirmed_at = now() WHERE id = '<uid>';
-  UPDATE auth.identities SET identity_data = jsonb_set(identity_data, '{email}', '"..."') WHERE user_id = '<uid>';
-  UPDATE public.profiles SET email = '...' WHERE id = '<uid>';
-  ```
-- מפתחות i18n חדשים תחת `users.editEmail*` / `users.emailUpdated` / `users.emailUpdateError` / `users.invalidEmail` (`he`+`en`).
-- ולידציה בסיסית של פורמט אימייל בצד לקוח לפני השליחה.
-
 ### שלב F — התקנת אביזרי קצה (`js/qc-data.js`)
 
 נוספו הסעיפים הבאים לרשימת הבדיקות:

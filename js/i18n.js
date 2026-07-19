@@ -523,15 +523,6 @@ const I18N = {
     'users.roleUpdated': 'תפקיד עודכן',
     'users.updated': 'עודכן',
     'users.noRowUpdated': 'שום רשומה לא עודכנה (כנראה חסימת הרשאות RLS)',
-    'users.editEmail': 'ערוך אימייל',
-    'users.editEmailTitle': 'עריכת אימייל',
-    'users.editEmailLabel': 'אימייל חדש',
-    'users.editEmailNote': 'שינוי זה מעדכן את כתובת האימייל המוצגת במערכת בלבד. כתובת ההתחברות בפועל (Supabase Auth) אינה משתנה — לעדכן אותה יש לפנות ל-Supabase Dashboard.',
-    'users.editEmailSave': 'שמור',
-    'users.editEmailCancel': 'ביטול',
-    'users.emailUpdated': 'האימייל עודכן',
-    'users.emailUpdateError': 'שגיאה בעדכון אימייל',
-    'users.invalidEmail': 'כתובת אימייל לא תקינה',
 
     // Profile modal messages
     'profile.enterName': 'יש להזין שם תצוגה',
@@ -1049,15 +1040,6 @@ const I18N = {
     'users.roleUpdated': 'Role updated',
     'users.updated': 'Updated',
     'users.noRowUpdated': 'No row was updated (likely blocked by RLS permissions)',
-    'users.editEmail': 'Edit Email',
-    'users.editEmailTitle': 'Edit Email',
-    'users.editEmailLabel': 'New email',
-    'users.editEmailNote': 'This only updates the email address displayed in the system. The actual login email (Supabase Auth) is not changed — to update it, use the Supabase Dashboard.',
-    'users.editEmailSave': 'Save',
-    'users.editEmailCancel': 'Cancel',
-    'users.emailUpdated': 'Email updated',
-    'users.emailUpdateError': 'Error updating email',
-    'users.invalidEmail': 'Invalid email address',
 
     // Profile modal messages
     'profile.enterName': 'Please enter a display name',

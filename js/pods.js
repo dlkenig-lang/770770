@@ -342,10 +342,21 @@ async function showPodHistory() {
         const stageNum = l.new_values?.stage_number;
         const letter = stageNum ? (STAGE_LETTERS[stageNum - 1] || stageNum) : null;
         const inspector = l.new_values?.inspector_name || l.old_values?.inspector_name;
+        // Item-level events (item_status_changed) carry item_key — resolve the
+        // language-aware label and show the old→new status transition
+        let itemInfo = '';
+        if (l.table_name === 'qc_items' && l.new_values?.item_key) {
+          const itemDef = getStage(stageNum)?.items.find(it => it.key === l.new_values.item_key);
+          const label = itemDef ? qcItemLabel(itemDef) : (l.new_values.item_label || l.new_values.item_key);
+          const oldSt = l.old_values?.status;
+          const newSt = l.new_values?.status;
+          const transition = oldSt && newSt ? ` (${t('status.' + oldSt)} → ${t('status.' + newSt)})` : '';
+          itemInfo = `: ${escHtml(label)}${transition}`;
+        }
         return `
         <div style="padding:10px 4px;border-bottom:1px solid var(--border);font-size:13px">
           <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
-            <strong>${escHtml(t('audit.' + l.action))}${letter ? ` — ${t('qc.stage')} ${letter}` : ''}</strong>
+            <strong>${escHtml(t('audit.' + l.action))}${letter ? ` — ${t('qc.stage')} ${letter}` : ''}${itemInfo}</strong>
             <span class="text-muted">${formatDateTime(l.created_at)}</span>
           </div>
           <div class="text-muted" style="margin-top:2px">

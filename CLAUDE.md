@@ -156,7 +156,33 @@ const CASTING_ITEM_KEYS = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixa
 - **שמירה**: הטופס נשמר בלחיצת "שמור" (לא autosave); "חתום וסיים" עובר לשלב חתימה בתוך אותו מודאל (SignaturePad נפרד — `_moldSigPad`), וכישלון בסעיף כלשהו ⇒ `status='failed'`.
 - הגדרת הטבלה מתועדת ב-`20260712050000_mold_checks_table.sql` (no-op על ה-DB החי).
 
+## שלמות נתוני QC — הגנות מאז 20260719 (תקלת 29/03)
+
+רקע: ב-29/03/2026 נוקו טופסי שלב A של כמה פודים ("ניקוי טופס"), מולאו מחדש חלקית (בלי סעיפי המדידה 1, 2, 7) ונחתמו "הושלם" — בלי התרעה ובלי תיעוד. ההגנות שנוספו:
+
+- **ולידציית שלמות בחתימה** (`btn-complete-stage` ב-`qc.js`): חתימה על שלב עם סעיפים לא מסומנים פותחת `uiConfirm` עם רשימת הסעיפים החסרים (`qc.signMissingItems`). אפשר לאשר ולחתום בכל זאת — אבל לא בשוגג.
+- **מיגרציה `20260719000000_protect_qc_items.sql`** (להריץ ידנית ב-SQL Editor):
+  - trigger `protect_signed_stage_items` חוסם INSERT/UPDATE/DELETE על `qc_items` כשהשלב ההורה `completed`/`failed` — סוגר גם טאבים ישנים שנשארו פתוחים. **לכן `clearStage` מאפס את השלב לפני הסעיפים** — אין להחזיר את הסדר הישן (items→stage) שייחסם ע"י ה-trigger.
+  - trigger `log_qc_item_change` מתעד ב-`qc_audit_log` כל שינוי סימון קיים (`passed`/`failed` → אחר) כ-`item_status_changed`; מוצג בהיסטוריית הפוד (📜) עם שם הסעיף והמעבר. סימון ראשוני לא מתועד (רעש).
+- **בדיקת שגיאות בשמירת סימון** (`handleItemStatusChange`): כישלון כתיבה מחזיר את השורה למצב האחרון שנשמר ומציג `qc.itemSaveError` — לא נשאר ✓ כוזב על המסך.
+- **"ניקוי טופס" לאדמין בלבד** ב-UI (היה לכל `canEdit`).
+- **מכנה מונה הדוח ב-PDF** (`reports.js`): `passed/totalDefined` לפי הגדרת השלב — לא לפי מספר שורות ה-DB (שגרם לטופס חסר להיראות "6/6 עברו").
+
 ## שינויים שבוצעו
+
+### עריכת אימייל במסך ניהול משתמשים (`js/app.js`, `js/i18n.js`)
+
+בכל שורת משתמש ב-`loadUsersView` נוסף כפתור **"ערוך אימייל"** (`.btn-edit-email`) שפותח מודל (`openModal`) לעריכת השדה.
+
+- **מעדכן רק את `public.profiles.email`** — עמודת תצוגה, כפוף לאותו trigger `protect_profile_privileges` (אדמין פעיל בלבד) כמו שינוי role/is_active/username.
+- **אינו משנה את אימייל ההתחברות** ב-`auth.users` (Supabase Auth) — אין ל-client גישת Admin API לכך. עדכון כתובת ההתחברות בפועל נעשה **ידנית ב-Supabase Dashboard או SQL Editor**:
+  ```sql
+  UPDATE auth.users SET email = '...', email_confirmed_at = now() WHERE id = '<uid>';
+  UPDATE auth.identities SET identity_data = jsonb_set(identity_data, '{email}', '"..."') WHERE user_id = '<uid>';
+  UPDATE public.profiles SET email = '...' WHERE id = '<uid>';
+  ```
+- מפתחות i18n חדשים תחת `users.editEmail*` / `users.emailUpdated` / `users.emailUpdateError` / `users.invalidEmail` (`he`+`en`).
+- ולידציה בסיסית של פורמט אימייל בצד לקוח לפני השליחה.
 
 ### שלב F — התקנת אביזרי קצה (`js/qc-data.js`)
 

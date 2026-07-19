@@ -221,9 +221,11 @@ function renderActiveStage() {
           <button class="btn btn-ghost btn-sm btn-edit-stage" data-stage-id="${stage.id}">
             ${t('qc.editForm')}
           </button>
+          ${isAdmin() ? `
           <button class="btn btn-ghost btn-sm btn-clear-stage" data-stage-id="${stage.id}">
             ${t('qc.clearForm')}
           </button>
+          ` : ''}
         </div>
       ` : ''}
       <div class="qc-share-row">
@@ -272,7 +274,7 @@ function renderActiveStage() {
     });
 
     content.querySelectorAll('.btn-complete-stage').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const nameEl = document.getElementById(`qc-inspector-name-${btn.dataset.stageId}`);
         const name = nameEl?.value.trim() || '';
         const warningsEl = document.getElementById(`qc-stage-warnings-${btn.dataset.stageId}`);
@@ -282,6 +284,22 @@ function renderActiveStage() {
           warningsEl.innerHTML = warnings.map(w => `<div class="qc-warning-msg">⚠️ ${w}</div>`).join('');
         }
         if (!name) return;
+
+        // Completeness gate: signing a stage with unanswered items sealed the
+        // 29/03 partial-refill incident. Require an explicit confirmation
+        // listing exactly which items are still unmarked.
+        const defItems = getStage(parseInt(btn.dataset.stageNum))?.items || [];
+        const savedItems = _qcStageItems[btn.dataset.stageId] || [];
+        const missing = defItems.filter(d => {
+          const saved = savedItems.find(i => i.item_key === d.key);
+          return !saved || saved.status === 'pending';
+        });
+        if (missing.length > 0) {
+          const list = missing.map(d => `• ${qcItemLabel(d)}`).join('\n');
+          const ok = await uiConfirm(t('qc.signMissingItems', { n: missing.length, items: list }));
+          if (!ok) return;
+        }
+
         showSignatureModal(_qcPodId, btn.dataset.stageId, parseInt(btn.dataset.stageNum), _qcStages, _qcStageItems, name);
       });
     });
@@ -434,6 +452,22 @@ function renderInspectorSection(stage) {
 async function clearStage(stageId) {
   if (!(await uiConfirm(t('qc.confirmClear')))) return;
 
+  // Reset the stage FIRST — the DB trigger (20260719_protect_qc_items)
+  // blocks item changes while the stage is signed, so it must be unlocked
+  // before the items can be wiped.
+  const { error: stageErr } = await supabaseClient.from('qc_stages').update({
+    status: 'pending',
+    inspector_name: null,
+    inspector_signature: null,
+    inspection_date: null,
+    completed_at: null,
+  }).eq('id', stageId);
+  if (stageErr) {
+    console.error('[clearStage] stage reset failed:', stageErr);
+    showToast(t('qc.saveError'), 'error');
+    return;
+  }
+
   // Remove uploaded images from storage before wiping their references
   const imagePaths = (_qcStageItems[stageId] || [])
     .map(i => i.image_storage_path).filter(Boolean);
@@ -442,19 +476,15 @@ async function clearStage(stageId) {
   }
 
   // Reset all items for this stage (including image references)
-  await supabaseClient.from('qc_items').update({
+  const { error: itemsErr } = await supabaseClient.from('qc_items').update({
     status: 'pending', notes: null, time_entry_1: null, time_entry_2: null, value_entry: null,
     image_url: null, image_storage_path: null,
   }).eq('stage_id', stageId);
-
-  // Reset the stage itself
-  await supabaseClient.from('qc_stages').update({
-    status: 'pending',
-    inspector_name: null,
-    inspector_signature: null,
-    inspection_date: null,
-    completed_at: null,
-  }).eq('id', stageId);
+  if (itemsErr) {
+    console.error('[clearStage] items reset failed:', itemsErr);
+    showToast(t('qc.saveError'), 'error');
+    return;
+  }
 
   // If clearing stage A, also reset casting approval
   const clearedStage = _qcStages.find(s => s.id === stageId);
@@ -533,6 +563,7 @@ async function handleItemStatusChange(btn) {
   const itemId = btn.dataset.itemId;
   const action = btn.dataset.action;
   const newStatus = btn.classList.contains('active') ? 'pending' : action;
+  const prevStatus = (_qcStageItems[stageId] || []).find(i => i.item_key === itemKey)?.status || 'pending';
 
   // Optimistic UI
   const row = document.getElementById(`qc-row-${itemKey}-${stageId}`);
@@ -542,24 +573,38 @@ async function handleItemStatusChange(btn) {
   }
   if (newStatus !== 'pending') btn.classList.add('active');
 
+  // Roll the optimistic UI back to the last persisted state — a mark that
+  // failed to save must not keep looking saved (that's how marks silently
+  // vanished on factory Wi-Fi drops).
+  const revertUI = (err) => {
+    console.error('[handleItemStatusChange] save failed:', err);
+    if (row) {
+      row.className = `qc-table-row qc-row-${prevStatus}`;
+      row.querySelectorAll('.qc-check-btn').forEach(b => b.classList.remove('active'));
+      if (prevStatus === 'passed') row.querySelector('.qc-pass-btn')?.classList.add('active');
+      if (prevStatus === 'failed') row.querySelector('.qc-fail-btn')?.classList.add('active');
+    }
+    showToast(t('qc.itemSaveError'), 'error');
+  };
+
   // Save to DB
   if (itemId) {
-    await supabaseClient.from('qc_items').update({ status: newStatus }).eq('id', itemId);
+    const { error } = await supabaseClient.from('qc_items').update({ status: newStatus }).eq('id', itemId);
+    if (error) { revertUI(error); return; }
   } else {
     const stage = _qcStages.find(s => s.id === stageId);
     const stageDef = getStage(stage?.stage_number);
     const itemDef = stageDef?.items.find(i => i.key === itemKey);
-    const { data } = await supabaseClient.from('qc_items').insert({
+    const { data, error } = await supabaseClient.from('qc_items').insert({
       stage_id: stageId,
       item_key: itemKey,
       item_label: itemDef?.label || itemKey,
       status: newStatus,
     }).select().single();
-    if (data) {
-      if (row) row.querySelectorAll('[data-item-id]').forEach(el => el.dataset.itemId = data.id);
-      if (!_qcStageItems[stageId]) _qcStageItems[stageId] = [];
-      _qcStageItems[stageId].push(data);
-    }
+    if (error || !data) { revertUI(error); return; }
+    if (row) row.querySelectorAll('[data-item-id]').forEach(el => el.dataset.itemId = data.id);
+    if (!_qcStageItems[stageId]) _qcStageItems[stageId] = [];
+    _qcStageItems[stageId].push(data);
   }
 
   // Update local cache

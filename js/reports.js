@@ -47,6 +47,10 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, 
     const items = stageItems[stage.id] || [];
     const stageDef = getStage(stage.stage_number);
     const passed = items.filter(i => i.status === 'passed').length;
+    // Denominator = defined items for the stage, NOT saved DB rows — with
+    // items.length a stage missing 3 marks printed "6/6 passed" and looked
+    // complete (the 29/03 incident went unnoticed because of this).
+    const totalDefined = stageDef?.items.length || items.length;
     const bgColor = stageStatusColor(stage.status);
 
     let itemsHTML = '';
@@ -68,7 +72,7 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, 
     sections.push(wrap(`
       <div style="margin:8px 24px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
         <div style="background:${bgColor};color:#1a1a1a;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:12px;">${passed}/${items.length} ${t('rep.passedWord')}</span>
+          <span style="font-size:12px;">${passed}/${totalDefined} ${t('rep.passedWord')}</span>
           <span style="font-size:13px;font-weight:bold;">${stage.stage_number}. ${escHtml(qcStageName(stage.stage_number))}</span>
         </div>
         ${stage.inspector_name ? `

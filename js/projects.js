@@ -679,7 +679,7 @@ async function loadProjectDetailsTab(project) {
       // Refresh info bar with new code
       document.getElementById('project-info-bar').querySelector('.info-value').textContent = newCode;
       // Refresh pods tab so updated pod_codes are visible
-      if (codeChanged) loadPodsTab(project.id).catch(e => console.error('[save] reload pods error:', e));
+      if (codeChanged) loadPodsTab(project.id, getCurrentPodFilters()).catch(e => console.error('[save] reload pods error:', e));
     });
   }
 }
@@ -808,6 +808,21 @@ async function deletePlan(planId, storagePath, projectId) {
   await loadPlansTab(projectId);
 }
 
+// Read the pod-filter selects as a filters object for loadPodsTab. Use this
+// whenever the pods tab reloads for the SAME project (back from a pod, pod
+// added/deleted, project saved) so the list stays in sync with the selects —
+// reloading without it shows an unfiltered list under a still-selected filter.
+function getCurrentPodFilters() {
+  const val = id => document.getElementById(id)?.value || '';
+  return {
+    group_id: val('filter-group'),
+    type_number: val('filter-type'),
+    direction: val('filter-direction'),
+    status: val('filter-status'),
+    casting_approved: val('filter-casting'),
+  };
+}
+
 // ---- SETUP FILTERS ----
 async function setupPodFilters(projectId) {
   // Run both queries in parallel
@@ -836,13 +851,7 @@ async function setupPodFilters(projectId) {
   `;
 
   const applyFilters = () => {
-    loadPodsTab(projectId, {
-      group_id: groupSel.value,
-      type_number: typeSel.value,
-      direction: dirSel.value,
-      status: statusSel.value,
-      casting_approved: castingSel?.value || '',
-    });
+    loadPodsTab(projectId, getCurrentPodFilters());
   };
 
   groupSel.onchange = applyFilters;
@@ -1443,7 +1452,7 @@ async function showAddPodModal(projectId) {
       if (error) throw error;
       showToast(t('proj.podCreated'), 'success');
       closeModal();
-      await loadPodsTab(projectId);
+      await loadPodsTab(projectId, getCurrentPodFilters());
     } catch (err) {
       showToast(t('proj.errorPrefix') + err.message, 'error');
     } finally {
@@ -1457,7 +1466,7 @@ async function deletePod(podId) {
   const { error } = await supabaseClient.from('pods').delete().eq('id', podId);
   if (error) { showToast(t('proj.deleteErrorSimple'), 'error'); return; }
   showToast(t('proj.podDeleted'), 'success');
-  if (AppState.currentProject) await loadPodsTab(AppState.currentProject.id);
+  if (AppState.currentProject) await loadPodsTab(AppState.currentProject.id, getCurrentPodFilters());
 }
 
 // ---- ARCHIVE / DELETE PROJECT ----

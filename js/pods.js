@@ -267,7 +267,9 @@ function initPodDetailButtons() {
   document.getElementById('btn-back-project')?.addEventListener('click', async () => {
     if (AppState.currentProject) {
       showView('project-detail');
-      loadPodsTab(AppState.currentProject.id);
+      // Keep the active filter selection — reloading without it shows an
+      // unfiltered list while the selects still display the old filter
+      loadPodsTab(AppState.currentProject.id, getCurrentPodFilters());
     } else if (AppState.currentPod?.project_id || AppState.currentPod?.projects?.id) {
       await openProject(AppState.currentPod.project_id || AppState.currentPod.projects.id);
     } else {

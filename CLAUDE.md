@@ -168,6 +168,12 @@ const CASTING_ITEM_KEYS = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixa
 - **"ניקוי טופס" לאדמין בלבד** ב-UI (היה לכל `canEdit`).
 - **מכנה מונה הדוח ב-PDF** (`reports.js`): `passed/totalDefined` לפי הגדרת השלב — לא לפי מספר שורות ה-DB (שגרם לטופס חסר להיראות "6/6 עברו").
 
+## תיעוד תאריכי בדיקה (מיגרציה 20260719020000)
+
+- **`pods.inspection_started_at`** — נקבע ב-trigger ברגע הסימון הראשון (passed/failed) של סעיף כלשהו בפוד, פעם אחת. מוצג ב-info-bar של מסך הפוד ("תחילת בדיקה"). Backfill לפודים קיימים לפי `MIN(created_at)` של סעיפיהם.
+- **`qc_items.fixed_at`** — נקבע ב-trigger במעבר `failed`→`passed` (תיקון); מתאפס אם הסעיף חוזר ל-`failed`/`pending`. מוצג בשורת הסעיף (🔧 "תוקן בתאריך") ובדוח ה-PDF.
+- שני התאריכים נכתבים רק ב-DB (triggers, SECURITY DEFINER) — אין כתיבה מהלקוח.
+
 ## שינויים שבוצעו
 
 ### עריכת אימייל במסך ניהול משתמשים (`js/app.js`, `js/i18n.js`)

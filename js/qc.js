@@ -350,6 +350,7 @@ function renderQCTableRow(itemDef, rowIdx, stage, items, readonly) {
       <td class="qc-row-label">
         <div class="qc-row-label-text">${escHtml(qcItemLabel(itemDef))}</div>
         ${qcItemInstruction(itemDef) ? `<div class="qc-row-instruction">💡 ${escHtml(qcItemInstruction(itemDef))}</div>` : ''}
+        ${item?.fixed_at && status === 'passed' ? `<div class="qc-row-instruction">🔧 ${t('qc.fixedAt', { date: formatDate(item.fixed_at.split('T')[0]) })}</div>` : ''}
         ${itemDef.hasTwoTimes && !readonly ? `
           <div class="qc-time-inline">
             <label>${t('qc.time')}</label>

@@ -54,7 +54,17 @@ function refreshI18nLabels() {
 // Populate immediately (i18n.js loads before config.js).
 refreshI18nLabels();
 
+// QC editing gate: fill forms, mark items, sign stages, reopen via "Edit form".
+// Includes project_manager since 20260719 (RLS migration 20260719010000).
+// NOT used for mold checks — those stay admin+inspector (see canEditMolds).
 function canEdit() {
+  const role = AppState.currentProfile?.role;
+  return role === ROLES.ADMIN || role === ROLES.PM || role === ROLES.INSPECTOR;
+}
+
+// Mold checks stay admin+inspector only — their RLS policies (20260712040000)
+// were not widened to project_manager.
+function canEditMolds() {
   const role = AppState.currentProfile?.role;
   return role === ROLES.ADMIN || role === ROLES.INSPECTOR;
 }
@@ -205,8 +215,8 @@ function applyRoleVisibility() {
   document.querySelectorAll('.pm-only').forEach(el => {
     el.style.display = isAdminOrPM() ? '' : 'none';
   });
-  // Inspector
+  // Inspector (mold checks — PM excluded, matching mold RLS)
   document.querySelectorAll('.inspector-only').forEach(el => {
-    el.style.display = (canEdit()) ? '' : 'none';
+    el.style.display = (canEditMolds()) ? '' : 'none';
   });
 }

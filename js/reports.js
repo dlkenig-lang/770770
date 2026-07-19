@@ -65,6 +65,7 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, 
             <div style="font-size:12px;color:#1e293b;">${escHtml(qcItemLabel(itemDef))}</div>
             ${item?.notes ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${t('rep.noteColon')} ${escHtml(item.notes)}</div>` : ''}
             ${item?.time_entry_1 ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${t('rep.time1')} ${escHtml(item.time_entry_1)}  ${t('rep.time2')} ${escHtml(item.time_entry_2 || '—')}</div>` : ''}
+            ${item?.fixed_at && item?.status === 'passed' ? `<div style="font-size:11px;color:#2d5540;margin-top:2px;">🔧 ${t('qc.fixedAt', { date: formatDate(item.fixed_at.split('T')[0]) })}</div>` : ''}
           </div>
         </div>`;
     }

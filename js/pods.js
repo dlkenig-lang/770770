@@ -80,6 +80,10 @@ async function openPod(podId) {
       <div class="info-label">${t('proj.pipeType')}</div>
       <div class="info-value">${escHtml(pod.projects?.pipe_type || '—')}</div>
     </div>
+    <div class="info-item">
+      <div class="info-label">${t('pod.inspectionStarted')}</div>
+      <div class="info-value">${pod.inspection_started_at ? formatDate(pod.inspection_started_at.split('T')[0]) : '—'}</div>
+    </div>
   `;
 
   showView('pod-detail');

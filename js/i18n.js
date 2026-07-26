@@ -535,6 +535,13 @@ const I18N = {
     'rep.historyTruncated': 'מוצגים {n} הרישומים האחרונים בטווח — ייתכנו נוספים. צמצמי את הטווח לתמונה מלאה.',
     'rep.historyEvents': '{n} רישומים',
     'rep.itemsTruncated': 'מספר הסעיפים מחושב עד {n} רשומות — בטווח רחב ייתכן שהמספר בפועל גבוה יותר. צמצמי את הטווח לספירה מדויקת.',
+    'rep.exportExcel': '📊 ייצוא Excel',
+    'rep.fileProgress': 'התקדמות_עבודה',
+    'rep.fileHistory': 'היסטוריית_עריכות',
+    'rep.xlsRange': 'טווח זמן: {label}',
+    'rep.xlsProject': 'פרויקט: {name}',
+    'rep.xlsGenerated': 'הופק בתאריך: {date}',
+    'common.yes': 'כן',
 
     // Auth messages
     'auth.usernameNotFound': 'שם משתמש לא נמצא',
@@ -1112,6 +1119,13 @@ const I18N = {
     'rep.historyTruncated': 'Showing the latest {n} records in range — there may be more. Narrow the range for the full picture.',
     'rep.historyEvents': '{n} records',
     'rep.itemsTruncated': 'Item counts are computed from up to {n} rows — over a wide range the real number may be higher. Narrow the range for an exact count.',
+    'rep.exportExcel': '📊 Export Excel',
+    'rep.fileProgress': 'Work_Progress',
+    'rep.fileHistory': 'Edit_History',
+    'rep.xlsRange': 'Time range: {label}',
+    'rep.xlsProject': 'Project: {name}',
+    'rep.xlsGenerated': 'Generated: {date}',
+    'common.yes': 'Yes',
 
     // Auth messages
     'auth.usernameNotFound': 'Username not found',

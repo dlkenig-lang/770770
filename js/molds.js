@@ -105,11 +105,11 @@ async function loadMoldsTab(projectId) {
           <span class="pod-card-meta-value">${formatDate(c.inspection_date)}</span>
         </div>` : ''}
       </div>
-      ${isAdmin() ? `
       <div class="pod-card-actions">
         <button class="btn btn-ghost btn-sm btn-mold-history" data-mold-id="${c.id}" title="${t('audit.title')}" aria-label="${t('audit.title')}">📜</button>
-        <button class="btn btn-danger btn-sm btn-delete-mold" data-mold-id="${c.id}" title="${t('common.delete')}" aria-label="${t('common.delete')}">🗑</button>
-      </div>` : ''}
+        ${isAdmin() ? `
+        <button class="btn btn-danger btn-sm btn-delete-mold" data-mold-id="${c.id}" title="${t('common.delete')}" aria-label="${t('common.delete')}">🗑</button>` : ''}
+      </div>
     </div>`;
   }).join('')}</div>`;
 
@@ -127,8 +127,8 @@ async function loadMoldsTab(projectId) {
 // ---- AUDIT HISTORY ----
 // The log_mold_check_change trigger (migration 20260713000000) writes mold
 // rows with pod_id NULL, so they are keyed by record_id — not by pod_id like
-// the qc_stages rows shown in showPodHistory. Admin only: the SELECT policy
-// on qc_audit_log allows admins alone, and the button is isAdmin()-gated.
+// the qc_stages rows shown in showPodHistory. Visible to every active user
+// (migration 20260726000000); writes stay blocked at the DB level.
 async function showMoldHistory(moldId) {
   const check = _moldChecks.find(c => c.id === moldId);
 

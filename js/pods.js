@@ -321,7 +321,7 @@ function initPodDetailButtons() {
     if (AppState.currentPod) generatePodPDF(AppState.currentPod);
   });
 
-  // Audit history (admin only — RLS also enforces this)
+  // Audit history — open to every active user (migration 20260726000000)
   document.getElementById('btn-pod-history')?.addEventListener('click', showPodHistory);
 }
 

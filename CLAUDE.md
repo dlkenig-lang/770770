@@ -145,6 +145,8 @@ const CASTING_ITEM_KEYS = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixa
 | שלבי QC + סעיפים (A–F) | כותרת מסך פוד | `showPodHistory` ב-`pods.js` | `pod_id` |
 | בדיקות תבניות | כרטיס הבדיקה בטאב "בדיקות תבניות" | `showMoldHistory` ב-`molds.js` | `table_name='mold_checks'` + `record_id` |
 
+⚠️ **`log_pod_casting_change` — trigger שקיים ב-DB החי ואינו ב-repo.** קיים trigger `AFTER UPDATE` על `pods` שכותב ל-`qc_audit_log` פעולות `casting_approved` / `casting_removed` (אישור יציקה וביטולו). הוא **לא הוגדר באף מיגרציה** — נוסף ידנית ב-SQL Editor או דרך Bolt, ולכן ייעלם בשחזור DB מהמיגרציות. `showPodHistory` מסננת לפי `pod_id` בלבד (ללא `table_name`), ולכן הרשומות האלה מוצגות בהיסטוריית הפוד — יש להן מפתחות `audit.casting_approved` / `audit.casting_removed`. **יש לשמור את הגדרת ה-trigger כמיגרציה.**
+
 ⚠️ **רשומות `mold_checks` נכתבות עם `pod_id = NULL`** (בדיקת תבנית לא משויכת לפוד) — לכן `showMoldHistory` מסננת לפי `record_id` ולא לפי `pod_id`. אין לאחד את שתי הפונקציות לשאילתה אחת לפי `pod_id`.
 
 ## PWA / Service Worker

@@ -40,6 +40,9 @@ const I18N = {
     'audit.mold_cleared': 'בדיקת תבנית נוקתה',
     'audit.mold_updated': 'סטטוס בדיקת תבנית עודכן',
     'audit.item_status_changed': 'סימון סעיף שונה',
+    // נכתבים ע"י ה-trigger log_pod_casting_change על טבלת pods
+    'audit.casting_approved': 'הפוד אושר ליציקה',
+    'audit.casting_removed': 'אישור היציקה בוטל',
     'common.clear': 'נקה',
     'common.print': '🖨️ הדפס',
     'common.date': 'תאריך',
@@ -573,6 +576,8 @@ const I18N = {
     'audit.mold_cleared': 'Mold check cleared',
     'audit.mold_updated': 'Mold check status updated',
     'audit.item_status_changed': 'Item mark changed',
+    'audit.casting_approved': 'Pod approved for casting',
+    'audit.casting_removed': 'Casting approval revoked',
     'common.clear': 'Clear',
     'common.print': '🖨️ Print',
     'common.date': 'Date',

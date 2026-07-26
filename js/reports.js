@@ -419,6 +419,55 @@ function repNoteHtml(text) {
     border-radius:6px;padding:10px 12px;margin-bottom:16px;line-height:1.5;">ℹ️ ${text}</div>`;
 }
 
+// ---- EXCEL EXPORT FOR THE TIME-WINDOW TABS ----
+// Header block for the sheet. A time-window report that travels by email is
+// meaningless without its window written inside it, so the range, the project
+// filter and the generation time are always the first rows — plus any
+// truncation warning, which must survive into the file too.
+function repExportMeta(rangeLabel, summaryLines = [], truncationNote = null) {
+  const projName = _repProject
+    ? (_repProjects.find(p => p.id === _repProject)?.name || '')
+    : t('rep.all');
+  const lines = [
+    t('rep.xlsRange', { label: rangeLabel }),
+    t('rep.xlsProject', { name: projName }),
+    t('rep.xlsGenerated', { date: formatDateTimeShort(new Date().toISOString()) }),
+    ...summaryLines,
+  ];
+  if (truncationNote) lines.push(`⚠️ ${truncationNote}`);
+  return lines;
+}
+
+function repExportExcel({ sheetName, filePrefix, meta, headers, dataRows, percentCols = [] }) {
+  const aoa = [];
+  meta.forEach(line => aoa.push([line]));
+  aoa.push([]);
+  const headerRow = aoa.length;          // 0-based index of the header row
+  aoa.push(headers);
+  dataRows.forEach(r => aoa.push(r));
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = headers.map((h, i) => ({ wch: i === 0 ? 22 : Math.max(14, String(h).length + 4) }));
+  // Freeze the header row so long reports stay readable while scrolling
+  ws['!freeze'] = { xSplit: 0, ySplit: headerRow + 1 };
+  // Hebrew sheets read right-to-left; harmless for LTR viewers of an he export
+  if (getLang() === 'he') ws['!views'] = [{ RTL: true }];
+
+  percentCols.forEach(col => {
+    for (let i = 0; i < dataRows.length; i++) {
+      const addr = XLSX.utils.encode_cell({ r: headerRow + 1 + i, c: col });
+      if (ws[addr] && typeof ws[addr].v === 'number') ws[addr].z = '0%';
+    }
+  });
+
+  const wb = XLSX.utils.book_new();
+  // Excel caps sheet names at 31 chars and forbids : \ / ? * [ ]
+  XLSX.utils.book_append_sheet(wb, ws, String(sheetName).replace(/[:\\/?*[\]]/g, '').slice(0, 31));
+  const stamp = new Date().toISOString().split('T')[0];
+  const safePrefix = String(filePrefix).replace(/[^a-zA-Z0-9א-ת_]/g, '_');
+  XLSX.writeFile(wb, `${safePrefix}_${stamp}.xlsx`);
+}
+
 // ---- TAB 2: WORK PROGRESS IN A TIME WINDOW ----
 // Two DB-written timestamps drive this, both reliable and covering all
 // history (unlike qc_audit_log, which only starts when it was enabled):
@@ -512,7 +561,34 @@ async function renderProgressTab(host) {
 
   const _ta = (typeof langDir === 'function' && langDir(getLang()) === 'ltr') ? 'left' : 'right';
 
+  // One flat array feeds both the table and the Excel export, so the file can
+  // never drift from what the screen shows.
+  const flat = rows.map(r => {
+    const p = r.pod;
+    const stagesSorted = [...r.stages].sort((a, b) => a.stage_number - b.stage_number);
+    const completed = (p.qc_stages || []).filter(s => s.status === 'completed').length;
+    return {
+      podCode: p.pod_code || '',
+      project: p.projects?.name || '',
+      group: p.production_groups?.name || '',
+      letters: stagesSorted.map(s => STAGE_LETTERS[s.stage_number - 1] || s.stage_number).join(', '),
+      started: r.started,
+      items: r.items,
+      signers: [...new Set(stagesSorted.map(s => s.inspector_name).filter(Boolean))].join(', '),
+      pct: Math.round(completed / 6 * 100),
+      last: r.last,
+    };
+  });
+
+  const headers = [t('rep.hPodCode'), t('rep.hProject'), t('rep.hGroup'), t('rep.hStagesSigned'),
+    t('rep.startedBadge'), t('rep.hItemsMarked'), t('rep.hSigners'), t('rep.hCurrentProgress'),
+    t('rep.hLastActivity')];
+
   body.innerHTML = tiles + notes + `
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+      <span style="font-size:13px;color:#64748b;">${t('rep.podsSelected', { n: flat.length })}</span>
+      <button id="rep-export-progress" class="btn btn-primary btn-sm">${t('rep.exportExcel')}</button>
+    </div>
     <div class="card">
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -529,29 +605,45 @@ async function renderProgressTab(host) {
             </tr>
           </thead>
           <tbody>
-            ${rows.map(r => {
-              const p = r.pod;
-              const letters = r.stages
-                .sort((a, b) => a.stage_number - b.stage_number)
-                .map(s => STAGE_LETTERS[s.stage_number - 1] || s.stage_number).join(', ');
-              const signers = [...new Set(r.stages.map(s => s.inspector_name).filter(Boolean))].join(', ');
-              const completed = (p.qc_stages || []).filter(s => s.status === 'completed').length;
-              const pct = Math.round(completed / 6 * 100);
-              return `<tr style="border-bottom:1px solid #f1f5f9;">
-                <td style="padding:8px 12px;font-weight:600;">${escHtml(p.pod_code)}</td>
-                <td style="padding:8px 12px;">${escHtml(p.projects?.name || '')}</td>
-                <td style="padding:8px 12px;">${escHtml(p.production_groups?.name || '')}</td>
-                <td style="padding:8px 12px;">${letters || '—'}${r.started ? `<span style="display:inline-block;margin-inline-start:6px;font-size:11px;color:#2d5540;background:#c8dfd2;border-radius:10px;padding:1px 7px;">${t('rep.startedBadge')}</span>` : ''}</td>
+            ${flat.map(r => `<tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:8px 12px;font-weight:600;">${escHtml(r.podCode)}</td>
+                <td style="padding:8px 12px;">${escHtml(r.project)}</td>
+                <td style="padding:8px 12px;">${escHtml(r.group)}</td>
+                <td style="padding:8px 12px;">${r.letters || '—'}${r.started ? `<span style="display:inline-block;margin-inline-start:6px;font-size:11px;color:#2d5540;background:#c8dfd2;border-radius:10px;padding:1px 7px;">${t('rep.startedBadge')}</span>` : ''}</td>
                 <td style="padding:8px 12px;">${r.items || '—'}</td>
-                <td style="padding:8px 12px;">${escHtml(signers) || '—'}</td>
-                <td style="padding:8px 12px;">${pct}%</td>
+                <td style="padding:8px 12px;">${escHtml(r.signers) || '—'}</td>
+                <td style="padding:8px 12px;">${r.pct}%</td>
                 <td style="padding:8px 12px;color:#64748b;">${formatDateTimeShort(r.last)}</td>
-              </tr>`;
-            }).join('')}
+              </tr>`).join('')}
           </tbody>
         </table>
       </div>
     </div>`;
+
+  document.getElementById('rep-export-progress')?.addEventListener('click', () => {
+    try {
+      repExportExcel({
+        sheetName: t('rep.tabProgress'),
+        filePrefix: t('rep.fileProgress'),
+        meta: repExportMeta(label, [
+          `${t('rep.sumPodsActive')}: ${rows.length}`,
+          `${t('rep.sumStagesSigned')}: ${totalStages}`,
+          `${t('rep.sumItemsMarked')}: ${totalItems}`,
+          `${t('rep.sumPodsStarted')}: ${totalStarted}`,
+        ], (itemRows || []).length === ITEM_LIMIT ? t('rep.itemsTruncated', { n: ITEM_LIMIT }) : null),
+        headers,
+        dataRows: flat.map(r => [
+          r.podCode, r.project, r.group, r.letters,
+          r.started ? t('common.yes') : '',
+          r.items, r.signers, r.pct / 100, formatDateTimeShort(r.last),
+        ]),
+        percentCols: [7],
+      });
+      showToast(t('rep.excelCreated'), 'success');
+    } catch (err) {
+      showToast(t('proj.errorPrefix') + err.message, 'error');
+    }
+  });
 }
 
 // ---- TAB 3: EDIT HISTORY IN A TIME WINDOW ----
@@ -601,57 +693,83 @@ async function renderHistoryTab(host) {
 
   const _ta = (typeof langDir === 'function' && langDir(getLang()) === 'ltr') ? 'left' : 'right';
 
+  // One flat array feeds both the table and the Excel export, so the file can
+  // never drift from what the screen shows.
+  const flat = rows.map(l => {
+    const pod = l.pod_id ? podById[l.pod_id] : null;
+    const isMold = l.table_name === 'mold_checks';
+    const stageNum = l.new_values?.stage_number;
+    const letter = stageNum ? (STAGE_LETTERS[stageNum - 1] || stageNum) : null;
+
+    const details = [];
+    if (letter) details.push(`${t('qc.stage')} ${letter}`);
+    if (l.table_name === 'qc_items' && l.new_values?.item_key) {
+      const itemDef = getStage(stageNum)?.items.find(it => it.key === l.new_values.item_key);
+      details.push(itemDef ? qcItemLabel(itemDef) : (l.new_values.item_label || l.new_values.item_key));
+    }
+    if (isMold && l.new_values?.mold_number) {
+      details.push(`${t('mold.moldLabel')} #${l.new_values.mold_number}`);
+    }
+    const oldSt = l.old_values?.status;
+    const newSt = l.new_values?.status;
+    if (oldSt && newSt) details.push(`${t('status.' + oldSt)} → ${t('status.' + newSt)}`);
+
+    return {
+      time: formatDateTimeShort(l.created_at),
+      podCode: pod ? pod.pod_code : (isMold ? t('rep.moldCheckRow') : ''),
+      isPod: !!pod,
+      project: pod?.projects?.name || '',
+      action: t('audit.' + l.action),
+      details: details.join(' · '),
+      user: l.changed_by_name || '',
+    };
+  });
+
+  const headers = [t('rep.hTime'), t('rep.hPodCode'), t('rep.hProject'),
+    t('rep.hActionCol'), t('rep.hDetails'), t('rep.hUser')];
+
   body.innerHTML = note + `
-    <div style="font-size:13px;color:#64748b;margin-bottom:8px;">${t('rep.historyEvents', { n: rows.length })}</div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+      <span style="font-size:13px;color:#64748b;">${t('rep.historyEvents', { n: flat.length })}</span>
+      <button id="rep-export-history" class="btn btn-primary btn-sm">${t('rep.exportExcel')}</button>
+    </div>
     <div class="card">
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
             <tr style="background:#f1f5f9;text-align:${_ta};">
-              <th style="padding:8px 12px;">${t('rep.hTime')}</th>
-              <th style="padding:8px 12px;">${t('rep.hPodCode')}</th>
-              <th style="padding:8px 12px;">${t('rep.hProject')}</th>
-              <th style="padding:8px 12px;">${t('rep.hActionCol')}</th>
-              <th style="padding:8px 12px;">${t('rep.hDetails')}</th>
-              <th style="padding:8px 12px;">${t('rep.hUser')}</th>
+              ${headers.map(h => `<th style="padding:8px 12px;">${h}</th>`).join('')}
             </tr>
           </thead>
           <tbody>
-            ${rows.map(l => {
-              const pod = l.pod_id ? podById[l.pod_id] : null;
-              const isMold = l.table_name === 'mold_checks';
-              const podCell = pod
-                ? escHtml(pod.pod_code)
-                : `<span style="color:#64748b;">${isMold ? t('rep.moldCheckRow') : '—'}</span>`;
-
-              const stageNum = l.new_values?.stage_number;
-              const letter = stageNum ? (STAGE_LETTERS[stageNum - 1] || stageNum) : null;
-              const details = [];
-              if (letter) details.push(`${t('qc.stage')} ${letter}`);
-              if (l.table_name === 'qc_items' && l.new_values?.item_key) {
-                const itemDef = getStage(stageNum)?.items.find(it => it.key === l.new_values.item_key);
-                details.push(escHtml(itemDef ? qcItemLabel(itemDef) : (l.new_values.item_label || l.new_values.item_key)));
-              }
-              if (isMold && l.new_values?.mold_number) {
-                details.push(`${t('mold.moldLabel')} #${escHtml(String(l.new_values.mold_number))}`);
-              }
-              const oldSt = l.old_values?.status;
-              const newSt = l.new_values?.status;
-              if (oldSt && newSt) details.push(`${t('status.' + oldSt)} → ${t('status.' + newSt)}`);
-
-              return `<tr style="border-bottom:1px solid #f1f5f9;">
-                <td style="padding:8px 12px;color:#64748b;white-space:nowrap;">${formatDateTimeShort(l.created_at)}</td>
-                <td style="padding:8px 12px;font-weight:600;">${podCell}</td>
-                <td style="padding:8px 12px;">${escHtml(pod?.projects?.name || '')}</td>
-                <td style="padding:8px 12px;">${escHtml(t('audit.' + l.action))}</td>
-                <td style="padding:8px 12px;color:#64748b;">${details.join(' · ') || '—'}</td>
-                <td style="padding:8px 12px;">${escHtml(l.changed_by_name || '')}</td>
-              </tr>`;
-            }).join('')}
+            ${flat.map(r => `<tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:8px 12px;color:#64748b;white-space:nowrap;">${r.time}</td>
+                <td style="padding:8px 12px;font-weight:600;">${r.isPod ? escHtml(r.podCode) : `<span style="color:#64748b;">${escHtml(r.podCode) || '—'}</span>`}</td>
+                <td style="padding:8px 12px;">${escHtml(r.project)}</td>
+                <td style="padding:8px 12px;">${escHtml(r.action)}</td>
+                <td style="padding:8px 12px;color:#64748b;">${escHtml(r.details) || '—'}</td>
+                <td style="padding:8px 12px;">${escHtml(r.user)}</td>
+              </tr>`).join('')}
           </tbody>
         </table>
       </div>
     </div>`;
+
+  document.getElementById('rep-export-history')?.addEventListener('click', () => {
+    try {
+      repExportExcel({
+        sheetName: t('rep.tabHistory'),
+        filePrefix: t('rep.fileHistory'),
+        meta: repExportMeta(label, [t('rep.historyEvents', { n: flat.length })],
+          (logs || []).length === LIMIT ? t('rep.historyTruncated', { n: LIMIT }) : null),
+        headers,
+        dataRows: flat.map(r => [r.time, r.podCode, r.project, r.action, r.details, r.user]),
+      });
+      showToast(t('rep.excelCreated'), 'success');
+    } catch (err) {
+      showToast(t('proj.errorPrefix') + err.message, 'error');
+    }
+  });
 }
 
 async function loadReportsView() {

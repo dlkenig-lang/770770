@@ -302,6 +302,358 @@ async function fetchItemsForPods(pods) {
   missing.forEach(s => { s.qc_items = itemsByStage[s.id] || []; });
 }
 
+// =============================================
+// Reports view — three tabs sharing one pods fetch:
+//   qc       — the export/filter table (original view)
+//   progress — work done inside a time window
+//   history  — qc_audit_log inside a time window
+// Tab and range selection live at module scope so switching tabs (and the
+// re-render triggered by a language change) keeps the user's context.
+// =============================================
+let _repTab = 'qc';
+let _repRange = { preset: '24h', from: null, to: null };
+let _repProject = '';
+let _repProjects = [];
+let _repPods = [];
+
+const REP_PRESET_HOURS = { '24h': 24, '7d': 24 * 7, '30d': 24 * 30 };
+
+const repSerial = code => parseInt((code || '').slice(-3)) || 0;
+
+// Resolve the selected window to absolute bounds. Custom dates are read as
+// local midnight → end-of-day so a single-day pick covers that whole day.
+function repRange() {
+  const hours = REP_PRESET_HOURS[_repRange.preset];
+  if (hours) {
+    const to = new Date();
+    return {
+      from: new Date(to.getTime() - hours * 3600000),
+      to,
+      label: t('rep.preset.' + _repRange.preset),
+    };
+  }
+  return {
+    from: new Date(_repRange.from + 'T00:00:00'),
+    to: new Date(_repRange.to + 'T23:59:59.999'),
+    label: `${formatDate(_repRange.from)} – ${formatDate(_repRange.to)}`,
+  };
+}
+
+function repInRange(ts, from, to) {
+  if (!ts) return false;
+  const d = new Date(ts);
+  return d >= from && d <= to;
+}
+
+function formatDateTimeShort(ts) {
+  if (!ts) return '';
+  return (typeof formatDateTime === 'function') ? formatDateTime(ts) : new Date(ts).toLocaleString();
+}
+
+function repRangeBarHtml() {
+  const presetBtns = ['24h', '7d', '30d'].map(p =>
+    `<button class="btn btn-sm rep-preset-btn ${_repRange.preset === p ? 'btn-primary' : 'btn-ghost'}"
+       data-preset="${p}">${t('rep.preset.' + p)}</button>`).join('');
+
+  return `
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header"><h3>${t('rep.rangeTitle')}</h3></div>
+      <div class="card-body">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">${presetBtns}</div>
+          <div>
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">${t('rep.fromDate')}</label>
+            <input type="date" id="rep-from" class="form-control form-control-sm" value="${_repRange.from || ''}" />
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">${t('rep.toDate')}</label>
+            <input type="date" id="rep-to" class="form-control form-control-sm" value="${_repRange.to || ''}" />
+          </div>
+          <button class="btn btn-sm ${_repRange.preset === 'custom' ? 'btn-primary' : 'btn-secondary'}" id="rep-apply-range">${t('rep.applyRange')}</button>
+          <div>
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">${t('pod.projectLabel')}</label>
+            <select id="rep-project" class="form-control form-control-sm">
+              <option value="">${t('rep.all')}</option>
+              ${_repProjects.map(p => `<option value="${p.id}"${_repProject === p.id ? ' selected' : ''}>${escHtml(p.name)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#64748b;" id="rep-range-label"></div>
+      </div>
+    </div>`;
+}
+
+function wireRepRangeBar(rerender) {
+  document.querySelectorAll('.rep-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _repRange = { preset: btn.dataset.preset, from: _repRange.from, to: _repRange.to };
+      rerender();
+    });
+  });
+  document.getElementById('rep-apply-range')?.addEventListener('click', () => {
+    const from = document.getElementById('rep-from').value;
+    const to = document.getElementById('rep-to').value;
+    if (!from || !to) { showToast(t('rep.pickBothDates'), 'error'); return; }
+    if (from > to) { showToast(t('rep.rangeInvalid'), 'error'); return; }
+    _repRange = { preset: 'custom', from, to };
+    rerender();
+  });
+  document.getElementById('rep-project')?.addEventListener('change', (e) => {
+    _repProject = e.target.value;
+    rerender();
+  });
+}
+
+function repStatTilesHtml(tiles) {
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;">
+    ${tiles.map(ti => `
+      <div class="card" style="padding:14px 16px;">
+        <div style="font-size:24px;font-weight:700;color:var(--primary);">${ti.value}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px;">${ti.label}</div>
+      </div>`).join('')}
+  </div>`;
+}
+
+function repNoteHtml(text) {
+  return `<div style="font-size:12px;color:#64748b;background:#f8fafc;border:1px solid #e2e8f0;
+    border-radius:6px;padding:10px 12px;margin-bottom:16px;line-height:1.5;">ℹ️ ${text}</div>`;
+}
+
+// ---- TAB 2: WORK PROGRESS IN A TIME WINDOW ----
+// Two DB-written timestamps drive this, both reliable and covering all
+// history (unlike qc_audit_log, which only starts when it was enabled):
+//   qc_stages.completed_at — set on signing, cleared when the form is cleared
+//   qc_items.created_at    — the row is created on the item's first mark
+// The second one is what surfaces work on stages that are filled but not
+// signed yet — a stage-only report would show those pods as idle.
+async function renderProgressTab(host) {
+  host.innerHTML = repRangeBarHtml() +
+    `<div id="rep-body"><div style="text-align:center;padding:32px;color:#64748b;">${t('proj.loadingData')}</div></div>`;
+  wireRepRangeBar(() => renderProgressTab(host));
+
+  const { from, to, label } = repRange();
+  document.getElementById('rep-range-label').textContent = t('rep.rangeShowing', { label });
+  const body = document.getElementById('rep-body');
+
+  const pods = _repProject ? _repPods.filter(p => p.project_id === _repProject) : _repPods;
+
+  // stage_id → pod, so item marks can be attributed to their pod
+  const stageToPod = {};
+  pods.forEach(p => (p.qc_stages || []).forEach(s => { stageToPod[s.id] = p; }));
+
+  const ITEM_LIMIT = 5000;
+  const { data: itemRows, error } = await supabaseClient
+    .from('qc_items').select('id, stage_id, created_at')
+    .gte('created_at', from.toISOString())
+    .lte('created_at', to.toISOString())
+    .limit(ITEM_LIMIT);
+
+  if (error) {
+    body.innerHTML = `<p style="text-align:center;color:#dc2626;padding:24px;">${t('proj.errorPrefix')}${escHtml(error.message)}</p>`;
+    return;
+  }
+
+  // Aggregate per pod
+  const agg = {};
+  const bump = (pod) => {
+    if (!agg[pod.id]) {
+      agg[pod.id] = { pod, stages: [], items: 0, started: false, last: null };
+    }
+    return agg[pod.id];
+  };
+
+  pods.forEach(p => {
+    (p.qc_stages || []).forEach(s => {
+      if (repInRange(s.completed_at, from, to)) {
+        const a = bump(p);
+        a.stages.push(s);
+        if (!a.last || new Date(s.completed_at) > new Date(a.last)) a.last = s.completed_at;
+      }
+    });
+    if (repInRange(p.inspection_started_at, from, to)) {
+      const a = bump(p);
+      a.started = true;
+      if (!a.last || new Date(p.inspection_started_at) > new Date(a.last)) a.last = p.inspection_started_at;
+    }
+  });
+
+  (itemRows || []).forEach(it => {
+    const pod = stageToPod[it.stage_id];
+    if (!pod) return;                       // stage of an archived/filtered-out project
+    const a = bump(pod);
+    a.items += 1;
+    if (!a.last || new Date(it.created_at) > new Date(a.last)) a.last = it.created_at;
+  });
+
+  // Most recent activity first — the point of a time-window report is "what
+  // happened lately", so pod-serial order would bury today's work.
+  const rows = Object.values(agg).sort((a, b) => new Date(b.last) - new Date(a.last));
+
+  const totalStages = rows.reduce((n, r) => n + r.stages.length, 0);
+  const totalItems = rows.reduce((n, r) => n + r.items, 0);
+  const totalStarted = rows.filter(r => r.started).length;
+
+  const tiles = repStatTilesHtml([
+    { value: rows.length, label: t('rep.sumPodsActive') },
+    { value: totalStages, label: t('rep.sumStagesSigned') },
+    { value: totalItems, label: t('rep.sumItemsMarked') },
+    { value: totalStarted, label: t('rep.sumPodsStarted') },
+  ]);
+
+  // Say so rather than quietly under-reporting: the item counts are capped.
+  const notes = repNoteHtml(t('rep.progressNote')) +
+    ((itemRows || []).length === ITEM_LIMIT ? repNoteHtml(t('rep.itemsTruncated', { n: ITEM_LIMIT })) : '');
+
+  if (!rows.length) {
+    body.innerHTML = tiles + notes +
+      `<p style="text-align:center;color:#64748b;padding:24px;">${t('rep.noActivity')}</p>`;
+    return;
+  }
+
+  const _ta = (typeof langDir === 'function' && langDir(getLang()) === 'ltr') ? 'left' : 'right';
+
+  body.innerHTML = tiles + notes + `
+    <div class="card">
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#f1f5f9;text-align:${_ta};">
+              <th style="padding:8px 12px;">${t('rep.hPodCode')}</th>
+              <th style="padding:8px 12px;">${t('rep.hProject')}</th>
+              <th style="padding:8px 12px;">${t('rep.hGroup')}</th>
+              <th style="padding:8px 12px;">${t('rep.hStagesSigned')}</th>
+              <th style="padding:8px 12px;">${t('rep.hItemsMarked')}</th>
+              <th style="padding:8px 12px;">${t('rep.hSigners')}</th>
+              <th style="padding:8px 12px;">${t('rep.hCurrentProgress')}</th>
+              <th style="padding:8px 12px;">${t('rep.hLastActivity')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => {
+              const p = r.pod;
+              const letters = r.stages
+                .sort((a, b) => a.stage_number - b.stage_number)
+                .map(s => STAGE_LETTERS[s.stage_number - 1] || s.stage_number).join(', ');
+              const signers = [...new Set(r.stages.map(s => s.inspector_name).filter(Boolean))].join(', ');
+              const completed = (p.qc_stages || []).filter(s => s.status === 'completed').length;
+              const pct = Math.round(completed / 6 * 100);
+              return `<tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:8px 12px;font-weight:600;">${escHtml(p.pod_code)}</td>
+                <td style="padding:8px 12px;">${escHtml(p.projects?.name || '')}</td>
+                <td style="padding:8px 12px;">${escHtml(p.production_groups?.name || '')}</td>
+                <td style="padding:8px 12px;">${letters || '—'}${r.started ? `<span style="display:inline-block;margin-inline-start:6px;font-size:11px;color:#2d5540;background:#c8dfd2;border-radius:10px;padding:1px 7px;">${t('rep.startedBadge')}</span>` : ''}</td>
+                <td style="padding:8px 12px;">${r.items || '—'}</td>
+                <td style="padding:8px 12px;">${escHtml(signers) || '—'}</td>
+                <td style="padding:8px 12px;">${pct}%</td>
+                <td style="padding:8px 12px;color:#64748b;">${formatDateTimeShort(r.last)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ---- TAB 3: EDIT HISTORY IN A TIME WINDOW ----
+// Same source as the 📜 modals (qc_audit_log), across all pods at once.
+// Rows with pod_id NULL are mold checks — see the Audit trail notes in
+// CLAUDE.md — so the pod column falls back to a "mold check" label.
+async function renderHistoryTab(host) {
+  host.innerHTML = repRangeBarHtml() +
+    `<div id="rep-body"><div style="text-align:center;padding:32px;color:#64748b;">${t('proj.loadingData')}</div></div>`;
+  wireRepRangeBar(() => renderHistoryTab(host));
+
+  const { from, to, label } = repRange();
+  document.getElementById('rep-range-label').textContent = t('rep.rangeShowing', { label });
+  const body = document.getElementById('rep-body');
+
+  const LIMIT = 500;
+  const { data: logs, error } = await supabaseClient
+    .from('qc_audit_log').select('*')
+    .gte('created_at', from.toISOString())
+    .lte('created_at', to.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(LIMIT);
+
+  if (error) {
+    body.innerHTML = `<p style="text-align:center;color:#dc2626;padding:24px;">${t('proj.errorPrefix')}${escHtml(error.message)}</p>`;
+    return;
+  }
+
+  const podById = {};
+  _repPods.forEach(p => { podById[p.id] = p; });
+
+  // Project filter applies to pod-scoped rows only. Mold-check rows carry no
+  // pod_id and cannot be attributed to a project, so they are dropped when a
+  // specific project is selected rather than shown under the wrong one.
+  const rows = (logs || []).filter(l => {
+    if (!_repProject) return true;
+    return l.pod_id && podById[l.pod_id]?.project_id === _repProject;
+  });
+
+  const note = repNoteHtml(t('rep.historyNote')) +
+    ((logs || []).length === LIMIT ? repNoteHtml(t('rep.historyTruncated', { n: LIMIT })) : '');
+
+  if (!rows.length) {
+    body.innerHTML = note + `<p style="text-align:center;color:#64748b;padding:24px;">${t('rep.noActivity')}</p>`;
+    return;
+  }
+
+  const _ta = (typeof langDir === 'function' && langDir(getLang()) === 'ltr') ? 'left' : 'right';
+
+  body.innerHTML = note + `
+    <div style="font-size:13px;color:#64748b;margin-bottom:8px;">${t('rep.historyEvents', { n: rows.length })}</div>
+    <div class="card">
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#f1f5f9;text-align:${_ta};">
+              <th style="padding:8px 12px;">${t('rep.hTime')}</th>
+              <th style="padding:8px 12px;">${t('rep.hPodCode')}</th>
+              <th style="padding:8px 12px;">${t('rep.hProject')}</th>
+              <th style="padding:8px 12px;">${t('rep.hActionCol')}</th>
+              <th style="padding:8px 12px;">${t('rep.hDetails')}</th>
+              <th style="padding:8px 12px;">${t('rep.hUser')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(l => {
+              const pod = l.pod_id ? podById[l.pod_id] : null;
+              const isMold = l.table_name === 'mold_checks';
+              const podCell = pod
+                ? escHtml(pod.pod_code)
+                : `<span style="color:#64748b;">${isMold ? t('rep.moldCheckRow') : '—'}</span>`;
+
+              const stageNum = l.new_values?.stage_number;
+              const letter = stageNum ? (STAGE_LETTERS[stageNum - 1] || stageNum) : null;
+              const details = [];
+              if (letter) details.push(`${t('qc.stage')} ${letter}`);
+              if (l.table_name === 'qc_items' && l.new_values?.item_key) {
+                const itemDef = getStage(stageNum)?.items.find(it => it.key === l.new_values.item_key);
+                details.push(escHtml(itemDef ? qcItemLabel(itemDef) : (l.new_values.item_label || l.new_values.item_key)));
+              }
+              if (isMold && l.new_values?.mold_number) {
+                details.push(`${t('mold.moldLabel')} #${escHtml(String(l.new_values.mold_number))}`);
+              }
+              const oldSt = l.old_values?.status;
+              const newSt = l.new_values?.status;
+              if (oldSt && newSt) details.push(`${t('status.' + oldSt)} → ${t('status.' + newSt)}`);
+
+              return `<tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:8px 12px;color:#64748b;white-space:nowrap;">${formatDateTimeShort(l.created_at)}</td>
+                <td style="padding:8px 12px;font-weight:600;">${podCell}</td>
+                <td style="padding:8px 12px;">${escHtml(pod?.projects?.name || '')}</td>
+                <td style="padding:8px 12px;">${escHtml(t('audit.' + l.action))}</td>
+                <td style="padding:8px 12px;color:#64748b;">${details.join(' · ') || '—'}</td>
+                <td style="padding:8px 12px;">${escHtml(l.changed_by_name || '')}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
 async function loadReportsView() {
   const container = document.getElementById('reports-content');
   container.innerHTML = `<div style="text-align:center;padding:32px;color:#64748b;">${t('proj.loadingData')}</div>`;
@@ -310,6 +662,7 @@ async function loadReportsView() {
   // Individual qc_items are fetched lazily (fetchItemsForPods) only when
   // exporting, for the filtered pods — loading them for every pod in the
   // system made this view slower with every project added.
+  // completed_at is needed by the progress tab (precise signing timestamp).
   const [{ data: projects }, { data: allPods }] = await Promise.all([
     supabaseClient.from('projects').select('id, name, code').eq('is_active', true).order('name'),
     supabaseClient.from('pods').select(`
@@ -318,13 +671,40 @@ async function loadReportsView() {
       project_types(type_number, dimensions),
       type_directions(direction),
       production_groups(name),
-      qc_stages(id, stage_number, stage_name, status, inspector_name, inspection_date)
+      qc_stages(id, stage_number, stage_name, status, inspector_name, inspection_date, completed_at)
     `).eq('projects.is_active', true).order('pod_code'),
   ]);
 
   // Belt-and-braces: exclude pods belonging to archived projects
-  const getSerial = code => parseInt((code || '').slice(-3)) || 0;
+  const getSerial = repSerial;
   const pods = (allPods || []).filter(p => p.projects?.is_active !== false);
+  _repProjects = projects || [];
+  _repPods = pods;
+
+  container.innerHTML = `
+    <div class="tabs">
+      <button class="tab-btn rep-tab-btn ${_repTab === 'qc' ? 'active' : ''}" data-rtab="qc">${t('rep.tabQc')}</button>
+      <button class="tab-btn rep-tab-btn ${_repTab === 'progress' ? 'active' : ''}" data-rtab="progress">${t('rep.tabProgress')}</button>
+      <button class="tab-btn rep-tab-btn ${_repTab === 'history' ? 'active' : ''}" data-rtab="history">${t('rep.tabHistory')}</button>
+    </div>
+    <div id="reports-tab-body"></div>`;
+
+  container.querySelectorAll('.rep-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _repTab = btn.dataset.rtab;
+      container.querySelectorAll('.rep-tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+      renderReportsTabBody();
+    });
+  });
+
+  function renderReportsTabBody() {
+    const host = document.getElementById('reports-tab-body');
+    if (_repTab === 'progress') { renderProgressTab(host); return; }
+    if (_repTab === 'history') { renderHistoryTab(host); return; }
+    renderQcExportTab(host);
+  }
+
+  function renderQcExportTab(host) {
   const types = [...new Set(pods.map(p => p.project_types?.type_number).filter(Boolean))].sort((a,b) => a-b);
   const groups = [...new Set(pods.map(p => p.production_groups?.name).filter(Boolean))].sort((a, b) => {
     const na = parseInt(a.replace(/\D/g, '')) || 0;
@@ -333,7 +713,7 @@ async function loadReportsView() {
   });
   const directions = [...new Set(pods.map(p => p.type_directions?.direction).filter(Boolean))].sort();
 
-  container.innerHTML = `
+  host.innerHTML = `
     <div class="card" style="margin-bottom:16px;">
       <div class="card-header"><h3>${t('rep.filterTitle')}</h3></div>
       <div class="card-body">
@@ -508,4 +888,7 @@ async function loadReportsView() {
       showToast(t('proj.errorPrefix') + err.message, 'error');
     }
   });
+  }
+
+  renderReportsTabBody();
 }

@@ -494,6 +494,48 @@ const I18N = {
     'rep.filterLabel': 'סינון',
     'rep.allPodsLabel': 'כל_הפודים',
 
+    // Reports — tabs
+    'rep.tabQc': 'דוח QC',
+    'rep.tabProgress': 'התקדמות עבודה',
+    'rep.tabHistory': 'היסטוריית עריכות',
+
+    // Reports — date range
+    'rep.rangeTitle': 'טווח זמן',
+    'rep.preset.24h': '24 שעות אחרונות',
+    'rep.preset.7d': '7 ימים אחרונים',
+    'rep.preset.30d': '30 ימים אחרונים',
+    'rep.fromDate': 'מתאריך',
+    'rep.toDate': 'עד תאריך',
+    'rep.applyRange': 'הצג טווח',
+    'rep.pickBothDates': 'יש לבחור תאריך התחלה ותאריך סיום',
+    'rep.rangeInvalid': 'תאריך ההתחלה מאוחר מתאריך הסיום',
+    'rep.rangeShowing': 'מוצג: {label}',
+
+    // Reports — work progress
+    'rep.sumPodsActive': 'פודים בעבודה',
+    'rep.sumStagesSigned': 'שלבים שנחתמו',
+    'rep.sumItemsMarked': 'סעיפים שסומנו',
+    'rep.sumPodsStarted': 'פודים שהחלה בהם בדיקה',
+    'rep.hStagesSigned': 'שלבים שנחתמו בטווח',
+    'rep.hItemsMarked': 'סעיפים שסומנו',
+    'rep.hCurrentProgress': 'התקדמות נוכחית',
+    'rep.hSigners': 'בודקים שחתמו',
+    'rep.hLastActivity': 'פעילות אחרונה',
+    'rep.startedBadge': 'החלה בדיקה',
+    'rep.noActivity': 'לא נרשמה פעילות בטווח הזמן שנבחר',
+    'rep.progressNote': 'הדוח מבוסס על מועד חתימת השלבים ומועד הסימון הראשון של כל סעיף — שני תאריכים שנכתבים אוטומטית ב-DB. סעיפים שסומנו בשלב שעדיין לא נחתם נכללים גם הם.',
+
+    // Reports — edit history
+    'rep.hTime': 'תאריך ושעה',
+    'rep.hActionCol': 'פעולה',
+    'rep.hDetails': 'פרטים',
+    'rep.hUser': 'מבצע',
+    'rep.moldCheckRow': 'בדיקת תבנית',
+    'rep.historyNote': 'התיעוד נאסף מהמועד שבו הופעל מנגנון ה-audit trail — אירועים שקדמו לו אינם קיימים ברשומות. סימון ראשוני של סעיף ומעברי שגרה אינם מתועדים בכוונה.',
+    'rep.historyTruncated': 'מוצגים {n} הרישומים האחרונים בטווח — ייתכנו נוספים. צמצמי את הטווח לתמונה מלאה.',
+    'rep.historyEvents': '{n} רישומים',
+    'rep.itemsTruncated': 'מספר הסעיפים מחושב עד {n} רשומות — בטווח רחב ייתכן שהמספר בפועל גבוה יותר. צמצמי את הטווח לספירה מדויקת.',
+
     // Auth messages
     'auth.usernameNotFound': 'שם משתמש לא נמצא',
     'auth.passwordsMismatch': 'הסיסמאות אינן תואמות',
@@ -1028,6 +1070,48 @@ const I18N = {
     'rep.excelCreated': 'Excel file created',
     'rep.filterLabel': 'filter',
     'rep.allPodsLabel': 'all_pods',
+
+    // Reports — tabs
+    'rep.tabQc': 'QC Report',
+    'rep.tabProgress': 'Work Progress',
+    'rep.tabHistory': 'Edit History',
+
+    // Reports — date range
+    'rep.rangeTitle': 'Time range',
+    'rep.preset.24h': 'Last 24 hours',
+    'rep.preset.7d': 'Last 7 days',
+    'rep.preset.30d': 'Last 30 days',
+    'rep.fromDate': 'From date',
+    'rep.toDate': 'To date',
+    'rep.applyRange': 'Show range',
+    'rep.pickBothDates': 'Please pick both a start and an end date',
+    'rep.rangeInvalid': 'The start date is later than the end date',
+    'rep.rangeShowing': 'Showing: {label}',
+
+    // Reports — work progress
+    'rep.sumPodsActive': 'Pods worked on',
+    'rep.sumStagesSigned': 'Stages signed',
+    'rep.sumItemsMarked': 'Items marked',
+    'rep.sumPodsStarted': 'Pods where inspection began',
+    'rep.hStagesSigned': 'Stages signed in range',
+    'rep.hItemsMarked': 'Items marked',
+    'rep.hCurrentProgress': 'Current progress',
+    'rep.hSigners': 'Signed by',
+    'rep.hLastActivity': 'Last activity',
+    'rep.startedBadge': 'inspection began',
+    'rep.noActivity': 'No activity recorded in the selected time range',
+    'rep.progressNote': 'This report is based on stage signing times and the first marking time of each item — both written automatically by the DB. Items marked in a stage that is not signed yet are included too.',
+
+    // Reports — edit history
+    'rep.hTime': 'Date & time',
+    'rep.hActionCol': 'Action',
+    'rep.hDetails': 'Details',
+    'rep.hUser': 'By',
+    'rep.moldCheckRow': 'Mold check',
+    'rep.historyNote': 'Records exist only from the moment the audit trail was enabled — earlier events were never recorded. Initial item marking and routine transitions are intentionally not logged.',
+    'rep.historyTruncated': 'Showing the latest {n} records in range — there may be more. Narrow the range for the full picture.',
+    'rep.historyEvents': '{n} records',
+    'rep.itemsTruncated': 'Item counts are computed from up to {n} rows — over a wide range the real number may be higher. Narrow the range for an exact count.',
 
     // Auth messages
     'auth.usernameNotFound': 'Username not found',

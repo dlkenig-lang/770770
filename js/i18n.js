@@ -29,6 +29,7 @@ const I18N = {
     // Audit log
     'audit.title': 'היסטוריית שינויים',
     'audit.none': 'אין רישומי היסטוריה לפוד זה',
+    'audit.noneMold': 'אין רישומי היסטוריה לבדיקת תבנית זו',
     'audit.by': 'על ידי {name}',
     'audit.stage_signed': 'שלב נחתם',
     'audit.stage_reopened': 'שלב חתום נפתח מחדש לעריכה',
@@ -560,6 +561,7 @@ const I18N = {
     // Audit log
     'audit.title': 'Change History',
     'audit.none': 'No history records for this pod',
+    'audit.noneMold': 'No history records for this mold check',
     'audit.by': 'by {name}',
     'audit.stage_signed': 'Stage signed',
     'audit.stage_reopened': 'Signed stage reopened for editing',

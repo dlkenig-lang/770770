@@ -105,10 +105,11 @@ async function loadMoldsTab(projectId) {
           <span class="pod-card-meta-value">${formatDate(c.inspection_date)}</span>
         </div>` : ''}
       </div>
-      ${isAdmin() ? `
       <div class="pod-card-actions">
-        <button class="btn btn-danger btn-sm btn-delete-mold" data-mold-id="${c.id}" title="${t('common.delete')}" aria-label="${t('common.delete')}">🗑</button>
-      </div>` : ''}
+        <button class="btn btn-ghost btn-sm btn-mold-history" data-mold-id="${c.id}" title="${t('audit.title')}" aria-label="${t('audit.title')}">📜</button>
+        ${isAdmin() ? `
+        <button class="btn btn-danger btn-sm btn-delete-mold" data-mold-id="${c.id}" title="${t('common.delete')}" aria-label="${t('common.delete')}">🗑</button>` : ''}
+      </div>
     </div>`;
   }).join('')}</div>`;
 
@@ -118,6 +119,57 @@ async function loadMoldsTab(projectId) {
   container.querySelectorAll('.btn-delete-mold').forEach(btn => {
     btn.addEventListener('click', (e) => { e.stopPropagation(); deleteMoldCheck(btn.dataset.moldId); });
   });
+  container.querySelectorAll('.btn-mold-history').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); showMoldHistory(btn.dataset.moldId); });
+  });
+}
+
+// ---- AUDIT HISTORY ----
+// The log_mold_check_change trigger (migration 20260713000000) writes mold
+// rows with pod_id NULL, so they are keyed by record_id — not by pod_id like
+// the qc_stages rows shown in showPodHistory. Visible to every active user
+// (migration 20260726000000); writes stay blocked at the DB level.
+async function showMoldHistory(moldId) {
+  const check = _moldChecks.find(c => c.id === moldId);
+
+  const { data: logs, error } = await supabaseClient
+    .from('qc_audit_log')
+    .select('*')
+    .eq('table_name', 'mold_checks')
+    .eq('record_id', moldId)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    showToast(t('proj.errorPrefix') + error.message, 'error');
+    return;
+  }
+
+  const body = (!logs || logs.length === 0)
+    ? `<div class="empty-state" style="padding:24px"><div class="empty-state-text">${t('audit.noneMold')}</div></div>`
+    : logs.map(l => {
+        const oldSt = l.old_values?.status;
+        const newSt = l.new_values?.status;
+        const transition = oldSt && newSt ? ` (${t('status.' + oldSt)} → ${t('status.' + newSt)})` : '';
+        const inspector = l.new_values?.inspector_name || l.old_values?.inspector_name;
+        return `
+        <div style="padding:10px 4px;border-bottom:1px solid var(--border);font-size:13px">
+          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+            <strong>${escHtml(t('audit.' + l.action))}${transition}</strong>
+            <span class="text-muted">${formatDateTime(l.created_at)}</span>
+          </div>
+          <div class="text-muted" style="margin-top:2px">
+            ${l.changed_by_name ? t('audit.by', { name: escHtml(l.changed_by_name) }) : ''}
+            ${inspector && inspector !== l.changed_by_name ? ` · ${t('rep.hInspector')}: ${escHtml(inspector)}` : ''}
+          </div>
+        </div>`;
+      }).join('');
+
+  const title = check ? `${t('audit.title')} — ${moldTitle(check)}` : t('audit.title');
+  openModal(title, `<div style="max-height:60vh;overflow-y:auto">${body}</div>`, [
+    { label: t('common.close'), cls: 'btn-ghost', id: 'btn-mold-audit-close' },
+  ]);
+  document.getElementById('btn-mold-audit-close')?.addEventListener('click', closeModal);
 }
 
 // ---- ADD MOLD CHECK ----

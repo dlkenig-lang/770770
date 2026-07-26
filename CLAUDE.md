@@ -134,7 +134,18 @@ const CASTING_ITEM_KEYS = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixa
 
 ## Audit trail (qc_audit_log)
 
-מיגרציה `20260713000000_qc_audit_log.sql`. Triggers ברמת ה-DB על `qc_stages` ו-`mold_checks` מתעדים מעברי סטטוס מהותיים (חתימה / פתיחה מחדש / ניקוי) עם המשתמש המבצע. **אין ללקוח שום הרשאת כתיבה על הטבלה** (אין פוליסות INSERT/UPDATE/DELETE); צפייה לאדמין בלבד — כפתור 📜 במסך פוד (`showPodHistory` ב-`pods.js`). מעברי שגרה `pending→in_progress` לא מתועדים בכוונה (רעש).
+מיגרציה `20260713000000_qc_audit_log.sql`. Triggers ברמת ה-DB על `qc_stages` ו-`mold_checks` מתעדים מעברי סטטוס מהותיים (חתימה / פתיחה מחדש / ניקוי) עם המשתמש המבצע. **אין ללקוח שום הרשאת כתיבה על הטבלה** (אין פוליסות INSERT/UPDATE/DELETE) — הרשומות חסינות לשינוי ולמחיקה מהאפליקציה. מעברי שגרה `pending→in_progress` לא מתועדים בכוונה (רעש).
+
+**צפייה: כל משתמש פעיל** (מיגרציה `20260726000000_audit_log_view_all_users.sql`, מחליפה את פוליסת האדמין-בלבד מ-20260713000000). הפוליסה היא `current_user_role() IS NOT NULL` — כלומר משתמש שממתין לאישור אדמין או שנוטרל לא רואה כלום, כמו בשאר הטבלאות. **הרשאת הצפייה נשלטת ב-RLS, לא בהסתרת כפתור** — הסרת גייטינג בצד לקוח בלי מיגרציה מתאימה תיתן חלון ריק ("אין רישומי היסטוריה").
+
+**שתי נקודות תצוגה** — כפתור 📜, גלוי לכל המשתמשים:
+
+| מה | איפה | פונקציה | סינון השאילתה |
+|---|---|---|---|
+| שלבי QC + סעיפים (A–F) | כותרת מסך פוד | `showPodHistory` ב-`pods.js` | `pod_id` |
+| בדיקות תבניות | כרטיס הבדיקה בטאב "בדיקות תבניות" | `showMoldHistory` ב-`molds.js` | `table_name='mold_checks'` + `record_id` |
+
+⚠️ **רשומות `mold_checks` נכתבות עם `pod_id = NULL`** (בדיקת תבנית לא משויכת לפוד) — לכן `showMoldHistory` מסננת לפי `record_id` ולא לפי `pod_id`. אין לאחד את שתי הפונקציות לשאילתה אחת לפי `pod_id`.
 
 ## PWA / Service Worker
 
@@ -152,7 +163,7 @@ const CASTING_ITEM_KEYS = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixa
 
 - **מבנה**: בדיקה לפי `type_id` (טיפוס בפרויקט) + `direction` (R/L/ללא) + `mold_number`. 9 סעיפים בעמודות שטוחות `<key>_status/_notes` (+`_value` לאורך/רוחב) — מוגדרים ב-`MOLD_CHECK_ITEMS` ב-`molds.js`; תוויות ב-i18n תחת `mold.item.*`.
 - **שאילתות בלי FK embedding**: הטבלה ב-DB החי נוצרה ב-Bolt וייתכן שאין בה constraint מוצהר — לכן `loadMoldsTab` שולף types ואז `mold_checks` עם `.in('type_id', ...)`, לא join של PostgREST.
-- **הרשאות**: כתיבה admin+inspector (מיגרציה 20260712040000), כפתור ההוספה `.inspector-only`. מחיקה ב-UI לאדמין בלבד.
+- **הרשאות**: כתיבה admin+inspector (מיגרציה 20260712040000), כפתור ההוספה `.inspector-only`. מחיקה ב-UI לאדמין בלבד; כפתור ההיסטוריה 📜 גלוי לכל המשתמשים (`showMoldHistory` — ראו "Audit trail").
 - **שמירה**: הטופס נשמר בלחיצת "שמור" (לא autosave); "חתום וסיים" עובר לשלב חתימה בתוך אותו מודאל (SignaturePad נפרד — `_moldSigPad`), וכישלון בסעיף כלשהו ⇒ `status='failed'`.
 - הגדרת הטבלה מתועדת ב-`20260712050000_mold_checks_table.sql` (no-op על ה-DB החי).
 

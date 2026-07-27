@@ -134,12 +134,16 @@ function showBarcodeModal(podCode, groupLabel = '') {
     scratch.appendChild(psvg);
     try {
       JsBarcode(psvg, podCode, { format: 'CODE128', width: 3, height: 110, displayValue: false, margin: 0 });
+      // Let the barcode stretch to fill the print area vertically (equal margins).
+      psvg.setAttribute('preserveAspectRatio', 'none');
     } catch (e) { /* ignore */ }
     const svgHtml = psvg.outerHTML;
     document.body.removeChild(scratch);
 
-    // Print area 145mm (14.5cm) wide, height kept proportional to the original
-    // 142×56 layout (→57.2mm), centered on the page with a 5mm (0.5cm) margin all around.
+    // Print area 145mm (14.5cm) wide, 57.2mm tall (proportional to the original
+    // 142×56 layout), centered on the page with an equal 5mm (0.5cm) margin on
+    // all four sides. The barcode fills the remaining height so the top/bottom
+    // margins match the sides instead of leaving extra white space.
     const css = `
       *{box-sizing:border-box;margin:0;padding:0}
       @page{size:155mm 67.2mm;margin:0}
@@ -147,11 +151,11 @@ function showBarcodeModal(podCode, groupLabel = '') {
       body{display:flex;align-items:center;justify-content:center}
       .content{
         width:145mm;height:57.2mm;
-        display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:2mm;
+        display:flex;flex-direction:column;align-items:stretch;gap:2mm;
       }
-      .bw{width:100%}
-      .bw svg{width:100%;height:auto;max-height:34mm}
-      .bottom-row{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5mm}
+      .bw{flex:1 1 auto;min-height:0;display:flex;align-items:stretch}
+      .bw svg{width:100%;height:100%;display:block}
+      .bottom-row{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5mm}
       .group-marker{font-size:32pt;font-weight:900;line-height:1;white-space:nowrap}
       .bc{font-size:18pt;font-weight:bold;letter-spacing:1.5px;white-space:nowrap}
     `;

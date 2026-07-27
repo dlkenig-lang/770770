@@ -138,16 +138,15 @@ function showBarcodeModal(podCode, groupLabel = '') {
     const svgHtml = psvg.outerHTML;
     document.body.removeChild(scratch);
 
-    // Brother QL-700: 62mm tape, 150mm label — portrait (62×150), barcode rotated 90°
+    // Print area 145mm (14.5cm) wide, height kept proportional to the original
+    // 142×56 layout (→57.2mm), centered on the page with a 5mm (0.5cm) margin all around.
     const css = `
       *{box-sizing:border-box;margin:0;padding:0}
-      @page{size:62mm 150mm;margin:0}
-      html,body{width:62mm;height:150mm;overflow:hidden;background:#fff;font-family:monospace}
-      body{position:relative}
+      @page{size:155mm 67.2mm;margin:0}
+      html,body{width:155mm;height:67.2mm;overflow:hidden;background:#fff;font-family:monospace}
+      body{display:flex;align-items:center;justify-content:center}
       .content{
-        position:absolute;top:50%;left:50%;
-        width:142mm;height:56mm;
-        transform:translate(-50%,-50%) rotate(-90deg);
+        width:145mm;height:57.2mm;
         display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:2mm;
       }
       .bw{width:100%}

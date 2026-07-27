@@ -1580,22 +1580,22 @@ function printAllBarcodes() {
 
   document.body.removeChild(scratch);
 
-  // Brother QL-700: 62mm tape, 150mm label — portrait (62×150), barcode rotated 90°
+  // Print area 145mm (14.5cm) wide, height kept proportional to the original
+  // 142×56 layout (→57.2mm), centered on each page with a 5mm (0.5cm) margin all around.
   const css = `
     *{box-sizing:border-box;margin:0;padding:0}
-    @page{size:62mm 150mm;margin:0}
+    @page{size:155mm 67.2mm;margin:0}
     html,body{background:#fff;font-family:monospace}
     .toolbar{display:flex;align-items:center;gap:16px;padding:12px 16px;border-bottom:2px solid #e2e8f0;background:#f8fafc}
     .toolbar h2{font-size:15px;flex:1;text-align:center;color:#1e293b}
     .btn-print{background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-size:14px;cursor:pointer}
     .btn-print:hover{background:#1d4ed8}
-    .barcode-item{width:62mm;height:150mm;overflow:hidden;position:relative;
+    .barcode-item{width:155mm;height:67.2mm;overflow:hidden;
+      display:flex;align-items:center;justify-content:center;
       page-break-after:always;break-after:page}
     .barcode-item:last-child{page-break-after:auto;break-after:auto}
     .content{
-      position:absolute;top:50%;left:50%;
-      width:142mm;height:56mm;
-      transform:translate(-50%,-50%) rotate(-90deg);
+      width:145mm;height:57.2mm;
       display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:2mm;
     }
     .bw{width:100%}

@@ -78,7 +78,7 @@ const QC_STAGES = [
       { key: 'vent_opening', label: 'פתח אוורור', labelEn: 'Ventilation opening', instruction: null, instructionEn: null },
       { key: 'vent_grille', label: 'גריל לוונטה', labelEn: 'Vent grille', instruction: null, instructionEn: null },
       { key: 'toilet', label: 'אסלה', labelEn: 'Toilet', instruction: 'יש לבדוק גובה 39 ± 1 ס"מ | לבדוק חומר גמיש', instructionEn: 'Check height 39 ± 1 cm | check flexible material' },
-      { key: 'shower', label: 'מקלחון', labelEn: 'Shower', instruction: null, instructionEn: null },
+      { key: 'shower', label: 'מקלחון זכוכית', labelEn: 'Shower glass', instruction: null, instructionEn: null },
       { key: 'faucet', label: 'ברז', labelEn: 'Faucet', instruction: null, instructionEn: null },
       { key: 'sink', label: 'כיור', labelEn: 'Sink', instruction: 'לבדוק חומר גמיש', instructionEn: 'Check flexible material' },
       { key: 'cabinet', label: 'ארון', labelEn: 'Cabinet', instruction: 'לוודא מידת ארון', instructionEn: 'Verify cabinet dimensions' },
@@ -92,6 +92,7 @@ const QC_STAGES = [
       { key: 'outlets', label: 'שקעים', labelEn: 'Outlets', instruction: null, instructionEn: null },
       { key: 'mirror', label: 'מראה', labelEn: 'Mirror', instruction: null, instructionEn: null },
       { key: 'sink_siphon', label: 'סיפון כיור', labelEn: 'Sink siphon (P-trap)', instruction: null, instructionEn: null },
+      { key: 'ac_siphon', label: 'סיפון מזגן', labelEn: 'AC condensate siphon', instruction: null, instructionEn: null },
     ]
   }
 ];

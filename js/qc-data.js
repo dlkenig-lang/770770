@@ -92,6 +92,8 @@ const QC_STAGES = [
       { key: 'outlets', label: 'שקעים', labelEn: 'Outlets', instruction: null, instructionEn: null },
       { key: 'mirror', label: 'מראה', labelEn: 'Mirror', instruction: null, instructionEn: null },
       { key: 'sink_siphon', label: 'סיפון כיור', labelEn: 'Sink siphon (P-trap)', instruction: null, instructionEn: null },
+      { key: 'glass_shower', label: 'מקלחון זכוכית', labelEn: 'Glass shower enclosure', instruction: null, instructionEn: null },
+      { key: 'ac_siphon', label: 'סיפון מזגן', labelEn: 'AC condensate siphon', instruction: null, instructionEn: null },
     ]
   }
 ];

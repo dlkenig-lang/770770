@@ -379,6 +379,10 @@ const I18N = {
     'proj.typeCount': 'מספר טיפוסים',
     'proj.modelCount': 'מספר דגמים',
     // מספר פרויקט רץ — נכנס לקוד היחידה במקום היום בתאריך הקבלה
+    // שם דגם חופשי לכל טיפוס — הבודק לא יכול לזהות דגם לפי T1/T2/T3 בלבד
+    'proj.modelName': 'שם דגם',
+    'proj.modelNamePlaceholder': 'למשל: בסיסי / קצר / מוגבר',
+    'filter.allModels': 'כל הדגמים',
     'proj.projectNumber': 'מספר פרויקט',
     'proj.projectNumberHint': 'נכנס לקוד היחידה: קוד-PPMMYY-... (למשל 020726 = פרויקט 02, יולי 2026)',
     'proj.projectNumberRequired': 'יש להזין מספר פרויקט תקין (1 ומעלה)',
@@ -986,6 +990,9 @@ const I18N = {
     'proj.locationPlaceholder': 'City / address',
     'proj.typeCount': 'Number of types',
     'proj.modelCount': 'Number of models',
+    'proj.modelName': 'Model name',
+    'proj.modelNamePlaceholder': 'e.g. Basic / Short / Enhanced',
+    'filter.allModels': 'All models',
     'proj.projectNumber': 'Project number',
     'proj.projectNumberHint': 'Goes into the unit code: CODE-PPMMYY-… (e.g. 020726 = project 02, July 2026)',
     'proj.projectNumberRequired': 'Enter a valid project number (1 or higher)',

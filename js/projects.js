@@ -313,7 +313,7 @@ async function loadPodsTab(projectId, filters = {}) {
     .from('pods')
     .select(`
       *,
-      project_types(type_number, dimensions),
+      project_types(*),
       type_directions(direction),
       production_groups(name),
       qc_stages(stage_number, status),
@@ -402,7 +402,7 @@ async function loadPodsTab(projectId, filters = {}) {
     btn.addEventListener('click', () => openPod(btn.dataset.podId));
   });
   container.querySelectorAll('.btn-pod-barcode-tbl').forEach(btn => {
-    btn.addEventListener('click', (e) => { e.stopPropagation(); showBarcodeModal(btn.dataset.podCode, btn.dataset.groupLabel || ''); });
+    btn.addEventListener('click', (e) => { e.stopPropagation(); showBarcodeModal(btn.dataset.podCode, btn.dataset.groupLabel || '', btn.dataset.modelName || ''); });
   });
   if (isAdminOrPM()) {
     container.querySelectorAll('.btn-delete-pod').forEach(btn => {
@@ -436,8 +436,8 @@ function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6) {
       </div>
       <div class="pod-card-meta">
         <div class="pod-card-meta-item">
-          <span class="pod-card-meta-label">${t('proj.type')}</span>
-          <span class="pod-card-meta-value">T${pod.project_types?.type_number || '—'}</span>
+          <span class="pod-card-meta-label">${isPanel ? t('proj.model') : t('proj.type')}</span>
+          <span class="pod-card-meta-value">${escHtml(typeLabel(pod.project_types)) || '—'}</span>
         </div>
         ${isPanel ? '' : `
         <div class="pod-card-meta-item">
@@ -466,7 +466,7 @@ function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6) {
         </div>
       </div>
       <div class="pod-card-actions">
-        <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}" data-group-label="${escHtml(groupLabel)}">${t('pod.barcode')}</button>
+        <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}" data-group-label="${escHtml(groupLabel)}" data-model-name="${escHtml(pod.project_types?.model_name || '')}">${t('pod.barcode')}</button>
         ${isAdminOrPM() ? `<button class="btn btn-danger btn-sm btn-delete-pod" data-pod-id="${pod.id}" title="${t('common.delete')}" aria-label="${t('common.delete')}">🗑</button>` : ''}
       </div>
     </div>
@@ -578,6 +578,10 @@ async function loadProjectDetailsTab(project) {
           return `
           <div class="det-type-row" style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
             <div class="type-badge" style="flex-shrink:0">T${ty.type_number}</div>
+            <div class="form-group" style="margin:0;flex:1.4;min-width:120px">
+              <label style="font-size:11px">${t('proj.modelName')}</label>
+              <input type="text" class="form-control det-model-name" data-type-id="${ty.id}" value="${escHtml(ty.model_name || '')}" placeholder="${t('proj.modelNamePlaceholder')}" />
+            </div>
             ${isPanel ? '' : `
             <div class="form-group" style="margin:0;flex:1;min-width:80px">
               <label style="font-size:11px">${t('proj.length')}</label>
@@ -602,6 +606,7 @@ async function loadProjectDetailsTab(project) {
         ${types.map(ty => `
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
             <div class="type-badge" style="flex-shrink:0">T${ty.type_number}</div>
+            ${ty.model_name ? `<strong style="font-size:13px">${escHtml(ty.model_name)}</strong>` : ''}
             <span class="text-muted" style="font-size:13px">${escHtml(ty.dimensions || '—')}</span>
           </div>`).join('')}
       </div>
@@ -679,7 +684,8 @@ async function loadProjectDetailsTab(project) {
         const w = container.querySelector(`.det-dim-w[data-type-id="${t.id}"]`)?.value.trim() || '';
         const h = container.querySelector(`.det-dim-h[data-type-id="${t.id}"]`)?.value.trim() || '';
         const dims = [l, w, h].filter(Boolean).join('x') || null;
-        return supabaseClient.from('project_types').update({ dimensions: dims }).eq('id', t.id);
+        const modelName = container.querySelector(`.det-model-name[data-type-id="${t.id}"]`)?.value.trim() || null;
+        return supabaseClient.from('project_types').update({ dimensions: dims, model_name: modelName }).eq('id', t.id);
       });
 
       const results = await Promise.all([projectUpdate, ...typeUpdates]);
@@ -719,7 +725,7 @@ async function loadProjectDetailsTab(project) {
 // ---- PLANS TAB ----
 async function loadPlansTab(projectId) {
   const [{ data: types }, { data: plans }] = await Promise.all([
-    supabaseClient.from('project_types').select('id, type_number, dimensions').eq('project_id', projectId).order('type_number'),
+    supabaseClient.from('project_types').select('*').eq('project_id', projectId).order('type_number'),
     supabaseClient.from('type_plans').select('*, uploader:profiles!uploaded_by(full_name, username)').eq('project_id', projectId).order('uploaded_at'),
   ]);
 
@@ -760,6 +766,7 @@ async function loadPlansTab(projectId) {
         <div class="type-item" data-type-id="${ty.id}">
           <div class="type-item-header">
             <div class="type-badge">T${ty.type_number}</div>
+            ${ty.model_name ? `<strong style="font-size:13px">${escHtml(ty.model_name)}</strong>` : ''}
             <span class="text-muted">${t('proj.dimsLabel')}${escHtml(ty.dimensions || '—')}</span>
             ${canEdit ? `<label class="btn btn-primary btn-sm plan-upload-label" style="margin-right:auto">${t('proj.addPdf')}<input type="file" accept="application/pdf" class="plan-file-input" data-type-id="${ty.id}" style="display:none"></label>` : ''}
           </div>
@@ -860,7 +867,7 @@ async function setupPodFilters(projectId) {
   // Run both queries in parallel
   const [{ data: rawFilterGroups }, { data: types }] = await Promise.all([
     supabaseClient.from('production_groups').select('id, name').eq('project_id', projectId),
-    supabaseClient.from('project_types').select('id, type_number').eq('project_id', projectId).order('type_number'),
+    supabaseClient.from('project_types').select('*').eq('project_id', projectId).order('type_number'),
   ]);
   const groups = sortGroupsByOption(rawFilterGroups || []);
 
@@ -883,8 +890,8 @@ async function setupPodFilters(projectId) {
   groupSel.innerHTML = `<option value="">${t('filter.allGroups')}</option>` + groups.map(g =>
     `<option value="${g.id}">${escHtml(g.name)}</option>`).join('');
 
-  typeSel.innerHTML = `<option value="">${t('filter.allTypes')}</option>` + (types || []).map(ty =>
-    `<option value="${ty.type_number}">T${ty.type_number}</option>`).join('');
+  typeSel.innerHTML = `<option value="">${isPanel ? t('filter.allModels') : t('filter.allTypes')}</option>` + (types || []).map(ty =>
+    `<option value="${ty.type_number}">${escHtml(typeLabel(ty))}</option>`).join('');
 
   dirSel.innerHTML = `
     <option value="">${t('filter.allDirections')}</option>
@@ -1023,6 +1030,10 @@ function renderTypeInputs() {
     html += `
       <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;background:#f8fafc">
         <div style="font-weight:600;margin-bottom:10px;color:var(--primary)">${isPanel ? t('proj.model') : t('proj.type')} T${i}</div>
+        <div class="form-group">
+          <label>${t('proj.modelName')}</label>
+          <input type="text" id="np-type${i}-model" class="form-control" placeholder="${t('proj.modelNamePlaceholder')}" />
+        </div>
         <div class="form-row">
           ${isPanel ? '' : `
           <div class="form-group">
@@ -1170,6 +1181,7 @@ async function createProject() {
       setBtnStep(t('proj.savingType', { i, total: typeCount }));
       // Panels render no length field, so dimL stays empty and the stored
       // value is "WxH" — parseDims in the details tab reads it back the same way.
+      const modelName = document.getElementById(`np-type${i}-model`)?.value.trim() || null;
       const dimL = document.getElementById(`np-type${i}-dim-l`)?.value.trim() || '';
       const dimW = document.getElementById(`np-type${i}-dim-w`)?.value.trim() || '';
       const dimH = document.getElementById(`np-type${i}-dim-h`)?.value.trim() || '';
@@ -1177,7 +1189,7 @@ async function createProject() {
       console.log(`[createProject] Step 2: inserting type ${i}`);
       const { data: typeData, error: typeErr } = await supabaseClient
         .from('project_types')
-        .insert({ project_id: project.id, type_number: i, dimensions: dims || null })
+        .insert({ project_id: project.id, type_number: i, dimensions: dims || null, model_name: modelName })
         .select().single();
       if (typeErr) throw new Error(t('proj.errTypeStep', { i }) + typeErr.message);
       console.log(`[createProject] Type ${i} OK`);
@@ -1713,7 +1725,7 @@ function printAllBarcodes() {
   const cards = document.querySelectorAll('#pods-table-container .btn-pod-barcode-tbl');
   if (cards.length === 0) { showToast(t('proj.noPodsToPrint'), 'error'); return; }
 
-  const items = Array.from(cards).map(btn => ({ code: btn.dataset.podCode, groupLabel: btn.dataset.groupLabel || '' })).filter(i => i.code);
+  const items = Array.from(cards).map(btn => ({ code: btn.dataset.podCode, groupLabel: btn.dataset.groupLabel || '', modelName: btn.dataset.modelName || '' })).filter(i => i.code);
   console.log('[printAllBarcodes] items:', items);
   if (items.length === 0) { showToast(t('proj.noBarcodesFound'), 'error'); return; }
 
@@ -1722,7 +1734,7 @@ function printAllBarcodes() {
   scratch.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
   document.body.appendChild(scratch);
 
-  const barcodeItems = items.map(({ code, groupLabel }) => {
+  const barcodeItems = items.map(({ code, groupLabel, modelName }) => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     scratch.appendChild(svg);
     try {
@@ -1731,7 +1743,9 @@ function printAllBarcodes() {
       svg.setAttribute('preserveAspectRatio', 'none');
     } catch (e) { console.error('JsBarcode error', code, e); }
     const svgHtml = svg.outerHTML;
-    const groupPart = groupLabel ? `<div class="group-marker">${escHtml(groupLabel)}</div>` : '';
+    const groupPart = groupLabel
+      ? `<div class="group-marker">${escHtml(groupLabel)}</div>`
+      : (modelName ? `<div class="model-marker">${escHtml(modelName)}</div>` : '');
     return `<div class="barcode-item"><div class="content"><div class="bw">${svgHtml}</div><div class="bottom-row">${groupPart}<div class="bc-label">${escHtml(code)}</div></div></div></div>`;
   }).join('');
 
@@ -1761,6 +1775,7 @@ function printAllBarcodes() {
     .bw svg{width:100%;height:100%;display:block}
     .bottom-row{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5mm}
     .group-marker{font-size:32pt;font-weight:900;line-height:1;white-space:nowrap}
+    .model-marker{font-size:20pt;font-weight:800;line-height:1;white-space:nowrap}
     .bc-label{font-size:18pt;font-weight:bold;letter-spacing:1.5px;white-space:nowrap}
     @media print{.toolbar{display:none}}
   `;

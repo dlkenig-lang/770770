@@ -43,8 +43,8 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, 
       <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">${isPanel ? t('rep.panelDetails') : t('rep.podDetails')}</div>
       <div style="font-size:12px;">${t('rep.projectColon')} ${escHtml(pod.projects?.name || '')} | ${t('rep.codeColon')} ${escHtml(pod.pod_code)}${(!isPanel && groupLabel) ? ` | ${t('rep.groupMark')} <strong style="font-size:14px">${escHtml(groupLabel)}</strong>` : ''}</div>
       <div style="font-size:12px;margin-top:3px;">${isPanel
-        ? `${t('rep.modelColon')} T${escHtml(String(pod.project_types?.type_number || ''))} | ${t('rep.dimsColon')} ${escHtml(pod.project_types?.dimensions || '—')}`
-        : `${t('rep.typeColon')} T${escHtml(String(pod.project_types?.type_number || ''))} | ${t('rep.dirColon')} ${escHtml(pod.type_directions?.direction || '')} | ${t('rep.pipeColon')} ${escHtml(pod.projects?.pipe_type || '')}${pod.production_groups?.name ? ` | ${t('rep.groupColon')} ${escHtml(pod.production_groups.name)}` : ''}`}</div>
+        ? `${t('rep.modelColon')} ${escHtml(typeLabel(pod.project_types))} | ${t('rep.dimsColon')} ${escHtml(pod.project_types?.dimensions || '—')}`
+        : `${t('rep.typeColon')} ${escHtml(typeLabel(pod.project_types))} | ${t('rep.dirColon')} ${escHtml(pod.type_directions?.direction || '')} | ${t('rep.pipeColon')} ${escHtml(pod.projects?.pipe_type || '')}${pod.production_groups?.name ? ` | ${t('rep.groupColon')} ${escHtml(pod.production_groups.name)}` : ''}`}</div>
     </div>
   `));
 
@@ -252,7 +252,7 @@ function buildExcelFromPods(pods, label) {
     summaryData.push([
       pod.pod_code,
       pod.projects?.name || '',
-      `T${pod.project_types?.type_number || ''}`,
+      typeLabel(pod.project_types),
       pod.type_directions?.direction || '',
       pod.production_groups?.name || '',
       STATUS_LABELS[pod.status] || pod.status,
@@ -282,7 +282,7 @@ function buildExcelFromPods(pods, label) {
         const row = [
           pod.pod_code,
           pod.projects?.name || '',
-          `T${pod.project_types?.type_number || ''}`,
+          typeLabel(pod.project_types),
         ];
         if (!isPanel) row.push(pod.type_directions?.direction || '');
         row.push(
@@ -813,7 +813,7 @@ async function loadReportsView() {
     supabaseClient.from('pods').select(`
       *,
       projects!inner(*),
-      project_types(type_number, dimensions),
+      project_types(*),
       type_directions(direction),
       production_groups(name),
       qc_stages(id, stage_number, stage_name, status, inspector_name, inspection_date, completed_at)
@@ -956,7 +956,7 @@ async function loadReportsView() {
                 return `<tr class="rf-pod-row" data-pod-id="${p.id}" style="border-bottom:1px solid #f1f5f9;transition:background 0.2s;">
                   <td style="padding:8px 12px;font-weight:600;">${escHtml(p.pod_code)}</td>
                   <td style="padding:8px 12px;">${escHtml(p.projects?.name || '')}</td>
-                  <td style="padding:8px 12px;">T${p.project_types?.type_number || ''}</td>
+                  <td style="padding:8px 12px;">${escHtml(typeLabel(p.project_types))}</td>
                   <td style="padding:8px 12px;">${p.type_directions?.direction || ''}</td>
                   <td style="padding:8px 12px;">${escHtml(p.production_groups?.name || '')}</td>
                   <td style="padding:8px 12px;color:${statusColor};font-weight:600;">${STATUS_LABELS[p.status] || p.status}</td>

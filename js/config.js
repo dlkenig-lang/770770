@@ -152,6 +152,17 @@ function generatePodCode(projectCode, dateReceived, typeNumber, direction, seria
   return `${projectCode.toUpperCase()}-${middle}-T${typeNumber}${dirPart}-${serialStr}`;
 }
 
+// Display label for a project type: "T1 — בסיסי", or just "T1" when no model
+// name is set (all pre-20260803020000 rows). The inspector cannot tell T1 from
+// T3 by dimensions alone — in the Bilinson project both are 120x244 — so the
+// name is shown next to the number everywhere the inspector looks.
+function typeLabel(ty) {
+  if (!ty) return '';
+  const num = `T${ty.type_number ?? ''}`;
+  const name = (ty.model_name || '').trim();
+  return name ? `${num} — ${name}` : num;
+}
+
 // Show toast notification
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');

@@ -105,7 +105,7 @@ async function openPod(podId) {
 }
 
 // ---- BARCODE ----
-function showBarcodeModal(podCode, groupLabel = '', modelName = '') {
+function showBarcodeModal(podCode, groupLabel = '') {
   const modal = document.getElementById('barcode-modal');
   const display = document.getElementById('barcode-display');
   const codeEl = document.getElementById('barcode-pod-code');
@@ -129,11 +129,8 @@ function showBarcodeModal(podCode, groupLabel = '', modelName = '') {
   codeEl.textContent = podCode;
   const groupLabelEl = document.getElementById('barcode-group-label');
   if (groupLabelEl) {
-    // Panels have no production group, so the slot carries the model name
-    // instead — the label on the unit is where the inspector needs to see it.
-    const marker = groupLabel || modelName || '';
-    groupLabelEl.textContent = marker;
-    groupLabelEl.style.display = marker ? '' : 'none';
+    groupLabelEl.textContent = groupLabel || '';
+    groupLabelEl.style.display = groupLabel ? '' : 'none';
   }
   modal.classList.remove('hidden');
 
@@ -169,13 +166,10 @@ function showBarcodeModal(podCode, groupLabel = '', modelName = '') {
       .bw svg{width:100%;height:100%;display:block}
       .bottom-row{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5mm}
       .group-marker{font-size:32pt;font-weight:900;line-height:1;white-space:nowrap}
-      .model-marker{font-size:20pt;font-weight:800;line-height:1;white-space:nowrap}
       .bc{font-size:18pt;font-weight:bold;letter-spacing:1.5px;white-space:nowrap}
     `;
     const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    const groupPart = groupLabel
-      ? `<div class="group-marker">${esc(groupLabel)}</div>`
-      : (modelName ? `<div class="model-marker">${esc(modelName)}</div>` : '');
+    const groupPart = groupLabel ? `<div class="group-marker">${esc(groupLabel)}</div>` : '';
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
       <title>${podCode}</title><style>${css}</style></head><body>
       <div class="content">
@@ -302,7 +296,7 @@ function initPodDetailButtons() {
 
   // Barcode
   document.getElementById('btn-pod-barcode')?.addEventListener('click', () => {
-    if (AppState.currentPod) showBarcodeModal(AppState.currentPod.pod_code, AppState.currentPodGroupLabel || '', AppState.currentPod.project_types?.model_name || '');
+    if (AppState.currentPod) showBarcodeModal(AppState.currentPod.pod_code, AppState.currentPodGroupLabel || '');
   });
   document.getElementById('barcode-modal-close')?.addEventListener('click', () => {
     document.getElementById('barcode-modal').classList.add('hidden');

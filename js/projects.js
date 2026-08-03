@@ -402,7 +402,7 @@ async function loadPodsTab(projectId, filters = {}) {
     btn.addEventListener('click', () => openPod(btn.dataset.podId));
   });
   container.querySelectorAll('.btn-pod-barcode-tbl').forEach(btn => {
-    btn.addEventListener('click', (e) => { e.stopPropagation(); showBarcodeModal(btn.dataset.podCode, btn.dataset.groupLabel || '', btn.dataset.modelName || ''); });
+    btn.addEventListener('click', (e) => { e.stopPropagation(); showBarcodeModal(btn.dataset.podCode, btn.dataset.groupLabel || ''); });
   });
   if (isAdminOrPM()) {
     container.querySelectorAll('.btn-delete-pod').forEach(btn => {
@@ -466,7 +466,7 @@ function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6) {
         </div>
       </div>
       <div class="pod-card-actions">
-        <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}" data-group-label="${escHtml(groupLabel)}" data-model-name="${escHtml(pod.project_types?.model_name || '')}">${t('pod.barcode')}</button>
+        <button class="btn btn-secondary btn-sm btn-pod-barcode-tbl" data-pod-code="${escHtml(pod.pod_code)}" data-group-label="${escHtml(groupLabel)}">${t('pod.barcode')}</button>
         ${isAdminOrPM() ? `<button class="btn btn-danger btn-sm btn-delete-pod" data-pod-id="${pod.id}" title="${t('common.delete')}" aria-label="${t('common.delete')}">🗑</button>` : ''}
       </div>
     </div>
@@ -1730,7 +1730,7 @@ function printAllBarcodes() {
   const cards = document.querySelectorAll('#pods-table-container .btn-pod-barcode-tbl');
   if (cards.length === 0) { showToast(t('proj.noPodsToPrint'), 'error'); return; }
 
-  const items = Array.from(cards).map(btn => ({ code: btn.dataset.podCode, groupLabel: btn.dataset.groupLabel || '', modelName: btn.dataset.modelName || '' })).filter(i => i.code);
+  const items = Array.from(cards).map(btn => ({ code: btn.dataset.podCode, groupLabel: btn.dataset.groupLabel || '' })).filter(i => i.code);
   console.log('[printAllBarcodes] items:', items);
   if (items.length === 0) { showToast(t('proj.noBarcodesFound'), 'error'); return; }
 
@@ -1739,7 +1739,7 @@ function printAllBarcodes() {
   scratch.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
   document.body.appendChild(scratch);
 
-  const barcodeItems = items.map(({ code, groupLabel, modelName }) => {
+  const barcodeItems = items.map(({ code, groupLabel }) => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     scratch.appendChild(svg);
     try {
@@ -1748,9 +1748,7 @@ function printAllBarcodes() {
       svg.setAttribute('preserveAspectRatio', 'none');
     } catch (e) { console.error('JsBarcode error', code, e); }
     const svgHtml = svg.outerHTML;
-    const groupPart = groupLabel
-      ? `<div class="group-marker">${escHtml(groupLabel)}</div>`
-      : (modelName ? `<div class="model-marker">${escHtml(modelName)}</div>` : '');
+    const groupPart = groupLabel ? `<div class="group-marker">${escHtml(groupLabel)}</div>` : '';
     return `<div class="barcode-item"><div class="content"><div class="bw">${svgHtml}</div><div class="bottom-row">${groupPart}<div class="bc-label">${escHtml(code)}</div></div></div></div>`;
   }).join('');
 
@@ -1780,7 +1778,6 @@ function printAllBarcodes() {
     .bw svg{width:100%;height:100%;display:block}
     .bottom-row{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5mm}
     .group-marker{font-size:32pt;font-weight:900;line-height:1;white-space:nowrap}
-    .model-marker{font-size:20pt;font-weight:800;line-height:1;white-space:nowrap}
     .bc-label{font-size:18pt;font-weight:bold;letter-spacing:1.5px;white-space:nowrap}
     @media print{.toolbar{display:none}}
   `;

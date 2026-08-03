@@ -553,9 +553,12 @@ async function loadProjectDetailsTab(project) {
   const container = document.getElementById('project-details-form');
   const isPanel = projIsPanel(project);
 
+  // select('*') — an explicit column list silently drops model_name, which
+  // renders the "model name" input empty on every reload even though the value
+  // is stored. Keep this as '*' whenever a column is added to project_types.
   const { data: types } = await supabaseClient
     .from('project_types')
-    .select('id, type_number, dimensions')
+    .select('*')
     .eq('project_id', project.id)
     .order('type_number');
 
@@ -1505,7 +1508,7 @@ async function showAddPodModal(projectId) {
     <div class="form-group">
       <label>${isPanel ? t('proj.model') : t('proj.type')}</label>
       <select id="add-pod-type" class="form-control">
-        ${(types || []).map(ty => `<option value="${ty.id}" data-type-num="${ty.type_number}">${'T' + ty.type_number} (${ty.dimensions || ''})</option>`).join('')}
+        ${(types || []).map(ty => `<option value="${ty.id}" data-type-num="${ty.type_number}">${escHtml(typeLabel(ty))} (${escHtml(ty.dimensions || '')})</option>`).join('')}
       </select>
     </div>
     ${isPanel ? '' : `

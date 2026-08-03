@@ -807,7 +807,9 @@ async function uploadPlan(typeId, file, projectId) {
   if (file.size > 20 * 1024 * 1024) { showToast(t('proj.maxFileSize20'), 'error'); return; }
 
   showToast(t('proj.uploadingFile'), 'info');
-  const storagePath = `${projectId}/${typeId}/${Date.now()}_${file.name}`;
+  // Storage keys must be ASCII — a Hebrew file name fails with "Invalid key".
+  // The original name is kept in type_plans.file_name for display.
+  const storagePath = `${projectId}/${typeId}/${Date.now()}_${safeStorageName(file.name, 'pdf')}`;
   const { error: upErr } = await supabaseClient.storage.from('plans').upload(storagePath, file);
   if (upErr) {
     console.error('Storage upload error:', upErr);

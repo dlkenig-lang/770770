@@ -859,8 +859,9 @@ async function uploadQcImage(input) {
   file = await compressImage(file);
   if (file.size > 10 * 1024 * 1024) { showToast(t('qc.fileTooLarge'), 'error'); return; }
 
-  const ext = file.name.split('.').pop() || 'jpg';
-  const storagePath = `${itemId}/${Date.now()}.${ext}`;
+  // Same ASCII-only storage-key rule as plans: an image named in Hebrew with
+  // no extension would otherwise put Hebrew straight into the key.
+  const storagePath = `${itemId}/${Date.now()}_${safeStorageName(file.name, 'jpg')}`;
 
   const { error: upErr } = await supabaseClient.storage.from('qc-images').upload(storagePath, file);
   if (upErr) { showToast(t('qc.uploadError') + upErr.message, 'error'); return; }

@@ -163,6 +163,23 @@ function typeLabel(ty) {
   return name ? `${num} — ${name}` : num;
 }
 
+// Build a Supabase-Storage-safe object name from a user file name.
+// Storage keys reject non-ASCII, so a Hebrew file name ("02-בילינסון-B100.pdf")
+// fails the upload with "Invalid key". Only the STORAGE path is sanitised —
+// the original name is still stored in the DB and shown to the user.
+function safeStorageName(name, fallbackExt = 'bin') {
+  const raw = String(name || '');
+  const dot = raw.lastIndexOf('.');
+  const rawExt = dot > 0 ? raw.slice(dot + 1) : '';
+  const ext = (rawExt.replace(/[^A-Za-z0-9]/g, '').toLowerCase() || fallbackExt).slice(0, 10);
+  const base = (dot > 0 ? raw.slice(0, dot) : raw)
+    .replace(/[^A-Za-z0-9._-]+/g, '_')
+    .replace(/_{2,}/g, '_')
+    .replace(/^[._-]+|[._-]+$/g, '')
+    .slice(0, 60);
+  return `${base || 'file'}.${ext}`;
+}
+
 // Show toast notification
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');

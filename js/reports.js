@@ -3,6 +3,10 @@
 // =============================================
 
 function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, groupLabel = '') {
+  // Panels use their own stage/item definitions and carry no direction,
+  // pipe type or production group.
+  const productType = podProductType(pod);
+  const isPanel = productType === 'medical_panel';
   const stageStatusColor = s =>
     s === 'completed' ? '#7baa8a' : s === 'failed' ? '#b87878' : '#8899aa';
   const itemStatusColor = s =>
@@ -23,8 +27,8 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, 
       <div style="font-size:13px;font-weight:bold;letter-spacing:2px;margin-bottom:10px;text-align:${_ta};">MODUSYSTEMS LTD.</div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div style="text-align:${_taOpp};">
-          <div style="font-size:22px;font-weight:bold;">${t('rep.pdfTitle')}</div>
-          <div style="font-size:14px;margin-top:4px;">${t('rep.podLabel')} ${escHtml(pod.pod_code)}</div>
+          <div style="font-size:22px;font-weight:bold;">${isPanel ? t('rep.pdfTitlePanel') : t('rep.pdfTitle')}</div>
+          <div style="font-size:14px;margin-top:4px;">${isPanel ? t('rep.panelLabel') : t('rep.podLabel')} ${escHtml(pod.pod_code)}</div>
           <div style="font-size:12px;margin-top:2px;opacity:0.7;">${t('rep.created')} ${formatDate(new Date().toISOString().split('T')[0])}</div>
         </div>
         <div style="text-align:${_ta};">
@@ -36,16 +40,18 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, 
       </div>
     </div>
     <div style="background:#f1f5f9;padding:12px 24px;text-align:${_ta};border-bottom:2px solid #e2e8f0;">
-      <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">${t('rep.podDetails')}</div>
-      <div style="font-size:12px;">${t('rep.projectColon')} ${escHtml(pod.projects?.name || '')} | ${t('rep.codeColon')} ${escHtml(pod.pod_code)}${groupLabel ? ` | ${t('rep.groupMark')} <strong style="font-size:14px">${escHtml(groupLabel)}</strong>` : ''}</div>
-      <div style="font-size:12px;margin-top:3px;">${t('rep.typeColon')} T${escHtml(String(pod.project_types?.type_number || ''))} | ${t('rep.dirColon')} ${escHtml(pod.type_directions?.direction || '')} | ${t('rep.pipeColon')} ${escHtml(pod.projects?.pipe_type || '')}${pod.production_groups?.name ? ` | ${t('rep.groupColon')} ${escHtml(pod.production_groups.name)}` : ''}</div>
+      <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">${isPanel ? t('rep.panelDetails') : t('rep.podDetails')}</div>
+      <div style="font-size:12px;">${t('rep.projectColon')} ${escHtml(pod.projects?.name || '')} | ${t('rep.codeColon')} ${escHtml(pod.pod_code)}${(!isPanel && groupLabel) ? ` | ${t('rep.groupMark')} <strong style="font-size:14px">${escHtml(groupLabel)}</strong>` : ''}</div>
+      <div style="font-size:12px;margin-top:3px;">${isPanel
+        ? `${t('rep.modelColon')} T${escHtml(String(pod.project_types?.type_number || ''))} | ${t('rep.dimsColon')} ${escHtml(pod.project_types?.dimensions || '—')}`
+        : `${t('rep.typeColon')} T${escHtml(String(pod.project_types?.type_number || ''))} | ${t('rep.dirColon')} ${escHtml(pod.type_directions?.direction || '')} | ${t('rep.pipeColon')} ${escHtml(pod.projects?.pipe_type || '')}${pod.production_groups?.name ? ` | ${t('rep.groupColon')} ${escHtml(pod.production_groups.name)}` : ''}`}</div>
     </div>
   `));
 
   // Each stage as its own section
   for (const stage of stages) {
     const items = stageItems[stage.id] || [];
-    const stageDef = getStage(stage.stage_number);
+    const stageDef = getStage(stage.stage_number, productType);
     const passed = items.filter(i => i.status === 'passed').length;
     // Denominator = defined items for the stage, NOT saved DB rows — with
     // items.length a stage missing 3 marks printed "6/6 passed" and looked
@@ -74,7 +80,7 @@ function buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, 
       <div style="margin:8px 24px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
         <div style="background:${bgColor};color:#1a1a1a;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;">
           <span style="font-size:12px;">${passed}/${totalDefined} ${t('rep.passedWord')}</span>
-          <span style="font-size:13px;font-weight:bold;">${stage.stage_number}. ${escHtml(qcStageName(stage.stage_number))}</span>
+          <span style="font-size:13px;font-weight:bold;">${stage.stage_number}. ${escHtml(qcStageName(stage.stage_number, productType))}</span>
         </div>
         ${stage.inspector_name ? `
         <div style="background:#c8dfd2;padding:6px 12px;font-size:11px;color:#2d5540;display:flex;align-items:center;justify-content:space-between;">
@@ -219,21 +225,29 @@ async function generatePodPDF(pod) {
   }
 }
 
+// The selection can mix sanitary pods and medical panels (the "all projects"
+// report). Each product type has its own stage set, so per-stage sheets are
+// emitted per product type present in the selection — writing panel rows under
+// pod stage headers would put marks in the wrong columns.
 function buildExcelFromPods(pods, label) {
   const wb = XLSX.utils.book_new();
 
-  const summaryData = [
-    [t('rep.hPodCode'), t('rep.hProject'), t('rep.hType'), t('rep.hDirection'), t('rep.hGroup'), t('rep.hStatus'),
-     t('rep.hStage', { n: 1 }), t('rep.hStage', { n: 2 }), t('rep.hStage', { n: 3 }),
-     t('rep.hStage', { n: 4 }), t('rep.hStage', { n: 5 }), t('rep.hStage', { n: 6 }), t('rep.hProgress')],
-  ];
+  const maxStages = Math.max(...pods.map(p => qcStageSet(podProductType(p)).length), 1);
+  const summaryHeader = [t('rep.hPodCode'), t('rep.hProject'), t('rep.hType'), t('rep.hDirection'),
+    t('rep.hGroup'), t('rep.hStatus')];
+  for (let n = 1; n <= maxStages; n++) summaryHeader.push(t('rep.hStage', { n }));
+  summaryHeader.push(t('rep.hProgress'));
+  const summaryData = [summaryHeader];
 
   for (const pod of pods) {
     const stages = pod.qc_stages || [];
-    const stageStatuses = QC_STAGES.map(qs => {
-      const s = stages.find(st => st.stage_number === qs.number);
-      return STATUS_LABELS[s?.status] || t('status.pending');
-    });
+    const stageDefs = qcStageSet(podProductType(pod));
+    const stageStatuses = [];
+    for (let n = 1; n <= maxStages; n++) {
+      if (!stageDefs.some(sd => sd.number === n)) { stageStatuses.push(''); continue; }
+      const s = stages.find(st => st.stage_number === n);
+      stageStatuses.push(STATUS_LABELS[s?.status] || t('status.pending'));
+    }
     const completedStages = stages.filter(s => s.status === 'completed').length;
     summaryData.push([
       pod.pod_code,
@@ -243,36 +257,48 @@ function buildExcelFromPods(pods, label) {
       pod.production_groups?.name || '',
       STATUS_LABELS[pod.status] || pod.status,
       ...stageStatuses,
-      Math.round(completedStages / 6 * 100) + '%',
+      Math.round(completedStages / stageDefs.length * 100) + '%',
     ]);
   }
 
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), t('rep.sheetSummary'));
 
-  for (const stageDef of QC_STAGES) {
-    const headers = [t('rep.hPodCode'), t('rep.hProject'), t('rep.hType'), t('rep.hDirection'), t('rep.hInspector'), t('rep.hDate')];
-    stageDef.items.forEach(item => headers.push(qcItemLabel(item)));
-    const rows = [headers];
+  const typesPresent = [...new Set(pods.map(p => podProductType(p)))];
+  for (const productType of typesPresent) {
+    const typePods = pods.filter(p => podProductType(p) === productType);
+    const isPanel = productType === 'medical_panel';
+    const suffix = typesPresent.length > 1 ? ` ${isPanel ? t('rep.sheetPanels') : t('rep.sheetPods')}` : '';
 
-    for (const pod of pods) {
-      const stage = (pod.qc_stages || []).find(s => s.stage_number === stageDef.number);
-      const items = stage?.qc_items || [];
-      const row = [
-        pod.pod_code,
-        pod.projects?.name || '',
-        `T${pod.project_types?.type_number || ''}`,
-        pod.type_directions?.direction || '',
-        stage?.inspector_name || '',
-        stage?.inspection_date ? formatDate(stage.inspection_date) : '',
-      ];
-      stageDef.items.forEach(itemDef => {
-        const item = items.find(i => i.item_key === itemDef.key);
-        row.push(STATUS_LABELS[item?.status] || t('status.pending'));
-      });
-      rows.push(row);
+    for (const stageDef of qcStageSet(productType)) {
+      const headers = [t('rep.hPodCode'), t('rep.hProject'), isPanel ? t('rep.hModel') : t('rep.hType')];
+      if (!isPanel) headers.push(t('rep.hDirection'));
+      headers.push(t('rep.hInspector'), t('rep.hDate'));
+      stageDef.items.forEach(item => headers.push(qcItemLabel(item)));
+      const rows = [headers];
+
+      for (const pod of typePods) {
+        const stage = (pod.qc_stages || []).find(s => s.stage_number === stageDef.number);
+        const items = stage?.qc_items || [];
+        const row = [
+          pod.pod_code,
+          pod.projects?.name || '',
+          `T${pod.project_types?.type_number || ''}`,
+        ];
+        if (!isPanel) row.push(pod.type_directions?.direction || '');
+        row.push(
+          stage?.inspector_name || '',
+          stage?.inspection_date ? formatDate(stage.inspection_date) : '',
+        );
+        stageDef.items.forEach(itemDef => {
+          const item = items.find(i => i.item_key === itemDef.key);
+          row.push(STATUS_LABELS[item?.status] || t('status.pending'));
+        });
+        rows.push(row);
+      }
+
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows),
+        `${t('rep.hStage', { n: stageDef.number })}${suffix}`.slice(0, 31));
     }
-
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), t('rep.hStage', { n: stageDef.number }));
   }
 
   const filename = `QC_${label.replace(/[^a-zA-Z0-9א-ת]/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -567,6 +593,7 @@ async function renderProgressTab(host) {
     const p = r.pod;
     const stagesSorted = [...r.stages].sort((a, b) => a.stage_number - b.stage_number);
     const completed = (p.qc_stages || []).filter(s => s.status === 'completed').length;
+    const stageTotal = qcStageSet(podProductType(p)).length;
     return {
       podCode: p.pod_code || '',
       project: p.projects?.name || '',
@@ -575,7 +602,7 @@ async function renderProgressTab(host) {
       started: r.started,
       items: r.items,
       signers: [...new Set(stagesSorted.map(s => s.inspector_name).filter(Boolean))].join(', '),
-      pct: Math.round(completed / 6 * 100),
+      pct: Math.round(completed / stageTotal * 100),
       last: r.last,
     };
   });
@@ -704,7 +731,7 @@ async function renderHistoryTab(host) {
     const details = [];
     if (letter) details.push(`${t('qc.stage')} ${letter}`);
     if (l.table_name === 'qc_items' && l.new_values?.item_key) {
-      const itemDef = getStage(stageNum)?.items.find(it => it.key === l.new_values.item_key);
+      const itemDef = getStage(stageNum, podProductType(pod))?.items.find(it => it.key === l.new_values.item_key);
       details.push(itemDef ? qcItemLabel(itemDef) : (l.new_values.item_label || l.new_values.item_key));
     }
     if (isMold && l.new_values?.mold_number) {
@@ -785,7 +812,7 @@ async function loadReportsView() {
     supabaseClient.from('projects').select('id, name, code').eq('is_active', true).order('name'),
     supabaseClient.from('pods').select(`
       *,
-      projects!inner(id, name, code, pipe_type, is_active),
+      projects!inner(*),
       project_types(type_number, dimensions),
       type_directions(direction),
       production_groups(name),
@@ -924,7 +951,7 @@ async function loadReportsView() {
             <tbody>
               ${filtered.map(p => {
                 const completed = (p.qc_stages || []).filter(s => s.status === 'completed').length;
-                const pct = Math.round(completed / 6 * 100);
+                const pct = Math.round(completed / qcStageSet(podProductType(p)).length * 100);
                 const statusColor = p.status === 'completed' ? '#16a34a' : p.status === 'failed' ? '#dc2626' : '#64748b';
                 return `<tr class="rf-pod-row" data-pod-id="${p.id}" style="border-bottom:1px solid #f1f5f9;transition:background 0.2s;">
                   <td style="padding:8px 12px;font-weight:600;">${escHtml(p.pod_code)}</td>

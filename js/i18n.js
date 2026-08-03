@@ -80,6 +80,7 @@ const I18N = {
 
     // Tabs
     'tabs.pods': 'פודים',
+    'tabs.panels': 'פאנלים',
     'tabs.groups': 'קבוצות ביצוע',
     'tabs.details': 'פרטים נוספים',
     'tabs.plans': 'תוכניות',
@@ -223,6 +224,8 @@ const I18N = {
     'qc.podProgress': 'התקדמות פוד — {done}/{total} שלבים',
     'qc.pipeType': 'דגם צנרת:',
     'qc.lockedBanner': '🔒 שלב זה נעול עד לאישור סעיפים 1–7 ביציקת הרצפה (שלב A)',
+    // פאנלים רפואיים: השלבים נפתחים בזה אחר זה — אין דילוג על שלב
+    'qc.seqLockedBanner': '🔒 שלב זה נעול עד לחתימת השלב הקודם — השלבים נפתחים לפי הסדר',
     'qc.colItem': 'פרט לבדיקה',
     'qc.colPass': 'עבר ✓',
     'qc.colFail': 'נכשל ✗',
@@ -288,6 +291,15 @@ const I18N = {
     'proj.loadError': 'שגיאה בטעינת פרויקטים.',
     'proj.retry': 'נסה שוב',
     'proj.totalPods': 'סה"כ פודים',
+    'proj.totalPanels': 'סה"כ פאנלים',
+    // סוג מוצר בפרויקט (product_type)
+    'proj.productType': 'סוג מוצר',
+    'proj.productPod': 'פוד סניטרי',
+    'proj.productPanel': 'פאנל רפואי (ראש מיטה)',
+    'proj.model': 'דגם',
+    'proj.panelCount': 'כמות פאנלים',
+    'proj.addPanel': 'הוסף פאנל',
+    'proj.noPanelsInProject': 'אין פאנלים בפרויקט זה',
     'proj.completedPods': 'פודים שהושלמו',
     'proj.failedPods': 'פודים שנכשלו',
     'proj.activeProjects': 'פרויקטים פעילים',
@@ -451,6 +463,14 @@ const I18N = {
 
     // Reports / PDF / Excel
     'rep.pdfTitle': 'דוח בקרת איכות',
+    'rep.pdfTitlePanel': 'דוח בקרת איכות — פאנל רפואי',
+    'rep.panelLabel': 'פאנל:',
+    'rep.panelDetails': 'פרטי פאנל',
+    'rep.modelColon': 'דגם:',
+    'rep.dimsColon': 'מידות:',
+    'rep.hModel': 'דגם',
+    'rep.sheetPods': 'פודים',
+    'rep.sheetPanels': 'פאנלים',
     'rep.podLabel': 'פוד:',
     'rep.created': 'נוצר:',
     'rep.podDetails': 'פרטי פוד',
@@ -664,6 +684,7 @@ const I18N = {
 
     // Tabs
     'tabs.pods': 'Pods',
+    'tabs.panels': 'Panels',
     'tabs.groups': 'Production Groups',
     'tabs.details': 'More Details',
     'tabs.plans': 'Plans',
@@ -807,6 +828,7 @@ const I18N = {
     'qc.podProgress': 'Pod progress — {done}/{total} stages',
     'qc.pipeType': 'Pipe type:',
     'qc.lockedBanner': '🔒 This stage is locked until items 1–7 of the floor casting (Stage A) are approved',
+    'qc.seqLockedBanner': '🔒 This stage is locked until the previous stage is signed — stages open in order',
     'qc.colItem': 'Inspection item',
     'qc.colPass': 'Pass ✓',
     'qc.colFail': 'Fail ✗',
@@ -872,6 +894,14 @@ const I18N = {
     'proj.loadError': 'Error loading projects.',
     'proj.retry': 'Try again',
     'proj.totalPods': 'Total pods',
+    'proj.totalPanels': 'Total panels',
+    'proj.productType': 'Product type',
+    'proj.productPod': 'Sanitary pod',
+    'proj.productPanel': 'Medical panel (bed head)',
+    'proj.model': 'Model',
+    'proj.panelCount': 'Panel count',
+    'proj.addPanel': 'Add panel',
+    'proj.noPanelsInProject': 'No panels in this project',
     'proj.completedPods': 'Completed pods',
     'proj.failedPods': 'Failed pods',
     'proj.activeProjects': 'Active projects',
@@ -1035,6 +1065,14 @@ const I18N = {
 
     // Reports / PDF / Excel
     'rep.pdfTitle': 'Quality Control Report',
+    'rep.pdfTitlePanel': 'Quality Control Report — Medical Panel',
+    'rep.panelLabel': 'Panel:',
+    'rep.panelDetails': 'Panel details',
+    'rep.modelColon': 'Model:',
+    'rep.dimsColon': 'Dimensions:',
+    'rep.hModel': 'Model',
+    'rep.sheetPods': 'Pods',
+    'rep.sheetPanels': 'Panels',
     'rep.podLabel': 'Pod:',
     'rep.created': 'Created:',
     'rep.podDetails': 'Pod details',

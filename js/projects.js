@@ -6,6 +6,13 @@
 // Populated whenever loadDashboard / loadProjects runs.
 const ProjectCache = new Map();
 
+// Product type of a project row ('pod' default for legacy rows without the
+// column). Panel projects hide pod-only features: groups, mold checks,
+// direction (R/L), pipe type and the casting gate.
+function projIsPanel(project) {
+  return (project?.product_type || 'pod') === 'medical_panel';
+}
+
 // ---- LOAD DASHBOARD ----
 async function loadDashboard() {
   const statsEl = document.getElementById('dashboard-stats');
@@ -209,11 +216,12 @@ function renderProjectCard(p) {
         📅 ${formatDate(p.date_received)}
         ${p.location ? ` &nbsp;📍 ${escHtml(p.location)}` : ''}
         ${p.pipe_type ? ` &nbsp;🔩 ${escHtml(p.pipe_type)}` : ''}
+        ${projIsPanel(p) ? ` &nbsp;🛏️ ${t('proj.productPanel')}` : ''}
       </div>
       <div class="project-card-stats">
         <div class="project-stat">
           <div class="project-stat-value">${pods.length}</div>
-          <div class="project-stat-label">${t('proj.pods')}</div>
+          <div class="project-stat-label">${projIsPanel(p) ? t('tabs.panels') : t('proj.pods')}</div>
         </div>
         <div class="project-stat">
           <div class="project-stat-value">${completed}</div>
@@ -258,14 +266,26 @@ async function openProject(projectId) {
   if (!project) { showToast(t('proj.projectNotFound'), 'error'); return; }
 
   AppState.currentProject = project;
+  const isPanel = projIsPanel(project);
 
   document.getElementById('project-detail-title').textContent = project.name;
   document.getElementById('project-info-bar').innerHTML = `
     <div class="info-item"><div class="info-label">${t('proj.code')}</div><div class="info-value">${escHtml(project.code)}</div></div>
     <div class="info-item"><div class="info-label">${t('proj.dateReceived')}</div><div class="info-value">${formatDate(project.date_received)}</div></div>
+    ${isPanel ? `<div class="info-item"><div class="info-label">${t('proj.productType')}</div><div class="info-value">${t('proj.productPanel')}</div></div>` : ''}
     ${project.location ? `<div class="info-item"><div class="info-label">${t('proj.location')}</div><div class="info-value">${escHtml(project.location)}</div></div>` : ''}
     ${project.pipe_type ? `<div class="info-item"><div class="info-label">${t('proj.pipeType')}</div><div class="info-value">${escHtml(project.pipe_type)}</div></div>` : ''}
   `;
+
+  // Panel projects: no production groups, no mold checks, and the units tab
+  // is titled "panels". The tab strip is static HTML shared by all projects,
+  // so visibility is toggled per project here.
+  const groupsTabBtn = document.querySelector('.tab-btn[data-tab="groups"]');
+  const moldsTabBtn = document.querySelector('.tab-btn[data-tab="molds"]');
+  if (groupsTabBtn) groupsTabBtn.style.display = isPanel ? 'none' : '';
+  if (moldsTabBtn) moldsTabBtn.style.display = isPanel ? 'none' : '';
+  const podsTabBtn = document.querySelector('.tab-btn[data-tab="pods"]');
+  if (podsTabBtn) podsTabBtn.textContent = isPanel ? t('tabs.panels') : t('tabs.pods');
 
   showView('project-detail');
   activateTab('pods');
@@ -275,10 +295,10 @@ async function openProject(projectId) {
   try {
     await Promise.all([
       loadPodsTab(projectId).catch(e => console.error('[openProject] pods tab error:', e)),
-      loadGroupsTab(projectId).catch(e => console.error('[openProject] groups tab error:', e)),
+      isPanel ? Promise.resolve() : loadGroupsTab(projectId).catch(e => console.error('[openProject] groups tab error:', e)),
       loadProjectDetailsTab(project).catch(e => console.error('[openProject] details tab error:', e)),
       loadPlansTab(projectId).catch(e => console.error('[openProject] plans tab error:', e)),
-      loadMoldsTab(projectId).catch(e => console.error('[openProject] molds tab error:', e)),
+      isPanel ? Promise.resolve() : loadMoldsTab(projectId).catch(e => console.error('[openProject] molds tab error:', e)),
       setupPodFilters(projectId).catch(e => console.error('[openProject] filters error:', e)),
     ]);
   } catch (e) {
@@ -318,6 +338,9 @@ async function loadPodsTab(projectId, filters = {}) {
   if (filters.type_number) filtered = filtered.filter(p => p.project_types?.type_number == filters.type_number);
   if (filters.direction) filtered = filtered.filter(p => p.type_directions?.direction === filters.direction);
 
+  const isPanel = projIsPanel(AppState.currentProject);
+  const stageCount = qcStageSet(isPanel ? 'medical_panel' : 'pod').length;
+
   // Update stats strip (always based on full list, not filtered)
   const statsEl = document.getElementById('project-pods-stats');
   if (statsEl) {
@@ -329,7 +352,7 @@ async function loadPodsTab(projectId, filters = {}) {
     statsEl.innerHTML = `
       <div class="pods-stat-card pods-stat-total">
         <div class="pods-stat-value">${total}</div>
-        <div class="pods-stat-label">${t('proj.totalPods')}</div>
+        <div class="pods-stat-label">${isPanel ? t('proj.totalPanels') : t('proj.totalPods')}</div>
       </div>
       <div class="pods-stat-card pods-stat-pending">
         <div class="pods-stat-value">${pending}</div>
@@ -348,7 +371,7 @@ async function loadPodsTab(projectId, filters = {}) {
         <div class="pods-stat-label">${t('proj.failed')}</div>
       </div>
       ${(() => {
-        const totalStages = total * 6;
+        const totalStages = total * stageCount;
         const doneStages = allPods.reduce((sum, p) => sum + (p.qc_stages || []).filter(s => s.status === 'completed').length, 0);
         const stagePct = totalStages > 0 ? Math.round(doneStages / totalStages * 100) : 0;
         return `
@@ -368,11 +391,11 @@ async function loadPodsTab(projectId, filters = {}) {
   const container = document.getElementById('pods-table-container');
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">${t('proj.noPodsInProject')}</div></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">${isPanel ? t('proj.noPanelsInProject') : t('proj.noPodsInProject')}</div></div>`;
     return;
   }
 
-  container.innerHTML = `<div class="pods-grid">${filtered.map(pod => renderPodCard(pod, allGroups)).join('')}</div>`;
+  container.innerHTML = `<div class="pods-grid">${filtered.map(pod => renderPodCard(pod, allGroups, isPanel, stageCount)).join('')}</div>`;
 
   container.querySelectorAll('.btn-open-pod').forEach(btn => {
     btn.addEventListener('click', () => openPod(btn.dataset.podId));
@@ -387,10 +410,10 @@ async function loadPodsTab(projectId, filters = {}) {
   }
 }
 
-function renderPodCard(pod, groups = []) {
+function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6) {
   const stages = pod.qc_stages || [];
   const completedStages = stages.filter(s => s.status === 'completed').length;
-  const pct = Math.round(completedStages / 6 * 100);
+  const pct = Math.round(completedStages / stageCount * 100);
   const statusCls = `status-${pod.status}`;
   const dirLabel = pod.type_directions?.direction === 'R' ? t('proj.dirRight') : pod.type_directions?.direction === 'L' ? t('proj.dirLeft') : (pod.type_directions?.direction || '');
   const unresolvedCount = (pod.comments || []).filter(c => !c.is_resolved).length;
@@ -415,6 +438,7 @@ function renderPodCard(pod, groups = []) {
           <span class="pod-card-meta-label">${t('proj.type')}</span>
           <span class="pod-card-meta-value">T${pod.project_types?.type_number || '—'}</span>
         </div>
+        ${isPanel ? '' : `
         <div class="pod-card-meta-item">
           <span class="pod-card-meta-label">${t('proj.direction')}</span>
           <span class="pod-card-meta-value">${dirLabel || '—'}</span>
@@ -429,7 +453,7 @@ function renderPodCard(pod, groups = []) {
             })()}
             <span style="font-weight:700;font-size:13px;color:var(--primary)">${groupLabel ? escHtml(groupLabel) : (pod.production_groups?.name ? escHtml(pod.production_groups.name) : '—')}</span>
           </div>
-        </div>
+        </div>`}
       </div>
       <div class="card-progress-section">
         <div class="card-progress-header">
@@ -526,6 +550,7 @@ async function loadGroupsTab(projectId) {
 // ---- PROJECT DETAILS TAB ----
 async function loadProjectDetailsTab(project) {
   const container = document.getElementById('project-details-form');
+  const isPanel = projIsPanel(project);
 
   const { data: types } = await supabaseClient
     .from('project_types')
@@ -595,7 +620,7 @@ async function loadProjectDetailsTab(project) {
               <label>${t('proj.location')}</label>
               <input type="text" id="det-location" class="form-control" value="${escHtml(project.location || '')}" />
             </div>
-            <div class="form-group">
+            <div class="form-group" ${isPanel ? 'style="display:none"' : ''}>
               <label>${t('proj.pipeType')}</label>
               <select id="det-pipe" class="form-control">
                 <option value="">${t('proj.selectPlaceholder')}</option>
@@ -616,7 +641,7 @@ async function loadProjectDetailsTab(project) {
           </div>
           <div class="form-row mt-4">
             <div class="info-item"><div class="info-label">${t('proj.location')}</div><div class="info-value">${escHtml(project.location || '—')}</div></div>
-            <div class="info-item"><div class="info-label">${t('proj.pipeType')}</div><div class="info-value">${escHtml(project.pipe_type || '—')}</div></div>
+            ${isPanel ? '' : `<div class="info-item"><div class="info-label">${t('proj.pipeType')}</div><div class="info-value">${escHtml(project.pipe_type || '—')}</div></div>`}
           </div>
         `}
       </div>
@@ -838,6 +863,16 @@ async function setupPodFilters(projectId) {
   const statusSel = document.getElementById('filter-status');
   const castingSel = document.getElementById('filter-casting');
 
+  // Panels have no direction, no groups and no casting approval — hide those
+  // filters (and reset them so a stale selection can't silently filter out
+  // every panel).
+  const isPanel = projIsPanel(AppState.currentProject);
+  [groupSel, dirSel, castingSel].forEach(sel => {
+    if (!sel) return;
+    if (isPanel) sel.value = '';
+    sel.style.display = isPanel ? 'none' : '';
+  });
+
   groupSel.innerHTML = `<option value="">${t('filter.allGroups')}</option>` + groups.map(g =>
     `<option value="${g.id}">${escHtml(g.name)}</option>`).join('');
 
@@ -873,6 +908,14 @@ function showNewProjectModal() {
 
   // Dynamic types
   document.getElementById('np-type-count')?.addEventListener('change', renderTypeInputs);
+  // Product type: panels have no pipe type and no R/L directions — toggle the
+  // pipe field and re-render the per-type inputs accordingly.
+  document.getElementById('np-product-type')?.addEventListener('change', () => {
+    const isPanel = document.getElementById('np-product-type')?.value === 'medical_panel';
+    const pipeWrap = document.getElementById('np-pipe-group');
+    if (pipeWrap) pipeWrap.style.display = isPanel ? 'none' : '';
+    renderTypeInputs();
+  });
   renderTypeInputs();
 }
 
@@ -895,6 +938,15 @@ function buildNewProjectForm() {
           <input type="date" id="np-date" class="form-control" required />
         </div>
         <div class="form-group">
+          <label>${t('proj.productType')}</label>
+          <select id="np-product-type" class="form-control">
+            <option value="pod">${t('proj.productPod')}</option>
+            <option value="medical_panel">${t('proj.productPanel')}</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" id="np-pipe-group">
           <label>${t('proj.pipeType')}</label>
           <select id="np-pipe" class="form-control">
             <option value="">${t('proj.selectPlaceholder')}</option>
@@ -922,6 +974,7 @@ function renderTypeInputs() {
   const count = parseInt(document.getElementById('np-type-count')?.value || 1);
   const container = document.getElementById('np-types-container');
   if (!container) return;
+  const isPanel = document.getElementById('np-product-type')?.value === 'medical_panel';
 
   // Preserve anything already typed — changing the type count used to wipe
   // every dimension/direction field the user had filled in.
@@ -934,7 +987,7 @@ function renderTypeInputs() {
   for (let i = 1; i <= count; i++) {
     html += `
       <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;background:#f8fafc">
-        <div style="font-weight:600;margin-bottom:10px;color:var(--primary)">${t('proj.type')} T${i}</div>
+        <div style="font-weight:600;margin-bottom:10px;color:var(--primary)">${isPanel ? t('proj.model') : t('proj.type')} T${i}</div>
         <div class="form-row">
           <div class="form-group">
             <label>${t('proj.length')}</label>
@@ -949,6 +1002,12 @@ function renderTypeInputs() {
             <input type="text" id="np-type${i}-dim-h" class="form-control" placeholder="${t('proj.height')}" />
           </div>
         </div>
+        ${isPanel ? `
+        <div class="form-group">
+          <label>${t('proj.panelCount')}</label>
+          <input type="number" id="np-type${i}-count" class="form-control" style="width:110px" value="1" min="1" />
+        </div>
+        ` : `
         <div class="form-group">
           <label>${t('proj.dirsAndPodCount')}</label>
           <div style="display:flex;gap:16px;flex-wrap:wrap">
@@ -966,6 +1025,7 @@ function renderTypeInputs() {
             </div>
           </div>
         </div>
+        `}
       </div>
     `;
   }
@@ -984,7 +1044,9 @@ async function createProject() {
   const name = document.getElementById('np-name')?.value.trim();
   const code = document.getElementById('np-code')?.value.trim().toUpperCase();
   const dateReceived = document.getElementById('np-date')?.value;
-  const pipeType = document.getElementById('np-pipe')?.value;
+  const productType = document.getElementById('np-product-type')?.value || 'pod';
+  const isPanel = productType === 'medical_panel';
+  const pipeType = isPanel ? '' : document.getElementById('np-pipe')?.value;
   const location = document.getElementById('np-location')?.value.trim();
   const typeCount = parseInt(document.getElementById('np-type-count')?.value || 1);
 
@@ -1018,6 +1080,9 @@ async function createProject() {
     // In bolt.new, the service worker can drop the response channel even if the DB succeeded.
     console.log('[createProject] Step 1a: inserting project');
     const insertPayload = { name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile.id };
+    // Only sent when non-default so pod projects keep working even before the
+    // 20260803 migration is applied. Panel creation fails loudly without it.
+    if (productType !== 'pod') insertPayload.product_type = productType;
 
     let insertConfirmed = false;
     try {
@@ -1065,6 +1130,37 @@ async function createProject() {
         .select().single();
       if (typeErr) throw new Error(t('proj.errTypeStep', { i }) + typeErr.message);
       console.log(`[createProject] Type ${i} OK`);
+
+      if (isPanel) {
+        // Panels have no R/L. A single placeholder direction row ('R') keeps
+        // the pods.direction_id schema untouched; it is never displayed and
+        // the pod code is generated without a direction segment.
+        const panelCount = parseInt(document.getElementById(`np-type${i}-count`)?.value || 1);
+        setBtnStep(t('proj.creatingPods'));
+        const { data: dirData, error: dirErr } = await supabaseClient
+          .from('type_directions')
+          .insert({ type_id: typeData.id, direction: 'R', pod_count: panelCount })
+          .select().single();
+        if (dirErr) throw new Error(t('proj.errDirStep', { dir: 'R' }) + dirErr.message);
+
+        const panelsToInsert = [];
+        for (let s = 1; s <= panelCount; s++) {
+          globalSerial++;
+          panelsToInsert.push({
+            project_id: project.id,
+            type_id: typeData.id,
+            direction_id: dirData.id,
+            serial_number: s,
+            pod_code: generatePodCode(code, dateReceived, i, '', globalSerial),
+            status: 'pending',
+          });
+        }
+        if (panelsToInsert.length > 0) {
+          const { error: podsErr } = await supabaseClient.from('pods').insert(panelsToInsert);
+          if (podsErr) throw new Error(t('proj.errPodsStep') + podsErr.message);
+        }
+        continue;
+      }
 
       for (const dir of ['R', 'L']) {
         const cb = document.getElementById(`np-type${i}-${dir}`);
@@ -1340,31 +1436,34 @@ async function showAddPodModal(projectId) {
     .eq('project_id', projectId);
 
   const project = AppState.currentProject;
+  const isPanel = projIsPanel(project);
 
-  openModal(t('proj.addPod'), `
+  openModal(isPanel ? t('proj.addPanel') : t('proj.addPod'), `
     <div class="form-group">
-      <label>${t('proj.type')}</label>
+      <label>${isPanel ? t('proj.model') : t('proj.type')}</label>
       <select id="add-pod-type" class="form-control">
         ${(types || []).map(ty => `<option value="${ty.id}" data-type-num="${ty.type_number}">${'T' + ty.type_number} (${ty.dimensions || ''})</option>`).join('')}
       </select>
     </div>
+    ${isPanel ? '' : `
     <div class="form-group">
       <label>${t('proj.direction')}</label>
       <select id="add-pod-dir" class="form-control">
         <option value="">${t('proj.selectDirection')}</option>
       </select>
-    </div>
+    </div>`}
     <div class="form-group">
       <label>${t('proj.serialNumber')}</label>
       <input type="number" id="add-pod-serial" class="form-control" min="1" value="1" />
     </div>
+    ${isPanel ? '' : `
     <div class="form-group">
       <label>${t('proj.group')}</label>
       <select id="add-pod-group" class="form-control">
         <option value="">${t('proj.noGroup')}</option>
         ${(groups || []).map(g => `<option value="${g.id}">${escHtml(g.name)}</option>`).join('')}
       </select>
-    </div>
+    </div>`}
     <div id="add-pod-preview" class="form-group">
       <label>${t('proj.podCodeToCreate')}</label>
       <div id="pod-code-preview" style="font-family:monospace;font-size:16px;font-weight:700;padding:8px;background:#f8fafc;border-radius:8px;border:1.5px solid var(--border)"></div>
@@ -1374,8 +1473,13 @@ async function showAddPodModal(projectId) {
     { label: t('proj.createPod'), cls: 'btn-primary', id: 'btn-add-pod-confirm' },
   ]);
 
+  // Panels: no direction select — resolve the type's single (placeholder)
+  // direction row internally; the code preview carries no direction segment.
+  const panelDirFor = (typeId) => ((types || []).find(t => t.id === typeId)?.type_directions || [])[0];
+
   // Populate directions on type change
   const updateDirs = () => {
+    if (isPanel) { updatePreview(); return; }
     const typeEl = document.getElementById('add-pod-type');
     const selectedTypeId = typeEl?.value;
     const selectedType = (types || []).find(t => t.id === selectedTypeId);
@@ -1393,10 +1497,10 @@ async function showAddPodModal(projectId) {
     const serialEl = document.getElementById('add-pod-serial');
     const previewEl = document.getElementById('pod-code-preview');
     const selectedOpt = dirEl?.options[dirEl.selectedIndex];
-    const dir = selectedOpt?.dataset?.dir || '';
+    const dir = isPanel ? '' : (selectedOpt?.dataset?.dir || '');
     const typeNum = typeEl?.options[typeEl.selectedIndex]?.dataset?.typeNum || '';
     const serial = parseInt(serialEl?.value || 1);
-    if (project && typeNum && dir) {
+    if (project && typeNum && (isPanel || dir)) {
       previewEl.textContent = generatePodCode(project.code, project.date_received, typeNum, dir, serial);
     } else {
       previewEl.textContent = '—';
@@ -1415,14 +1519,14 @@ async function showAddPodModal(projectId) {
     const serialEl = document.getElementById('add-pod-serial');
     const groupEl = document.getElementById('add-pod-group');
     const selectedDirOpt = dirEl?.options[dirEl.selectedIndex];
-    const dir = selectedDirOpt?.dataset?.dir;
-    const dirId = dirEl?.value;
     const typeId = typeEl?.value;
+    const dir = isPanel ? '' : selectedDirOpt?.dataset?.dir;
+    const dirId = isPanel ? panelDirFor(typeId)?.id : dirEl?.value;
     const typeNum = typeEl?.options[typeEl.selectedIndex]?.dataset?.typeNum;
     const serial = parseInt(serialEl?.value || 1);
     const groupId = groupEl?.value || null;
 
-    if (!typeId || !dirId || !dir) { showToast(t('proj.selectTypeDirection'), 'error'); return; }
+    if (!typeId || !dirId || (!isPanel && !dir)) { showToast(t('proj.selectTypeDirection'), 'error'); return; }
 
     const podCode = generatePodCode(project.code, project.date_received, typeNum, dir, serial);
     const btn = document.getElementById('btn-add-pod-confirm');

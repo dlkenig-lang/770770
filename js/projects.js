@@ -558,8 +558,13 @@ async function loadProjectDetailsTab(project) {
     .eq('project_id', project.id)
     .order('type_number');
 
+  // Panels have no length — their dimensions are stored as "WxH" (two parts),
+  // so they must be read back as width/height, not length/width.
   function parseDims(str) {
     const parts = (str || '').split(/[xX×]/);
+    if (isPanel) {
+      return { l: '', w: (parts[0] || '').trim(), h: (parts[1] || '').trim() };
+    }
     return { l: (parts[0] || '').trim(), w: (parts[1] || '').trim(), h: (parts[2] || '').trim() };
   }
 
@@ -572,10 +577,11 @@ async function loadProjectDetailsTab(project) {
           return `
           <div class="det-type-row" style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
             <div class="type-badge" style="flex-shrink:0">T${ty.type_number}</div>
+            ${isPanel ? '' : `
             <div class="form-group" style="margin:0;flex:1;min-width:80px">
               <label style="font-size:11px">${t('proj.length')}</label>
               <input type="text" class="form-control det-dim-l" data-type-id="${ty.id}" value="${escHtml(d.l)}" placeholder="${t('proj.length')}" />
-            </div>
+            </div>`}
             <div class="form-group" style="margin:0;flex:1;min-width:80px">
               <label style="font-size:11px">${t('proj.width')}</label>
               <input type="text" class="form-control det-dim-w" data-type-id="${ty.id}" value="${escHtml(d.w)}" placeholder="${t('proj.width')}" />
@@ -914,6 +920,8 @@ function showNewProjectModal() {
     const isPanel = document.getElementById('np-product-type')?.value === 'medical_panel';
     const pipeWrap = document.getElementById('np-pipe-group');
     if (pipeWrap) pipeWrap.style.display = isPanel ? 'none' : '';
+    const countLabel = document.getElementById('np-type-count-label');
+    if (countLabel) countLabel.textContent = isPanel ? t('proj.modelCount') : t('proj.typeCount');
     renderTypeInputs();
   });
   renderTypeInputs();
@@ -961,7 +969,7 @@ function buildNewProjectForm() {
           <input type="text" id="np-location" class="form-control" placeholder="${t('proj.locationPlaceholder')}" />
         </div>
         <div class="form-group">
-          <label>${t('proj.typeCount')}</label>
+          <label id="np-type-count-label">${t('proj.typeCount')}</label>
           <input type="number" id="np-type-count" class="form-control" value="1" min="1" max="99" />
         </div>
       </div>
@@ -989,10 +997,11 @@ function renderTypeInputs() {
       <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;background:#f8fafc">
         <div style="font-weight:600;margin-bottom:10px;color:var(--primary)">${isPanel ? t('proj.model') : t('proj.type')} T${i}</div>
         <div class="form-row">
+          ${isPanel ? '' : `
           <div class="form-group">
             <label>${t('proj.length')}</label>
             <input type="text" id="np-type${i}-dim-l" class="form-control" placeholder="${t('proj.length')}" />
-          </div>
+          </div>`}
           <div class="form-group">
             <label>${t('proj.width')}</label>
             <input type="text" id="np-type${i}-dim-w" class="form-control" placeholder="${t('proj.width')}" />
@@ -1119,6 +1128,8 @@ async function createProject() {
     let globalSerial = 0;
     for (let i = 1; i <= typeCount; i++) {
       setBtnStep(t('proj.savingType', { i, total: typeCount }));
+      // Panels render no length field, so dimL stays empty and the stored
+      // value is "WxH" — parseDims in the details tab reads it back the same way.
       const dimL = document.getElementById(`np-type${i}-dim-l`)?.value.trim() || '';
       const dimW = document.getElementById(`np-type${i}-dim-w`)?.value.trim() || '';
       const dimH = document.getElementById(`np-type${i}-dim-h`)?.value.trim() || '';

@@ -12,6 +12,9 @@ let _qcStageItems = {};
 let _qcPodId = null;
 let _qcCastingApproved = false;
 let _castingBaseApproved = false; // never resets once set; used to lock casting items 1-6
+// Product type of the current pod's project — selects the stage set (pod /
+// medical_panel) and the locking model (casting gate / sequential unlock).
+let _qcProductType = 'pod';
 
 // Notes are saved with a debounce — warn before leaving the page while a
 // save is still pending so typed text isn't silently lost.
@@ -36,12 +39,23 @@ const STAGE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 // Edit this list when adding/removing casting-check items from Stage A in qc-data.js.
 const CASTING_ITEM_KEYS = ['length_dims', 'width_dims', 'pipe_slope', 'pipe_fixation', 'drainage_channel', 'lifting_bolts', 'shower_parallel'];
 
+function _qcIsPanel() { return _qcProductType === 'medical_panel'; }
+
+// Sequential unlocking for medical panels: a stage is locked until every
+// earlier stage is signed (completed/failed). No skipping — the next stage
+// opens only after the previous one is signed. Pods keep the casting gate.
+function panelStageLocked(stageIdx) {
+  if (!_qcIsPanel()) return false;
+  return _qcStages.slice(0, stageIdx).some(s => s.status !== 'completed' && s.status !== 'failed');
+}
+
 async function loadQCStages(podId) {
   const container = document.getElementById('qc-stages-container');
   container.innerHTML = '<div class="loading-spinner" style="margin:40px auto"></div>';
 
   _qcPodId = podId;
   _activeStageIdx = 0;
+  _qcProductType = podProductType(AppState.currentPod);
   _qcStages = await ensureQCStages(podId);
 
   // Load all items in parallel
@@ -56,14 +70,19 @@ async function loadQCStages(podId) {
   // legacy rows without a storage path.
   await signQcImageUrls(Object.values(_qcStageItems).flat());
 
-  _qcCastingApproved = AppState.currentPod?.casting_approved || false;
-  if (_qcCastingApproved) _castingBaseApproved = true;
+  // Casting gate is a pod-only concept; panels use sequential unlocking
+  // computed per stage in renderActiveStage (panelStageLocked). All casting
+  // lock paths check _qcIsPanel() and skip themselves for panels.
+  if (_qcProductType !== 'medical_panel') {
+    _qcCastingApproved = AppState.currentPod?.casting_approved || false;
+    if (_qcCastingApproved) _castingBaseApproved = true;
 
-  // If Stage A is already signed (completed/failed), unlock downstream stages
-  // even if casting_approved flag was never explicitly set on the pod
-  const stageA = _qcStages.find(s => s.stage_number === 1);
-  if (stageA?.status === 'completed' || stageA?.status === 'failed') {
-    _castingBaseApproved = true;
+    // If Stage A is already signed (completed/failed), unlock downstream stages
+    // even if casting_approved flag was never explicitly set on the pod
+    const stageA = _qcStages.find(s => s.stage_number === 1);
+    if (stageA?.status === 'completed' || stageA?.status === 'failed') {
+      _castingBaseApproved = true;
+    }
   }
 
   renderQCTabsUI();
@@ -134,7 +153,7 @@ function renderQCTabsUI() {
       ${_qcStages.map((stage, i) => `
         <button class="qc-tab-btn ${i === _activeStageIdx ? 'active' : ''}" data-idx="${i}">
           <span class="qc-tab-letter">${STAGE_LETTERS[i] || stage.stage_number}</span>
-          <span class="qc-tab-name">${escHtml(qcStageName(stage.stage_number))}</span>
+          <span class="qc-tab-name">${escHtml(qcStageName(stage.stage_number, _qcProductType))}</span>
           <span class="qc-tab-dot qc-dot-${stage.status}"></span>
         </button>
       `).join('')}
@@ -156,9 +175,10 @@ function renderQCTabsUI() {
 function renderActiveStage() {
   const stage = _qcStages[_activeStageIdx];
   const items = _qcStageItems[stage.id] || [];
-  const stageRef = getStage(stage.stage_number);
+  const stageRef = getStage(stage.stage_number, _qcProductType);
   const pod = AppState.currentPod;
-  const readonly = !canEdit() || stage.status === 'completed' || stage.status === 'failed';
+  const seqLocked = panelStageLocked(_activeStageIdx);
+  const readonly = !canEdit() || stage.status === 'completed' || stage.status === 'failed' || seqLocked;
 
   const passed = items.filter(i => i.status === 'passed').length;
   const failed = items.filter(i => i.status === 'failed').length;
@@ -170,7 +190,7 @@ function renderActiveStage() {
     <div class="qc-stage-panel">
       <div class="qc-stage-panel-header">
         <div>
-          <div class="qc-stage-panel-title">${t('qc.stage')} ${letter} – ${escHtml(qcStageName(stage.stage_number))}</div>
+          <div class="qc-stage-panel-title">${t('qc.stage')} ${letter} – ${escHtml(qcStageName(stage.stage_number, _qcProductType))}</div>
           ${stage.inspection_date ? `<div class="qc-stage-panel-subtitle">📅 ${formatDate(stage.inspection_date)}</div>` : ''}
         </div>
         <span class="status-badge status-${stage.status}">${STATUS_LABELS[stage.status] || stage.status}</span>
@@ -178,9 +198,14 @@ function renderActiveStage() {
       ${pod?.projects?.pipe_type ? `
         <div class="qc-pipe-type-bar">${t('qc.pipeType')} <strong>${escHtml(pod.projects.pipe_type)}</strong></div>
       ` : ''}
-      ${!_castingBaseApproved && stage.stage_number > 1 ? `
+      ${!_qcIsPanel() && !_castingBaseApproved && stage.stage_number > 1 ? `
         <div class="qc-casting-block-banner">
           ${t('qc.lockedBanner')}
+        </div>
+      ` : ''}
+      ${seqLocked ? `
+        <div class="qc-casting-block-banner">
+          ${t('qc.seqLockedBanner')}
         </div>
       ` : ''}
       <div class="qc-items-table-wrapper">
@@ -196,6 +221,9 @@ function renderActiveStage() {
           </thead>
           <tbody>
             ${(stageRef?.items || []).map((itemDef, rowIdx) => {
+              // Casting locks apply to pods only — panel stages are gated as a
+              // whole by seqLocked (already folded into readonly above).
+              if (_qcIsPanel()) return renderQCTableRow(itemDef, rowIdx, stage, items, readonly);
               const isCastingItem = CASTING_ITEM_KEYS.includes(itemDef.key);
               // Lock all non-casting items until casting is approved
               const lockedPreCasting = !_castingBaseApproved && !(stage.stage_number === 1 && isCastingItem);
@@ -206,7 +234,7 @@ function renderActiveStage() {
           </tbody>
         </table>
       </div>
-      ${renderInspectorSection(stage)}
+      ${seqLocked ? '' : renderInspectorSection(stage)}
       <div class="qc-stage-nav-row">
         ${_activeStageIdx > 0
           ? `<button class="btn btn-secondary btn-stage-nav" data-idx="${_activeStageIdx - 1}">${t('qc.prevStage')}</button>`
@@ -288,7 +316,7 @@ function renderActiveStage() {
         // Completeness gate: signing a stage with unanswered items sealed the
         // 29/03 partial-refill incident. Require an explicit confirmation
         // listing exactly which items are still unmarked.
-        const defItems = getStage(parseInt(btn.dataset.stageNum))?.items || [];
+        const defItems = getStage(parseInt(btn.dataset.stageNum), _qcProductType)?.items || [];
         const savedItems = _qcStageItems[btn.dataset.stageId] || [];
         const missing = defItems.filter(d => {
           const saved = savedItems.find(i => i.item_key === d.key);
@@ -487,9 +515,9 @@ async function clearStage(stageId) {
     return;
   }
 
-  // If clearing stage A, also reset casting approval
+  // If clearing stage A, also reset casting approval (pods only)
   const clearedStage = _qcStages.find(s => s.id === stageId);
-  if (clearedStage?.stage_number === 1) {
+  if (!_qcIsPanel() && clearedStage?.stage_number === 1) {
     await supabaseClient.from('pods').update({
       casting_approved: false,
       casting_approved_at: null,
@@ -537,9 +565,10 @@ async function ensureQCStages(podId) {
     .eq('pod_id', podId)
     .order('stage_number');
 
-  if (!existing || existing.length < 6) {
+  const stageDefs = qcStageSet(_qcProductType);
+  if (!existing || existing.length < stageDefs.length) {
     const existingNums = (existing || []).map(s => s.stage_number);
-    const toCreate = QC_STAGES.filter(s => !existingNums.includes(s.number)).map(s => ({
+    const toCreate = stageDefs.filter(s => !existingNums.includes(s.number)).map(s => ({
       pod_id: podId,
       stage_number: s.number,
       stage_name: s.name,
@@ -594,7 +623,7 @@ async function handleItemStatusChange(btn) {
     if (error) { revertUI(error); return; }
   } else {
     const stage = _qcStages.find(s => s.id === stageId);
-    const stageDef = getStage(stage?.stage_number);
+    const stageDef = getStage(stage?.stage_number, _qcProductType);
     const itemDef = stageDef?.items.find(i => i.key === itemKey);
     const { data, error } = await supabaseClient.from('qc_items').insert({
       stage_id: stageId,
@@ -619,6 +648,7 @@ async function handleItemStatusChange(btn) {
   const postCastingKeys = ['segregation', 'drainage_test'];
   const stageForItem = _qcStages.find(s => s.id === stageId);
   if (
+    !_qcIsPanel() &&
     _qcCastingApproved &&
     stageForItem?.stage_number === 1 &&
     postCastingKeys.includes(itemKey) &&
@@ -638,6 +668,7 @@ async function handleItemStatusChange(btn) {
 
 // ---- CASTING APPROVAL TRIGGER ----
 async function checkCastingApprovalTrigger(stageId, itemKey) {
+  if (_qcIsPanel()) return; // casting approval does not exist for panels
   if (_qcCastingApproved || _castingBaseApproved) return;
   const stage = _qcStages.find(s => s.id === stageId);
   if (!stage || stage.stage_number !== 1) return;
@@ -690,7 +721,7 @@ async function saveItemField(field, fieldName, value, podId) {
     flashSaved(field);
   } else {
     const stage = _qcStages.find(s => s.id === stageId);
-    const stageDef = getStage(stage?.stage_number);
+    const stageDef = getStage(stage?.stage_number, _qcProductType);
     const itemDef = stageDef?.items.find(i => i.key === itemKey);
     // upsert: safe against a concurrent ✓/✗ click creating the same row
     const { data, error } = await supabaseClient.from('qc_items').upsert({
@@ -723,9 +754,9 @@ async function saveItemField(field, fieldName, value, podId) {
 // ---- SHARE STAGE MODAL ----
 async function openShareStageModal(stageIdx) {
   const stage = _qcStages[stageIdx];
-  const stageRef = QC_STAGES[stageIdx];
+  const stageRef = qcStageSet(_qcProductType)[stageIdx];
   const letter = STAGE_LETTERS[stageIdx] || (stageIdx + 1);
-  const stageName = `${t('qc.stage')} ${letter} – ${qcStageName(stage?.stage_number ?? stageRef?.number) || ''}`;
+  const stageName = `${t('qc.stage')} ${letter} – ${qcStageName(stage?.stage_number ?? stageRef?.number, _qcProductType) || ''}`;
 
   // Fetch active users with email
   const { data: users } = await supabaseClient
@@ -892,7 +923,7 @@ async function updateStageStatus(stageId, podId, stages) {
   const stage = stages.find(s => s.id === stageId);
   if (!stage) return;
 
-  const stageDef = getStage(stage.stage_number);
+  const stageDef = getStage(stage.stage_number, _qcProductType);
   const total = stageDef?.items.length || 0;
   const answered = (items || []).filter(i => i.status !== 'pending').length;
 

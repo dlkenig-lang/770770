@@ -97,6 +97,102 @@ const QC_STAGES = [
   }
 ];
 
+// =============================================
+// Medical bed-head panel stages (product_type = 'medical_panel')
+// A separate stage set from QC_STAGES — panel projects have no concrete
+// casting, water or drainage. Stages unlock sequentially (each stage opens
+// only after the previous one is signed) — see the seq-lock logic in qc.js.
+// Quantities and mounting heights are NOT hardcoded here: the same fixture
+// sits at different heights on different panels, and box contents differ
+// between models (A100 basic / A100 short 220cm / B100 enhanced). Instructions
+// therefore point at the panel's own drawing and ask for the measured value in
+// the notes field. DB writes keep the Hebrew label as canonical, same as
+// QC_STAGES.
+// =============================================
+const PANEL_STAGES = [
+  {
+    number: 1,
+    name: 'שלד וקונסטרוקציה',
+    nameEn: 'Frame & Structure',
+    items: [
+      { key: 'panel_dims', label: 'מידות כלליות לפי דגם', labelEn: 'Overall dimensions per model', instruction: 'A100 / B100: ‏120×244 ס"מ | A100 קצר: ‏120×220 ס"מ. סטיה תקינה של ± 2 מ"מ', instructionEn: 'A100 / B100: 120×244 cm | A100 short: 120×220 cm. Acceptable tolerance ± 2 mm' },
+      { key: 'tracks_studs', label: 'מסלולים וניצבים לפי תוכנית', labelEn: 'Tracks and studs per drawing', instruction: 'מסלולים וניצבים 37/100 מ"מ — מיקום וקיבוע לפי פריסת הקונסטרוקציה', instructionEn: '37/100 mm tracks and studs — position and fixation per the construction layout' },
+      { key: 'squareness', label: 'ניצבות ואלכסונים', labelEn: 'Squareness and diagonals', instruction: null, instructionEn: null },
+      { key: 'hanging_plate', label: 'פלח חיזוק ותלייה', labelEn: 'Hanging reinforcement plate', instruction: null, instructionEn: null },
+      { key: 'tv_arm_plate', label: 'פלח חיזוק זרוע טלוויזיה', labelEn: 'TV-arm reinforcement plate', instruction: 'מידות 30×50 לפי פרט 1 בתוכנית', instructionEn: '30×50 per detail 1 in the drawing' },
+      { key: 'monitor_reinforce', label: 'חיזוק מוניטור', labelEn: 'Monitor reinforcement', instruction: 'לוודא הרחקת תשתיות מחיזוק המוניטור', instructionEn: 'Verify infrastructure is kept clear of the monitor reinforcement' },
+      { key: 'wall_ears', label: 'אוזני וזוויות חיבור לקיר', labelEn: 'Wall-connection ears and angles', instruction: 'כולל זווית חיבור קיר IPC', instructionEn: 'Including the IPC wall-connection angle' },
+    ]
+  },
+  {
+    number: 2,
+    name: 'תשתיות צנרת וחיווט',
+    nameEn: 'Piping & Wiring Infrastructure',
+    items: [
+      { key: 'gas_piping', label: 'צנרת גזים רפואיים', labelEn: 'Medical-gas piping', instruction: 'צינורות נחושת 5/8 — תוואי וקיבוע לפי תוכנית', instructionEn: '5/8" copper pipes — routing and fixation per drawing' },
+      { key: 'gas_shield', label: 'פח הגנה לצנרת הגז', labelEn: 'Gas-piping protection sheet', instruction: 'בין הגבס לצינורות הגז', instructionEn: 'Between the gypsum and the gas pipes' },
+      { key: 'top_entries', label: 'חדירות צנרת מלמעלה', labelEn: 'Pipe entries from the top', instruction: 'כלל חדירות הצנרת בכניסה מלמעלה לפי מודול מתאים', instructionEn: 'All pipe penetrations enter from the top per the matching module' },
+      { key: 'elec_conduits', label: 'צנרת חשמל וחוטי משיכה', labelEn: 'Electrical conduits and pull wires', instruction: 'לפי קוד הצבעים בתוכנית (כחול/לבן 25 מ"מ, ירוק 20 מ"מ)', instructionEn: 'Per the drawing color code (blue/white 25 mm, green 20 mm)' },
+      { key: 'cabling', label: 'כבלי חשמל, תקשורת וחירום', labelEn: 'Power, communication and emergency cables', instruction: 'השחלה וסימון לפי תוכנית', instructionEn: 'Pulled and labeled per drawing' },
+      { key: 'junction_boxes', label: 'קופסאות חיבורים 15/20', labelEn: '15/20 junction boxes', instruction: null, instructionEn: null },
+      { key: 'cable_tray', label: 'תעלת חשמל 60 ס"מ', labelEn: '60 cm electrical tray', instruction: null, instructionEn: null },
+      { key: 'no_drill_sticker', label: 'מדבקת סימון "אסור לקדוח"', labelEn: '"Do not drill" marking sticker', instruction: 'לסמן עם מדבקה היכן אסור לקדוח', instructionEn: 'Mark with a sticker where drilling is forbidden' },
+    ]
+  },
+  {
+    number: 3,
+    name: 'סגירת גבס וגימור',
+    nameEn: 'Drywall Closing & Finish',
+    items: [
+      { key: 'gypsum_board', label: 'לוח גבס', labelEn: 'Gypsum board', instruction: 'קיבוע וברגים לפי תוכנית', instructionEn: 'Fixation and screws per drawing' },
+      { key: 'sponge_detail', label: 'פרט ספוג בתחתית הפאנל', labelEn: 'Sponge detail at the panel bottom', instruction: null, instructionEn: null },
+      { key: 'headboard_sheet', label: 'ראש מיטה — פח מגולוון', labelEn: 'Bed head — galvanized sheet', instruction: 'פח עובי 1.2 מ"מ, צבע לבן תואם IPC גוון Feather 0238, ללא פגמים', instructionEn: '1.2 mm sheet, white matching IPC shade Feather 0238, free of defects' },
+      { key: 'ipc_cladding', label: 'ציפוי וסרגלי IPC', labelEn: 'IPC cladding and strips', instruction: null, instructionEn: null },
+      { key: 'bed_guard', label: 'מגן מיטה', labelEn: 'Bed guard', instruction: 'מיקום וקיבוע לפי תוכנית', instructionEn: 'Position and fixation per drawing' },
+      { key: 'low_panel_mark', label: 'סימון פאנל נמוך לשטיפת רצפה', labelEn: 'Low-panel marking for floor washing', instruction: null, instructionEn: null },
+    ]
+  },
+  {
+    number: 4,
+    name: 'התקנת אביזרי קצה',
+    nameEn: 'End Fixtures Installation',
+    items: [
+      { key: 'box_d14_upper', label: 'קופסה D14 עליונה', labelEn: 'Upper D14 box', instruction: '2 תקשורת, 1 שקע UPS, והשאר ריק — לוודא מול תוכנית הפאנל', instructionEn: '2 communication, 1 UPS socket, rest empty — verify against the panel drawing' },
+      { key: 'gas_panel', label: 'פאנל גזים', labelEn: 'Gas panel', instruction: 'סוג ומספר המחברים לפי תוכנית הפאנל (O2 / Air / Vac)', instructionEn: 'Outlet type and count per the panel drawing (O2 / Air / Vac)' },
+      { key: 'panic_button', label: 'לחצן מצוקה', labelEn: 'Emergency button', instruction: 'לוודא גובה לפי התוכנית הספציפית של הפאנל (משתנה בין פאנלים) — יש לרשום את הגובה שנמדד בהערה', instructionEn: 'Verify the height against this specific panel\'s drawing (varies between panels) — record the measured height in the notes' },
+      { key: 'nurse_call', label: 'לחצן קריאת אחות', labelEn: 'Nurse-call button', instruction: 'לוודא גובה לפי התוכנית הספציפית של הפאנל (משתנה בין פאנלים) — יש לרשום את הגובה שנמדד בהערה', instructionEn: 'Verify the height against this specific panel\'s drawing (varies between panels) — record the measured height in the notes' },
+      { key: 'box_d20', label: 'קופסה D20', labelEn: 'D20 box', instruction: '2 מפסקים, 1 Type-C, ‏6 שקע חיוני, 2 שקע UPS, הארקה, והשאר ריק — לוודא מול תוכנית הפאנל', instructionEn: '2 switches, 1 Type-C, 6 essential sockets, 2 UPS sockets, grounding, rest empty — verify against the panel drawing' },
+      { key: 'box_d14_comm', label: 'קופסה D14 תקשורת', labelEn: 'D14 communication box', instruction: 'נקודות תקשורת לפי תוכנית הפאנל והשאר ריק', instructionEn: 'Communication points per the panel drawing, rest empty' },
+      { key: 'box_4place', label: 'קופסה 4 מקום', labelEn: '4-gang box', instruction: 'שקע והארקה', instructionEn: 'Socket and grounding' },
+      { key: 'fixtures_level', label: 'בדיקת אופקיות וגבהים של כלל האביזרים', labelEn: 'Horizontality and height check of all fixtures', instruction: null, instructionEn: null },
+    ]
+  },
+  {
+    number: 5,
+    name: 'בדיקה סופית ומסירה',
+    nameEn: 'Final Inspection & Handover',
+    items: [
+      { key: 'elec_function', label: 'בדיקת תפקוד שקעים ומפסקים', labelEn: 'Socket and switch function test', instruction: null, instructionEn: null },
+      { key: 'comm_continuity', label: 'בדיקת רציפות תקשורת', labelEn: 'Communication continuity test', instruction: null, instructionEn: null },
+      { key: 'final_visual', label: 'בדיקה חזותית כוללת', labelEn: 'Overall visual inspection', instruction: 'גימור, ניקיון ושילוט', instructionEn: 'Finish, cleanliness and labeling' },
+      { key: 'packing', label: 'הגנות ואריזה למשלוח', labelEn: 'Protection and packing for shipment', instruction: null, instructionEn: null },
+    ]
+  }
+];
+
+// ---- Product-type helpers ----
+// A project's product_type selects which stage set applies to its units.
+// 'pod' (or missing — legacy rows) → QC_STAGES; 'medical_panel' → PANEL_STAGES.
+function qcStageSet(productType) {
+  return productType === 'medical_panel' ? PANEL_STAGES : QC_STAGES;
+}
+
+// Product type of a pod row that embeds its project (pods.js/qc.js/reports.js
+// queries select projects(product_type)).
+function podProductType(pod) {
+  return pod?.projects?.product_type || 'pod';
+}
+
 // ---- Language-aware readers for QC definitions ----
 // getLang() comes from i18n.js (loaded first). Fall back to Hebrew if the
 // English value is missing.
@@ -104,8 +200,8 @@ function _qcIsEn() { return (typeof getLang === 'function' ? getLang() : 'he') =
 
 // Stage display name by stage number (ignores the Hebrew name persisted in the
 // DB so the label follows the active language).
-function qcStageName(stageNumber) {
-  const s = getStage(stageNumber);
+function qcStageName(stageNumber, productType) {
+  const s = getStage(stageNumber, productType);
   if (!s) return '';
   return _qcIsEn() ? (s.nameEn || s.name) : s.name;
 }
@@ -122,14 +218,15 @@ function qcItemUnit(itemDef) {
   return _qcIsEn() ? (itemDef.unitEn || itemDef.unit || '') : (itemDef.unit || '');
 }
 
-// Get stage by number
-function getStage(num) {
-  return QC_STAGES.find(s => s.number === num);
+// Get stage by number. productType is optional — omitted (legacy call sites)
+// means the sanitary-pod set.
+function getStage(num, productType) {
+  return qcStageSet(productType).find(s => s.number === num);
 }
 
 // Count total items in a stage
-function stageItemCount(num) {
-  const s = getStage(num);
+function stageItemCount(num, productType) {
+  const s = getStage(num, productType);
   return s ? s.items.length : 0;
 }
 

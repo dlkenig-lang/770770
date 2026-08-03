@@ -125,6 +125,9 @@ function parseDateInput(dateStr) {
 }
 
 // Generate pod code: SVC-220226-T1-R-001
+// Medical panels have no R/L direction — pass '' / null to omit the segment
+// (e.g. BLN-220226-T1-001). The serial stays the last 3 chars either way, so
+// the serial-based sorting everywhere keeps working.
 function generatePodCode(projectCode, dateReceived, typeNumber, direction, serial) {
   const d = new Date(dateReceived);
   const dd = String(d.getDate()).padStart(2, '0');
@@ -132,7 +135,8 @@ function generatePodCode(projectCode, dateReceived, typeNumber, direction, seria
   const yy = String(d.getFullYear()).slice(2);
   const dateFormatted = `${dd}${mm}${yy}`;
   const serialStr = String(serial).padStart(3, '0');
-  return `${projectCode.toUpperCase()}-${dateFormatted}-T${typeNumber}-${direction}-${serialStr}`;
+  const dirPart = direction ? `-${direction}` : '';
+  return `${projectCode.toUpperCase()}-${dateFormatted}-T${typeNumber}${dirPart}-${serialStr}`;
 }
 
 // Show toast notification

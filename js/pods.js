@@ -11,7 +11,7 @@ async function openPod(podId) {
     .from('pods')
     .select(`
       *,
-      projects(id, name, code, date_received, pipe_type, onedrive_folder_url),
+      projects(*),
       project_types(type_number, dimensions),
       type_directions(direction),
       production_groups(name, max_pods),
@@ -23,15 +23,22 @@ async function openPod(podId) {
   if (error || !pod) { showToast(t('pod.loadError'), 'error'); return; }
 
   AppState.currentPod = pod;
+  // 'projects(*)' above (not an explicit column list) keeps this query working
+  // before the 20260803 migration adds product_type — it just comes back
+  // undefined and podProductType() falls back to 'pod'.
+  const isPanel = podProductType(pod) === 'medical_panel';
 
-  // Fetch groups for all users — needed for group label in barcode/PDF
+  // Fetch groups for all users — needed for group label in barcode/PDF.
+  // Panels have no production groups.
   let groups = [];
-  const { data: g } = await supabaseClient
-    .from('production_groups')
-    .select('id, name, max_pods')
-    .eq('project_id', pod.projects.id)
-    .order('name');
-  groups = sortGroupsByOption(g || []);
+  if (!isPanel) {
+    const { data: g } = await supabaseClient
+      .from('production_groups')
+      .select('id, name, max_pods')
+      .eq('project_id', pod.projects.id)
+      .order('name');
+    groups = sortGroupsByOption(g || []);
+  }
 
   document.getElementById('pod-detail-code').textContent = pod.pod_code;
   const statusEl = document.getElementById('pod-detail-status');
@@ -40,7 +47,7 @@ async function openPod(podId) {
 
   const castingBadge = document.getElementById('pod-casting-badge');
   if (castingBadge) {
-    castingBadge.style.display = pod.casting_approved ? '' : 'none';
+    castingBadge.style.display = (!isPanel && pod.casting_approved) ? '' : 'none';
   }
 
   const selGroupIdx = groups.findIndex(g => g.id === pod.group_id);
@@ -64,22 +71,24 @@ async function openPod(podId) {
       <div class="info-value">${escHtml(pod.projects?.name || '')}</div>
     </div>
     <div class="info-item">
-      <div class="info-label">${t('proj.type')}</div>
+      <div class="info-label">${isPanel ? t('proj.model') : t('proj.type')}</div>
       <div class="info-value">T${pod.project_types?.type_number || ''}</div>
     </div>
+    ${isPanel ? '' : `
     <div class="info-item">
       <div class="info-label">${t('proj.direction')}</div>
       <div class="info-value">${pod.type_directions?.direction || ''}</div>
-    </div>
+    </div>`}
     <div class="info-item">
       <div class="info-label">${t('pod.dimensions')}</div>
       <div class="info-value">${escHtml(pod.project_types?.dimensions || '—')}</div>
     </div>
-    ${groupCell}
+    ${isPanel ? '' : groupCell}
+    ${isPanel ? '' : `
     <div class="info-item">
       <div class="info-label">${t('proj.pipeType')}</div>
       <div class="info-value">${escHtml(pod.projects?.pipe_type || '—')}</div>
-    </div>
+    </div>`}
     <div class="info-item">
       <div class="info-label">${t('pod.inspectionStarted')}</div>
       <div class="info-value">${pod.inspection_started_at ? formatDate(pod.inspection_started_at.split('T')[0]) : '—'}</div>
@@ -355,7 +364,7 @@ async function showPodHistory() {
         // language-aware label and show the old→new status transition
         let itemInfo = '';
         if (l.table_name === 'qc_items' && l.new_values?.item_key) {
-          const itemDef = getStage(stageNum)?.items.find(it => it.key === l.new_values.item_key);
+          const itemDef = getStage(stageNum, podProductType(AppState.currentPod))?.items.find(it => it.key === l.new_values.item_key);
           const label = itemDef ? qcItemLabel(itemDef) : (l.new_values.item_label || l.new_values.item_key);
           const oldSt = l.old_values?.status;
           const newSt = l.new_values?.status;

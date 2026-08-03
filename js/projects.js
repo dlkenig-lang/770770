@@ -272,6 +272,7 @@ async function openProject(projectId) {
   document.getElementById('project-info-bar').innerHTML = `
     <div class="info-item"><div class="info-label">${t('proj.code')}</div><div class="info-value">${escHtml(project.code)}</div></div>
     <div class="info-item"><div class="info-label">${t('proj.dateReceived')}</div><div class="info-value">${formatDate(project.date_received)}</div></div>
+    ${project.project_number ? `<div class="info-item"><div class="info-label">${t('proj.projectNumber')}</div><div class="info-value">${String(project.project_number).padStart(2, '0')}</div></div>` : ''}
     ${isPanel ? `<div class="info-item"><div class="info-label">${t('proj.productType')}</div><div class="info-value">${t('proj.productPanel')}</div></div>` : ''}
     ${project.location ? `<div class="info-item"><div class="info-label">${t('proj.location')}</div><div class="info-value">${escHtml(project.location)}</div></div>` : ''}
     ${project.pipe_type ? `<div class="info-item"><div class="info-label">${t('proj.pipeType')}</div><div class="info-value">${escHtml(project.pipe_type)}</div></div>` : ''}
@@ -912,6 +913,11 @@ function showNewProjectModal() {
   document.getElementById('btn-modal-cancel')?.addEventListener('click', closeModal);
   document.getElementById('btn-modal-create-project')?.addEventListener('click', createProject);
 
+  // Suggest the next sequential project number. Existing projects predate the
+  // column and have NULL, so the first numbered project falls back to 2 — the
+  // legacy project (EKR) is number 1 and is never renumbered.
+  suggestNextProjectNumber();
+
   // Dynamic types
   document.getElementById('np-type-count')?.addEventListener('change', renderTypeInputs);
   // Product type: panels have no pipe type and no R/L directions — toggle the
@@ -954,6 +960,11 @@ function buildNewProjectForm() {
         </div>
       </div>
       <div class="form-row">
+        <div class="form-group">
+          <label>${t('proj.projectNumber')} <span class="required">*</span></label>
+          <input type="number" id="np-project-number" class="form-control" min="1" max="99" />
+          <div class="form-hint">${t('proj.projectNumberHint')}</div>
+        </div>
         <div class="form-group" id="np-pipe-group">
           <label>${t('proj.pipeType')}</label>
           <select id="np-pipe" class="form-control">
@@ -976,6 +987,22 @@ function buildNewProjectForm() {
       <div id="np-types-container"></div>
     </form>
   `;
+}
+
+// Prefill "project number" with max(existing)+1. Missing column (migration not
+// applied yet) leaves the field empty and createProject blocks with a clear
+// message rather than silently minting a legacy-format code.
+async function suggestNextProjectNumber() {
+  const input = document.getElementById('np-project-number');
+  if (!input) return;
+  const { data, error } = await supabaseClient
+    .from('projects').select('project_number')
+    .not('project_number', 'is', null)
+    .order('project_number', { ascending: false })
+    .limit(1);
+  if (error) { console.warn('[suggestNextProjectNumber] unavailable:', error.message); return; }
+  const highest = data?.[0]?.project_number || 1;
+  input.value = highest + 1;
 }
 
 function renderTypeInputs() {
@@ -1058,12 +1085,25 @@ async function createProject() {
   const pipeType = isPanel ? '' : document.getElementById('np-pipe')?.value;
   const location = document.getElementById('np-location')?.value.trim();
   const typeCount = parseInt(document.getElementById('np-type-count')?.value || 1);
+  const projectNumber = parseInt(document.getElementById('np-project-number')?.value);
 
   if (!name || !code || !dateReceived) {
     showToast(t('proj.fillNameCodeDate'), 'error'); return;
   }
   if (code.length !== 3) {
     showToast(t('proj.codeMustBe3'), 'error'); return;
+  }
+  if (!(projectNumber > 0)) {
+    showToast(t('proj.projectNumberRequired'), 'error'); return;
+  }
+  // Guard before creating anything: without the column every unit code would
+  // silently fall back to the legacy date format, which is exactly what this
+  // change exists to stop.
+  const { error: colErr } = await supabaseClient.from('projects').select('project_number').limit(1);
+  if (colErr) {
+    showToast(t('proj.errNeedNumberMigration'), 'error');
+    console.error('[createProject] project_number column missing:', colErr);
+    return;
   }
   if (!AppState.currentProfile) {
     // Try to reload profile once before giving up
@@ -1088,7 +1128,7 @@ async function createProject() {
     // Step 1a: Insert project with timeout resilience.
     // In bolt.new, the service worker can drop the response channel even if the DB succeeded.
     console.log('[createProject] Step 1a: inserting project');
-    const insertPayload = { name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile.id };
+    const insertPayload = { name, code, date_received: dateReceived, pipe_type: pipeType || null, location: location || null, created_by: AppState.currentProfile.id, project_number: projectNumber };
     // Only sent when non-default so pod projects keep working even before the
     // 20260803 migration is applied. Panel creation fails loudly without it.
     if (productType !== 'pod') insertPayload.product_type = productType;
@@ -1162,7 +1202,7 @@ async function createProject() {
             type_id: typeData.id,
             direction_id: dirData.id,
             serial_number: s,
-            pod_code: generatePodCode(code, dateReceived, i, '', globalSerial),
+            pod_code: generatePodCode(code, dateReceived, i, '', globalSerial, projectNumber),
             status: 'pending',
           });
         }
@@ -1196,7 +1236,7 @@ async function createProject() {
             type_id: typeData.id,
             direction_id: dirData.id,
             serial_number: s,
-            pod_code: generatePodCode(code, dateReceived, i, dir, globalSerial),
+            pod_code: generatePodCode(code, dateReceived, i, dir, globalSerial, projectNumber),
             status: 'pending',
           });
         }
@@ -1362,7 +1402,7 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
         if (!saveError && newGroup && Object.keys(comp).length > 0) {
           // Fetch project details for pod code generation
           const { data: proj } = await supabaseClient
-            .from('projects').select('code, date_received').eq('id', projectId).single();
+            .from('projects').select('*').eq('id', projectId).single();
           // Find max existing global serial in this project
           const { data: existingPods } = await supabaseClient
             .from('pods').select('pod_code').eq('project_id', projectId);
@@ -1392,7 +1432,7 @@ async function showGroupModal(projectId, groupId = null, name = '', date = '', m
                   group_id: newGroup.id,
                   group_serial: groupSerial,
                   serial_number: globalSerial,
-                  pod_code: generatePodCode(proj.code, proj.date_received, typeObj.type_number, dirObj.direction, globalSerial),
+                  pod_code: generatePodCode(proj.code, proj.date_received, typeObj.type_number, dirObj.direction, globalSerial, proj.project_number),
                   status: 'pending',
                 });
               }
@@ -1512,7 +1552,7 @@ async function showAddPodModal(projectId) {
     const typeNum = typeEl?.options[typeEl.selectedIndex]?.dataset?.typeNum || '';
     const serial = parseInt(serialEl?.value || 1);
     if (project && typeNum && (isPanel || dir)) {
-      previewEl.textContent = generatePodCode(project.code, project.date_received, typeNum, dir, serial);
+      previewEl.textContent = generatePodCode(project.code, project.date_received, typeNum, dir, serial, project.project_number);
     } else {
       previewEl.textContent = '—';
     }
@@ -1539,7 +1579,7 @@ async function showAddPodModal(projectId) {
 
     if (!typeId || !dirId || (!isPanel && !dir)) { showToast(t('proj.selectTypeDirection'), 'error'); return; }
 
-    const podCode = generatePodCode(project.code, project.date_received, typeNum, dir, serial);
+    const podCode = generatePodCode(project.code, project.date_received, typeNum, dir, serial, project.project_number);
     const btn = document.getElementById('btn-add-pod-confirm');
     setLoading(btn, true);
     try {

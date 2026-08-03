@@ -124,19 +124,32 @@ function parseDateInput(dateStr) {
   return dateStr;
 }
 
-// Generate pod code: SVC-220226-T1-R-001
-// Medical panels have no R/L direction — pass '' / null to omit the segment
-// (e.g. BLN-220226-T1-001). The serial stays the last 3 chars either way, so
-// the serial-based sorting everywhere keeps working.
-function generatePodCode(projectCode, dateReceived, typeNumber, direction, serial) {
+// Generate a unit code.
+//
+// The middle segment has two formats, selected by projectNumber:
+//   legacy  (projectNumber empty)  DDMMYY — full date received: SVC-220226-T1-R-001
+//   current (projectNumber set)    PPMMYY — project number + month/year of the
+//                                  date received: BLN-020726-T1-001
+//
+// Projects created before the 20260803010000 migration have project_number
+// NULL and therefore keep producing legacy codes — existing pod codes must
+// never change. New projects always carry a number.
+//
+// Medical panels have no R/L direction — pass '' / null to omit the segment.
+// The serial stays the last 3 chars in both formats, so the serial-based
+// sorting everywhere keeps working.
+function generatePodCode(projectCode, dateReceived, typeNumber, direction, serial, projectNumber) {
   const d = new Date(dateReceived);
-  const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const yy = String(d.getFullYear()).slice(2);
-  const dateFormatted = `${dd}${mm}${yy}`;
+  const num = parseInt(projectNumber);
+  const prefix = num > 0
+    ? String(num).padStart(2, '0')
+    : String(d.getDate()).padStart(2, '0');
+  const middle = `${prefix}${mm}${yy}`;
   const serialStr = String(serial).padStart(3, '0');
   const dirPart = direction ? `-${direction}` : '';
-  return `${projectCode.toUpperCase()}-${dateFormatted}-T${typeNumber}${dirPart}-${serialStr}`;
+  return `${projectCode.toUpperCase()}-${middle}-T${typeNumber}${dirPart}-${serialStr}`;
 }
 
 // Show toast notification

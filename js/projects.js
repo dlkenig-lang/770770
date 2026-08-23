@@ -365,14 +365,17 @@ async function loadPodsTab(projectId, filters = {}) {
   const isPanel = projIsPanel(AppState.currentProject);
   const stageCount = qcStageSet(isPanel ? 'medical_panel' : 'pod').length;
 
-  // Update stats strip (always based on full list, not filtered)
+  // Stats strip + progress bar describe exactly what the filters left on screen,
+  // so every filter counts the same way. Group / status / casting are applied by
+  // the query above and type / direction / stage right here — reading `filtered`
+  // (never `allPods`) is what keeps the six of them consistent.
   const statsEl = document.getElementById('project-pods-stats');
   if (statsEl) {
-    const total    = allPods.length;
-    const pending  = allPods.filter(p => p.status === 'pending').length;
-    const inProg   = allPods.filter(p => p.status === 'in_progress').length;
-    const done     = allPods.filter(p => p.status === 'completed').length;
-    const failed   = allPods.filter(p => p.status === 'failed').length;
+    const total    = filtered.length;
+    const pending  = filtered.filter(p => p.status === 'pending').length;
+    const inProg   = filtered.filter(p => p.status === 'in_progress').length;
+    const done     = filtered.filter(p => p.status === 'completed').length;
+    const failed   = filtered.filter(p => p.status === 'failed').length;
     statsEl.innerHTML = `
       <div class="pods-stat-card pods-stat-total">
         <div class="pods-stat-value">${total}</div>
@@ -396,7 +399,7 @@ async function loadPodsTab(projectId, filters = {}) {
       </div>
       ${(() => {
         const totalStages = total * stageCount;
-        const doneStages = allPods.reduce((sum, p) => sum + (p.qc_stages || []).filter(s => s.status === 'completed').length, 0);
+        const doneStages = filtered.reduce((sum, p) => sum + (p.qc_stages || []).filter(s => s.status === 'completed').length, 0);
         const stagePct = totalStages > 0 ? Math.round(doneStages / totalStages * 100) : 0;
         return `
       <div class="page-progress-bar" style="flex-basis:100%">

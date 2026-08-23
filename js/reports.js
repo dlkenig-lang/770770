@@ -915,12 +915,18 @@ async function loadReportsView() {
               ${Object.entries(STATUS_LABELS).map(([v,l]) => `<option value="${v}">${l}</option>`).join('')}
             </select>
           </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">${t('rep.stageLabel')}</label>
+            <select id="rf-stage" class="form-control form-control-sm">
+              <option value="">${t('filter.allStages')}</option>
+            </select>
+          </div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <span id="rf-count" style="font-size:13px;color:#64748b;"></span>
           <button id="rf-btn-pdf" class="btn btn-primary btn-sm">${t('rep.exportPdfSelected')}</button>
           <button id="rf-btn-excel" class="btn btn-primary btn-sm">${t('rep.exportExcelSelected')}</button>
-          <button id="rf-btn-delivery" class="btn btn-secondary btn-sm">${t('rep.deliveryNotesSelected')}</button>
+          <button id="rf-btn-delivery" class="btn btn-primary btn-sm">${t('pod.deliveryNote')}</button>
         </div>
       </div>
     </div>
@@ -933,13 +939,42 @@ async function loadReportsView() {
     const group = document.getElementById('rf-group').value;
     const dir = document.getElementById('rf-direction').value;
     const status = document.getElementById('rf-status').value;
+    const stage = document.getElementById('rf-stage').value;
     return pods.filter(p =>
       (!proj   || p.project_id === proj) &&
       (!type   || String(p.project_types?.type_number) === type) &&
       (!group  || p.production_groups?.name === group) &&
       (!dir    || p.type_directions?.direction === dir) &&
-      (!status || p.status === status)
+      (!status || p.status === status) &&
+      // Same rule as the pods tab: the chosen stage is being worked on or signed
+      // (STAGE_FILTER_STATUSES, projects.js). A pending stage has not started.
+      (!stage  || STAGE_FILTER_STATUSES.includes(podStageStatus(p, stage)))
     ).sort((a, b) => getSerial(a.pod_code) - getSerial(b.pod_code));
+  }
+
+  // The stage list depends on the product type in scope: 6 stages (A-F) for
+  // sanitary pods, 5 (A-E) for medical panels. With one project selected the
+  // type is known and stage names are shown; across a mixed selection only the
+  // letters are, since the same number means a different stage in each set.
+  function syncStageOptions() {
+    const sel = document.getElementById('rf-stage');
+    const proj = document.getElementById('rf-project').value;
+    const scope = proj ? pods.filter(p => p.project_id === proj) : pods;
+    const types = [...new Set(scope.map(p => podProductType(p)))];
+    const opts = types.length === 1
+      ? qcStageSet(types[0]).map(st => ({
+          value: st.number,
+          label: t('filter.stageOpt', { letter: stageLetter(st.number), name: qcStageName(st.number, types[0]) }),
+        }))
+      : Array.from({ length: Math.max(1, ...types.map(pt => qcStageSet(pt).length)) }, (_, i) => ({
+          value: i + 1,
+          label: t('filter.stageOptShort', { letter: stageLetter(i + 1) }),
+        }));
+    const prev = sel.value;
+    sel.innerHTML = `<option value="">${t('filter.allStages')}</option>` +
+      opts.map(o => `<option value="${o.value}">${escHtml(o.label)}</option>`).join('');
+    // Keep the choice when it still exists, so switching project doesn't drop it.
+    if (prev && opts.some(o => String(o.value) === prev)) sel.value = prev;
   }
 
   function renderTable() {
@@ -987,9 +1022,16 @@ async function loadReportsView() {
       </div>`;
   }
 
-  ['rf-project','rf-type','rf-group','rf-direction','rf-status'].forEach(id => {
+  ['rf-type','rf-group','rf-direction','rf-status','rf-stage'].forEach(id => {
     document.getElementById(id).addEventListener('change', renderTable);
   });
+  // Project first rebuilds the stage list (a stale stage choice is dropped when
+  // the new project's stage set has no such stage), and only then re-filters.
+  document.getElementById('rf-project').addEventListener('change', () => {
+    syncStageOptions();
+    renderTable();
+  });
+  syncStageOptions();
   renderTable();
 
   document.getElementById('rf-btn-pdf').addEventListener('click', async () => {

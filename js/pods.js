@@ -15,6 +15,7 @@ async function openPod(podId) {
       project_types(*),
       type_directions(direction),
       production_groups(name, max_pods),
+      qc_stages(stage_number, status),
       comments(id, is_resolved, is_flagged)
     `)
     .eq('id', podId)
@@ -45,9 +46,13 @@ async function openPod(podId) {
   statusEl.textContent = STATUS_LABELS[pod.status] || pod.status;
   statusEl.className = `status-badge status-${pod.status}`;
 
+  // The badge says "waiting to be cast", so it follows podAwaitingCasting and
+  // not the raw flag — a pod already past the casting gate keeps the flag but
+  // is no longer on the casting list. loadQCStages refreshes it from the stage
+  // rows it loads.
   const castingBadge = document.getElementById('pod-casting-badge');
   if (castingBadge) {
-    castingBadge.style.display = (!isPanel && pod.casting_approved) ? '' : 'none';
+    castingBadge.style.display = (!isPanel && podAwaitingCasting(pod)) ? '' : 'none';
   }
 
   const selGroupIdx = groups.findIndex(g => g.id === pod.group_id);

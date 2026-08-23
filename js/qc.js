@@ -83,6 +83,14 @@ async function loadQCStages(podId) {
     if (stageA?.status === 'completed' || stageA?.status === 'failed') {
       _castingBaseApproved = true;
     }
+
+    // The header badge means "waiting to be cast". Now that the stage rows are
+    // loaded, hide it for a pod that is past the gate even if the DB flag is
+    // still set on it (a pod signed before the flag was cleared on signature).
+    const castingBadge = document.getElementById('pod-casting-badge');
+    if (castingBadge) {
+      castingBadge.style.display = podAwaitingCasting(AppState.currentPod, _qcStages) ? '' : 'none';
+    }
   }
 
   renderQCTabsUI();
@@ -1071,6 +1079,26 @@ function initSignatureModal() {
     pendingStageCompletion = null;
 
     showToast(anyFailed ? t('qc.stageFailedToast', { n: stageNum }) : t('qc.stageCompletedToast', { n: stageNum }), anyFailed ? 'warning' : 'success');
+
+    // Signing stage A closes the casting inspection, so the pod leaves the
+    // casting list. Until now only answering the post-casting items (8-9) did
+    // that — a pod signed with those already answered stayed "approved for
+    // casting" forever, since a signed stage freezes its items. Downstream
+    // stages stay unlocked: a signed stage A unlocks them on its own.
+    if (!_qcIsPanel() && stageNum === 1 && (_qcCastingApproved || AppState.currentPod?.casting_approved)) {
+      const { error: castErr } = await supabaseClient.from('pods').update({
+        casting_approved: false,
+        casting_approved_at: null,
+      }).eq('id', podId);
+      if (castErr) {
+        console.error('[signStage] casting flag reset failed:', castErr);
+      } else {
+        _qcCastingApproved = false;
+        if (AppState.currentPod) AppState.currentPod.casting_approved = false;
+        showToast(t('qc.castingClearedOnSign'), 'info');
+      }
+    }
+
     await updatePodStatus(podId);
     await loadQCStages(podId); // Full re-render
   });

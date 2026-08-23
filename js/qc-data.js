@@ -193,6 +193,38 @@ function podProductType(pod) {
   return pod?.projects?.product_type || 'pod';
 }
 
+// ---- Casting gate state ----
+// `pods.casting_approved` means "approved and still WAITING to be cast" — the
+// pod is on the casting list. The flag is cleared when the post-casting items
+// of stage A (segregation / drainage test) are answered, or when stage A is
+// signed (see the signature handler in qc.js).
+//
+// It can still be left set on a pod that has long since been cast: an inspector
+// who answered those two items BEFORE items 1-7 triggered the approval never
+// touches them again, and once stage A is signed its items are frozen by
+// `protect_signed_stage_items` — so nothing could clear it any more. Reading
+// the flag alone therefore shows "approved for casting" on pods that are two
+// stages further along, which is why every display path goes through the two
+// helpers below instead.
+
+// Has the pod moved past the casting gate? Stage A signed means the casting
+// inspection is closed; any later stage with work on it means the pod was cast
+// (B-F are locked until the gate opens).
+function podPastCasting(stages) {
+  const rows = stages || [];
+  const stageA = rows.find(s => s.stage_number === 1);
+  if (stageA && (stageA.status === 'completed' || stageA.status === 'failed')) return true;
+  return rows.some(s => s.stage_number > 1 && s.status && s.status !== 'pending');
+}
+
+// Should the "approved for casting" badge be shown? Only while the pod really
+// is waiting for casting. `stages` defaults to the qc_stages rows embedded in
+// the pod row (loadPodsTab selects them).
+function podAwaitingCasting(pod, stages) {
+  if (!pod?.casting_approved) return false;
+  return !podPastCasting(stages || pod.qc_stages);
+}
+
 // ---- Language-aware readers for QC definitions ----
 // getLang() comes from i18n.js (loaded first). Fall back to Hebrew if the
 // English value is missing.

@@ -346,8 +346,6 @@ async function loadPodsTab(projectId, filters = {}) {
 
   if (filters.group_id) query = query.eq('group_id', filters.group_id);
   if (filters.status) query = query.eq('status', filters.status);
-  if (filters.casting_approved === 'true') query = query.eq('casting_approved', true);
-  if (filters.casting_approved === 'false') query = query.eq('casting_approved', false);
 
   const [{ data: pods }, { data: projectGroups }] = await Promise.all([
     query,
@@ -361,6 +359,11 @@ async function loadPodsTab(projectId, filters = {}) {
   if (filters.type_number) filtered = filtered.filter(p => p.project_types?.type_number == filters.type_number);
   if (filters.direction) filtered = filtered.filter(p => p.type_directions?.direction === filters.direction);
   if (filters.stage) filtered = filtered.filter(p => STAGE_FILTER_STATUSES.includes(podStageStatus(p, filters.stage)));
+  // Casting is filtered here, not in the query: a pod whose `casting_approved`
+  // is still true but that has moved past the casting gate is no longer waiting
+  // to be cast, and the list must agree with the badge on its card.
+  if (filters.casting_approved === 'true') filtered = filtered.filter(p => podAwaitingCasting(p));
+  if (filters.casting_approved === 'false') filtered = filtered.filter(p => !podAwaitingCasting(p));
 
   const isPanel = projIsPanel(AppState.currentProject);
   const stageCount = qcStageSet(isPanel ? 'medical_panel' : 'pod').length;
@@ -450,6 +453,7 @@ function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6, stageF
   const flaggedCount = (pod.comments || []).filter(c => !c.is_resolved && c.is_flagged).length;
   const groupIdx = groups.findIndex(g => g.id === pod.group_id);
   const groupLabel = pod.production_groups?.name || '';
+  const awaitingCasting = podAwaitingCasting(pod);
 
   // When filtering by stage, show why the pod is on screen (in progress / completed).
   const filteredStageStatus = stageFilter ? podStageStatus(pod, stageFilter) : null;
@@ -461,10 +465,10 @@ function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6, stageF
     : '';
 
   return `
-    <div class="pod-card pod-card-clickable btn-open-pod ${flaggedCount > 0 ? 'pod-card-has-flagged' : unresolvedCount > 0 ? 'pod-card-has-comments' : ''} ${pod.casting_approved ? 'pod-card-casting-approved' : ''}" data-pod-id="${pod.id}">
+    <div class="pod-card pod-card-clickable btn-open-pod ${flaggedCount > 0 ? 'pod-card-has-flagged' : unresolvedCount > 0 ? 'pod-card-has-comments' : ''} ${awaitingCasting ? 'pod-card-casting-approved' : ''}" data-pod-id="${pod.id}">
       <div class="pod-card-header">
         <div class="pod-card-code">${escHtml(pod.pod_code)}</div>
-        ${pod.casting_approved ? `<span class="casting-approved-badge" title="${t('pod.castingApprovedTitle')}">${t('pod.castingApproved')}</span>` : ''}
+        ${awaitingCasting ? `<span class="casting-approved-badge" title="${t('pod.castingApprovedTitle')}">${t('pod.castingApproved')}</span>` : ''}
         ${flaggedCount > 0
           ? `<span class="unresolved-badge badge-flagged" title="${t('qc.commentsFlaggedMany', { n: flaggedCount })}">🚩 ${flaggedCount}</span>`
           : unresolvedCount > 0

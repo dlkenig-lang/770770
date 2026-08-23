@@ -13,6 +13,28 @@ function projIsPanel(project) {
   return (project?.product_type || 'pod') === 'medical_panel';
 }
 
+// Stage filter — a pod is "in" the selected stage only when its qc_stages row
+// for that stage is being worked on or already signed. A stage still `pending`
+// (or with no row at all, for a pod nobody opened yet) means the pod has not
+// reached it. `failed` is deliberately excluded: the request is "in progress or
+// completed".
+const STAGE_FILTER_STATUSES = ['in_progress', 'completed'];
+
+// Status of a single stage on a pod row that embeds qc_stages(stage_number, status).
+function podStageStatus(pod, stageNumber) {
+  const num = parseInt(stageNumber);
+  if (!num) return null;
+  return (pod.qc_stages || []).find(s => s.stage_number === num)?.status || null;
+}
+
+// Stage letter (A, B, C...) by stage number. STAGE_LETTERS comes from qc.js,
+// which loads after this file but is always evaluated before any of these
+// functions runs.
+function stageLetter(stageNumber) {
+  const letters = (typeof STAGE_LETTERS !== 'undefined') ? STAGE_LETTERS : ['A', 'B', 'C', 'D', 'E', 'F'];
+  return letters[stageNumber - 1] || stageNumber;
+}
+
 // ---- LOAD DASHBOARD ----
 async function loadDashboard() {
   const statsEl = document.getElementById('dashboard-stats');
@@ -338,6 +360,7 @@ async function loadPodsTab(projectId, filters = {}) {
   let filtered = allPods;
   if (filters.type_number) filtered = filtered.filter(p => p.project_types?.type_number == filters.type_number);
   if (filters.direction) filtered = filtered.filter(p => p.type_directions?.direction === filters.direction);
+  if (filters.stage) filtered = filtered.filter(p => STAGE_FILTER_STATUSES.includes(podStageStatus(p, filters.stage)));
 
   const isPanel = projIsPanel(AppState.currentProject);
   const stageCount = qcStageSet(isPanel ? 'medical_panel' : 'pod').length;
@@ -392,11 +415,14 @@ async function loadPodsTab(projectId, filters = {}) {
   const container = document.getElementById('pods-table-container');
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">${isPanel ? t('proj.noPanelsInProject') : t('proj.noPodsInProject')}</div></div>`;
+    const emptyMsg = filters.stage
+      ? (isPanel ? t('proj.noPanelsInStage') : t('proj.noPodsInStage'))
+      : (isPanel ? t('proj.noPanelsInProject') : t('proj.noPodsInProject'));
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">${emptyMsg}</div></div>`;
     return;
   }
 
-  container.innerHTML = `<div class="pods-grid">${filtered.map(pod => renderPodCard(pod, allGroups, isPanel, stageCount)).join('')}</div>`;
+  container.innerHTML = `<div class="pods-grid">${filtered.map(pod => renderPodCard(pod, allGroups, isPanel, stageCount, filters.stage)).join('')}</div>`;
 
   container.querySelectorAll('.btn-open-pod').forEach(btn => {
     btn.addEventListener('click', () => openPod(btn.dataset.podId));
@@ -411,7 +437,7 @@ async function loadPodsTab(projectId, filters = {}) {
   }
 }
 
-function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6) {
+function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6, stageFilter = '') {
   const stages = pod.qc_stages || [];
   const completedStages = stages.filter(s => s.status === 'completed').length;
   const pct = Math.round(completedStages / stageCount * 100);
@@ -421,6 +447,15 @@ function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6) {
   const flaggedCount = (pod.comments || []).filter(c => !c.is_resolved && c.is_flagged).length;
   const groupIdx = groups.findIndex(g => g.id === pod.group_id);
   const groupLabel = pod.production_groups?.name || '';
+
+  // When filtering by stage, show why the pod is on screen (in progress / completed).
+  const filteredStageStatus = stageFilter ? podStageStatus(pod, stageFilter) : null;
+  const stageBadge = filteredStageStatus
+    ? `<span class="status-badge status-${filteredStageStatus} stage-filter-badge">${t('proj.stageBadge', {
+        letter: stageLetter(parseInt(stageFilter)),
+        status: STATUS_LABELS[filteredStageStatus] || filteredStageStatus,
+      })}</span>`
+    : '';
 
   return `
     <div class="pod-card pod-card-clickable btn-open-pod ${flaggedCount > 0 ? 'pod-card-has-flagged' : unresolvedCount > 0 ? 'pod-card-has-comments' : ''} ${pod.casting_approved ? 'pod-card-casting-approved' : ''}" data-pod-id="${pod.id}">
@@ -433,6 +468,7 @@ function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6) {
           ? `<span class="unresolved-badge" title="${t('proj.unresolvedTitle', { n: unresolvedCount })}">💬 ${unresolvedCount}</span>`
           : ''}
         <span class="status-badge ${statusCls}">${STATUS_LABELS[pod.status] || pod.status}</span>
+        ${stageBadge}
       </div>
       <div class="pod-card-meta">
         <div class="pod-card-meta-item">
@@ -862,6 +898,7 @@ function getCurrentPodFilters() {
     group_id: val('filter-group'),
     type_number: val('filter-type'),
     direction: val('filter-direction'),
+    stage: val('filter-stage'),
     status: val('filter-status'),
     casting_approved: val('filter-casting'),
   };
@@ -879,6 +916,7 @@ async function setupPodFilters(projectId) {
   const groupSel = document.getElementById('filter-group');
   const typeSel = document.getElementById('filter-type');
   const dirSel = document.getElementById('filter-direction');
+  const stageSel = document.getElementById('filter-stage');
   const statusSel = document.getElementById('filter-status');
   const castingSel = document.getElementById('filter-casting');
 
@@ -904,6 +942,18 @@ async function setupPodFilters(projectId) {
     <option value="L">${t('direction.L')}</option>
   `;
 
+  // Stage list follows the product type: 6 stages (A–F) for sanitary pods,
+  // 5 (A–E) for medical panels. Rebuilding the options also clears any stale
+  // selection, so switching projects can't leave a stage filter armed.
+  if (stageSel) {
+    const stages = qcStageSet(isPanel ? 'medical_panel' : 'pod');
+    stageSel.innerHTML = `<option value="">${t('filter.allStages')}</option>` + stages.map(st =>
+      `<option value="${st.number}">${escHtml(t('filter.stageOpt', {
+        letter: stageLetter(st.number),
+        name: qcStageName(st.number, isPanel ? 'medical_panel' : 'pod'),
+      }))}</option>`).join('');
+  }
+
   const applyFilters = () => {
     loadPodsTab(projectId, getCurrentPodFilters());
   };
@@ -911,6 +961,7 @@ async function setupPodFilters(projectId) {
   groupSel.onchange = applyFilters;
   typeSel.onchange = applyFilters;
   dirSel.onchange = applyFilters;
+  if (stageSel) stageSel.onchange = applyFilters;
   statusSel.onchange = applyFilters;
   if (castingSel) castingSel.onchange = applyFilters;
 }

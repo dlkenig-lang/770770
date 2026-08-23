@@ -689,6 +689,13 @@ table tbody tr:hover { background: #f8fafc; }
   border-radius: 12px; font-size: 11px; font-weight: 700;
   padding: 2px 8px; white-space: nowrap;
 }
+/* Badge shown on a pod card while the stage filter is active — says why the
+   pod matched (that stage is in progress / completed). Outlined so it reads as
+   a second, secondary badge next to the pod's own status. */
+.stage-filter-badge {
+  border: 1px dashed currentColor;
+  font-size: 11px; padding: 2px 8px;
+}
 .pod-card-casting-approved {
   border-color: #6ee7b7;
   box-shadow: 0 0 0 2px rgba(16,185,129,0.15);

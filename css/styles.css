@@ -1390,7 +1390,11 @@ table tbody tr:hover { background: #f8fafc; }
 
 /* ===== PRODUCTION TARGET & SCRAPPED PODS ===== */
 .target-summary-card { margin-bottom: 16px; }
-.target-summary-title { font-weight: 700; font-size: 15px; margin-bottom: 10px; }
+.target-summary-header { display: flex; align-items: center; gap: 10px; }
+.target-summary-title { font-weight: 700; font-size: 15px; }
+.target-summary-mini { font-size: 13px; color: var(--text-muted); }
+.target-summary-toggle { margin-inline-start: auto; font-size: 16px; line-height: 1; padding: 2px 10px; }
+#target-summary-body { margin-top: 10px; }
 .target-total-row td { font-weight: 700; border-top: 2px solid var(--border); background: #f8fafc; }
 .target-remaining { font-weight: 700; color: var(--warning); }
 .target-met { font-weight: 700; color: var(--success); }

@@ -487,10 +487,24 @@ function renderTargetSummary(allPods, targetTypes, isPanel) {
     : r.remaining === 0 ? `<span class="target-met">✓ 0</span>`
     : `<span class="target-over" title="${t('proj.targetOverTitle')}">+${-r.remaining}</span>`;
 
+  // Collapsed state survives re-renders and sessions (language switches and
+  // filter changes re-render the tab; the choice shouldn't reset every time).
+  const collapsed = localStorage.getItem('qc_target_collapsed') === '1';
+  const totalEntered = sum('entered');
+  const totalRemaining = totalTarget != null ? totalTarget - totalEntered : null;
+
   el.innerHTML = `
     <div class="card target-summary-card">
       <div class="card-body">
-        <div class="target-summary-title">${t('proj.targetSummaryTitle')}</div>
+        <div class="target-summary-header">
+          <div class="target-summary-title">${t('proj.targetSummaryTitle')}</div>
+          <span class="target-summary-mini" id="target-summary-mini" style="${collapsed ? '' : 'display:none'}">${
+            totalRemaining != null ? t('proj.targetCollapsedSummary', { remaining: totalRemaining, target: totalTarget }) : ''
+          }</span>
+          <button class="btn btn-ghost btn-sm target-summary-toggle" id="btn-target-collapse"
+            title="${t('proj.targetCollapse')}" aria-label="${t('proj.targetCollapse')}">${collapsed ? '▸' : '▾'}</button>
+        </div>
+        <div id="target-summary-body" style="${collapsed ? 'display:none' : ''}">
         <div style="overflow-x:auto">
           <table class="dest-table">
             <thead><tr>
@@ -518,8 +532,20 @@ function renderTargetSummary(allPods, targetTypes, isPanel) {
             </tbody>
           </table>
         </div>
+        </div>
       </div>
     </div>`;
+
+  document.getElementById('btn-target-collapse')?.addEventListener('click', () => {
+    const body = document.getElementById('target-summary-body');
+    const mini = document.getElementById('target-summary-mini');
+    const btn = document.getElementById('btn-target-collapse');
+    const nowCollapsed = body.style.display !== 'none';
+    body.style.display = nowCollapsed ? 'none' : '';
+    if (mini) mini.style.display = nowCollapsed ? '' : 'none';
+    btn.textContent = nowCollapsed ? '▸' : '▾';
+    localStorage.setItem('qc_target_collapsed', nowCollapsed ? '1' : '0');
+  });
 }
 
 function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6, stageFilter = '') {

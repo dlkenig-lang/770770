@@ -155,6 +155,10 @@ const I18N = {
     'dest.noteSaved': 'תעודת המשלוח נשמרה',
     'dest.noteError': 'שגיאה בהפקת תעודת המשלוח: ',
     'dest.confirmNoAddress': 'ליחידה זו עדיין לא שויכה כתובת יעד. להפיק תעודת משלוח בלי כתובת?',
+    'dest.noteNoPods': 'לא נבחרו יחידות להפקת תעודות',
+    'dest.confirmBulkMissing': 'ל-{missing} מתוך {total} היחידות שנבחרו אין כתובת יעד. התעודות שלהן יופקו בלי כתובת. להמשיך?',
+    'dest.confirmBulkSize': 'להפיק {n} תעודות משלוח בקובץ אחד? ההפקה עשויה לקחת כמה עשרות שניות.',
+    'dest.notesSaved': '{n} תעודות משלוח הופקו בקובץ אחד',
 
     // Mold checks (בדיקות תבניות)
     'mold.add': '+ בדיקת תבנית',
@@ -592,6 +596,7 @@ const I18N = {
     'rep.all': 'הכל',
     'rep.exportPdfSelected': '📄 ייצוא PDF לנבחרים',
     'rep.exportExcelSelected': '📊 ייצוא Excel לנבחרים',
+    'rep.deliveryNotesSelected': '🚚 תעודות משלוח לסינון',
     'rep.podsSelected': '{n} פודים נבחרו',
     'rep.noResults': 'אין תוצאות',
     'rep.noPodsSelected': 'אין פודים נבחרים',
@@ -845,6 +850,10 @@ const I18N = {
     'dest.noteSaved': 'Delivery note saved',
     'dest.noteError': 'Could not produce the delivery note: ',
     'dest.confirmNoAddress': 'This unit has no destination address yet. Produce a delivery note without an address?',
+    'dest.noteNoPods': 'No units selected for delivery notes',
+    'dest.confirmBulkMissing': '{missing} of the {total} selected units have no destination address. Their notes will be produced without one. Continue?',
+    'dest.confirmBulkSize': 'Produce {n} delivery notes in a single file? This can take a minute.',
+    'dest.notesSaved': '{n} delivery notes produced in one file',
 
     // Mold checks
     'mold.add': '+ Mold Check',
@@ -1278,6 +1287,7 @@ const I18N = {
     'rep.all': 'All',
     'rep.exportPdfSelected': '📄 Export PDF for selected',
     'rep.exportExcelSelected': '📊 Export Excel for selected',
+    'rep.deliveryNotesSelected': '🚚 Delivery notes for the selection',
     'rep.podsSelected': '{n} pods selected',
     'rep.noResults': 'No results',
     'rep.noPodsSelected': 'No pods selected',

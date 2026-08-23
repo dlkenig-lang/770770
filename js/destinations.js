@@ -549,6 +549,58 @@ function buildDeliveryNoteSections(pod, dest, barcodeDataUrl, groupLabel) {
     </div>`];
 }
 
+// Addresses for a batch of pods, in one query, keyed by destination id.
+// Missing table / column (before migration 20260824000000) yields an empty map
+// and every note prints with the "no address" block instead of failing.
+async function fetchDestinationsFor(pods) {
+  const ids = [...new Set((pods || []).map(p => p.destination_id).filter(Boolean))];
+  if (!ids.length) return {};
+  const byId = {};
+  // Chunked: a very long IN list makes the request URL too large.
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data, error } = await supabaseClient
+      .from('pod_destinations').select('*').in('id', ids.slice(i, i + 100));
+    if (error) { console.error('[destinations] batch fetch failed:', error); return byId; }
+    (data || []).forEach(d => { byId[d.id] = d; });
+  }
+  return byId;
+}
+
+// Delivery notes for a whole selection (the filtered list in the reports view),
+// as ONE file with one note per page — a truckload is handed over as a single
+// stack, not as 30 separate downloads.
+async function generateDeliveryNotesForPods(pods, btn) {
+  if (!pods?.length) { showToast(t('dest.noteNoPods'), 'warning'); return; }
+
+  const destById = await fetchDestinationsFor(pods);
+  const missing = pods.filter(p => !destById[p.destination_id]).length;
+  if (missing && !await uiConfirm(
+    t('dest.confirmBulkMissing', { missing, total: pods.length }), { danger: false })) return;
+  // A large batch is slow (each note is rendered to a canvas), so say so first.
+  if (pods.length > 40 && !await uiConfirm(
+    t('dest.confirmBulkSize', { n: pods.length }), { danger: false })) return;
+
+  setLoading(btn, true);
+  try {
+    const sections = pods.map(p => buildDeliveryNoteSections(
+      p, destById[p.destination_id] || null,
+      pdfBarcodeDataUrl(p.pod_code),
+      p.production_groups?.name || '')[0]);
+    await renderSectionsToPdf(sections, `DeliveryNotes_${new Date().toISOString().split('T')[0]}.pdf`, {
+      pageBreakEach: true,
+      scale: 2,
+      jpegQuality: 0.85,
+      onProgress: (done, total) => { if (btn) btn.innerHTML = `⏳ ${done}/${total}`; },
+    });
+    showToast(t('dest.notesSaved', { n: pods.length }), 'success');
+  } catch (err) {
+    console.error('[destinations] batch delivery notes failed:', err);
+    showToast(t('dest.noteError') + (err.message || ''), 'error');
+  } finally {
+    setLoading(btn, false);
+  }
+}
+
 // Entry point from the pod screen. Fetches the address on demand so the note is
 // never printed from a stale copy of the pod row.
 async function generateDeliveryNote(pod) {
@@ -563,7 +615,8 @@ async function generateDeliveryNote(pod) {
     if (!dest && !await uiConfirm(t('dest.confirmNoAddress'), { danger: false })) return;
 
     const sections = buildDeliveryNoteSections(
-      pod, dest, pdfBarcodeDataUrl(pod.pod_code), AppState.currentPodGroupLabel || '');
+      pod, dest, pdfBarcodeDataUrl(pod.pod_code),
+      pod.production_groups?.name || AppState.currentPodGroupLabel || '');
     await renderSectionsToPdf(sections, `DeliveryNote_${pod.pod_code}_${new Date().toISOString().split('T')[0]}.pdf`);
     showToast(t('dest.noteSaved'), 'success');
   } catch (err) {

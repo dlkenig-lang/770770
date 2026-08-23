@@ -153,34 +153,42 @@ function pdfBarcodeDataUrl(code) {
 }
 
 // Render HTML sections to an A4 PDF and hand it to the user. Shared by the QC
-// report and the delivery note (destinations.js) — the save-picker fallback and
+// report and the delivery notes (destinations.js) — the save-picker fallback and
 // the page-break math live here only.
-async function renderSectionsToPdf(sections, filename) {
-  const SCALE = 3;
+//
+// opts.pageBreakEach — every section starts its own page (delivery notes: one
+//   note per page, never two stacked on one sheet).
+// opts.scale / opts.jpegQuality — a batch of hundreds of notes at the report's
+//   PNG @3x would be hundreds of MB; the notes pass 2x + JPEG instead.
+// opts.onProgress(done, total) — for a long batch, so the button can count.
+async function renderSectionsToPdf(sections, filename, opts = {}) {
+  const SCALE = opts.scale || 3;
   const PAGE_H_MM = 297;
   const MARGIN_MM = 10;
   const CONTENT_W_MM = 210 - MARGIN_MM * 2;
   const pxToMm = CONTENT_W_MM / 794;
-
-  const canvases = [];
-  for (const html of sections) {
-    canvases.push(await renderSection(html, SCALE));
-  }
+  const fmt = opts.jpegQuality ? 'JPEG' : 'PNG';
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   let yMm = MARGIN_MM;
   let firstPage = true;
 
-  for (const c of canvases) {
+  // Rendered and placed one at a time: holding every canvas of a 200-note batch
+  // in an array before adding them exhausts memory.
+  for (let i = 0; i < sections.length; i++) {
+    const c = await renderSection(sections[i], SCALE);
     const hMm = (c.height / SCALE) * pxToMm;
-    if (!firstPage && yMm + hMm > PAGE_H_MM - MARGIN_MM) {
+    if (!firstPage && (opts.pageBreakEach || yMm + hMm > PAGE_H_MM - MARGIN_MM)) {
       doc.addPage();
       yMm = MARGIN_MM;
     }
     firstPage = false;
-    doc.addImage(c.toDataURL('image/png'), 'PNG', MARGIN_MM, yMm, CONTENT_W_MM, hMm);
+    doc.addImage(
+      fmt === 'JPEG' ? c.toDataURL('image/jpeg', opts.jpegQuality) : c.toDataURL('image/png'),
+      fmt, MARGIN_MM, yMm, CONTENT_W_MM, hMm);
     yMm += hMm;
+    opts.onProgress?.(i + 1, sections.length);
   }
 
   const pdfBlob = doc.output('blob');
@@ -912,6 +920,7 @@ async function loadReportsView() {
           <span id="rf-count" style="font-size:13px;color:#64748b;"></span>
           <button id="rf-btn-pdf" class="btn btn-primary btn-sm">${t('rep.exportPdfSelected')}</button>
           <button id="rf-btn-excel" class="btn btn-primary btn-sm">${t('rep.exportExcelSelected')}</button>
+          <button id="rf-btn-delivery" class="btn btn-secondary btn-sm">${t('rep.deliveryNotesSelected')}</button>
         </div>
       </div>
     </div>
@@ -1004,6 +1013,14 @@ async function loadReportsView() {
     } finally {
       setLoading(btn, false);
     }
+  });
+
+  // Delivery notes for the current filter — one file, one note per page, in the
+  // same order as the table on screen.
+  document.getElementById('rf-btn-delivery').addEventListener('click', async () => {
+    const filtered = getFiltered();
+    if (!filtered.length) { showToast(t('rep.noPodsSelected'), 'warning'); return; }
+    await generateDeliveryNotesForPods(filtered, document.getElementById('rf-btn-delivery'));
   });
 
   document.getElementById('rf-btn-excel').addEventListener('click', async () => {

@@ -348,9 +348,10 @@ async function loadPodsTab(projectId, filters = {}) {
   if (filters.group_id) query = query.eq('group_id', filters.group_id);
   if (filters.status) query = query.eq('status', filters.status);
 
-  const [{ data: pods }, { data: projectGroups }] = await Promise.all([
+  const [{ data: pods }, { data: projectGroups }, { data: targetTypes }] = await Promise.all([
     query,
     supabaseClient.from('production_groups').select('id, name').eq('project_id', projectId),
+    supabaseClient.from('project_types').select('*, type_directions(*)').eq('project_id', projectId).order('type_number'),
   ]);
   const allGroups = sortGroupsByOption(projectGroups || []);
 
@@ -419,6 +420,14 @@ async function loadPodsTab(projectId, filters = {}) {
     `;
   }
 
+  // The target summary is a PROJECT-wide picture. group_id and status are
+  // applied inside the query, so when either is set allPods is already reduced
+  // — recompute only on an unfiltered load and leave the rendered table alone
+  // otherwise (it sits above the filter bar and doesn't change with filters).
+  if (!filters.group_id && !filters.status) {
+    renderTargetSummary(allPods, targetTypes || [], isPanel);
+  }
+
   const container = document.getElementById('pods-table-container');
 
   if (filtered.length === 0) {
@@ -444,6 +453,75 @@ async function loadPodsTab(projectId, filters = {}) {
   }
 }
 
+// Production target vs. actual, per type+direction, for the whole project —
+// deliberately computed on allPods and never on the filtered list: "how many
+// are left to produce" is a project-level answer.
+// Scrapped pods are excluded from "entered" and counted in their own column,
+// so a replacement pod doesn't make the slot look over-produced.
+// Rendered only when at least one target is set (migration 20260824010000);
+// before the migration the key is absent and the card simply never shows.
+function renderTargetSummary(allPods, targetTypes, isPanel) {
+  const el = document.getElementById('project-target-summary');
+  if (!el) return;
+
+  const dirRows = targetTypes.flatMap(ty =>
+    [...(ty.type_directions || [])]
+      .sort((a, b) => (a.direction === 'R' ? 0 : 1) - (b.direction === 'R' ? 0 : 1))
+      .map(dr => ({ ...dr, _type: ty })));
+  if (!dirRows.some(dr => dr.target_quantity != null)) { el.innerHTML = ''; return; }
+
+  const rows = dirRows.map(dr => {
+    const slotPods = allPods.filter(p => p.type_id === dr._type.id && p.direction_id === dr.id);
+    const scrapped = slotPods.filter(p => p.is_scrapped).length;
+    const entered = slotPods.length - scrapped;
+    const target = dr.target_quantity;
+    const remaining = target != null ? target - entered : null;
+    const dirLabel = isPanel ? '' : (dr.direction === 'R' ? t('proj.dirRight') : t('proj.dirLeft'));
+    return { label: `${typeLabel(dr._type)}${dirLabel ? ` · ${dirLabel}` : ''}`, target, entered, scrapped, remaining };
+  });
+  const sum = k => rows.reduce((a, r) => a + (r[k] ?? 0), 0);
+  const totalTarget = rows.some(r => r.target != null) ? sum('target') : null;
+
+  const remCell = r => r.remaining == null ? '—'
+    : r.remaining > 0 ? `<span class="target-remaining">${r.remaining}</span>`
+    : r.remaining === 0 ? `<span class="target-met">✓ 0</span>`
+    : `<span class="target-over" title="${t('proj.targetOverTitle')}">+${-r.remaining}</span>`;
+
+  el.innerHTML = `
+    <div class="card target-summary-card">
+      <div class="card-body">
+        <div class="target-summary-title">${t('proj.targetSummaryTitle')}</div>
+        <div style="overflow-x:auto">
+          <table class="dest-table">
+            <thead><tr>
+              <th>${isPanel ? t('proj.model') : t('proj.type')}</th>
+              <th>${t('proj.targetQty')}</th>
+              <th>${t('proj.targetEntered')}</th>
+              <th>${t('proj.targetScrapped')}</th>
+              <th>${t('proj.targetRemaining')}</th>
+            </tr></thead>
+            <tbody>
+              ${rows.map(r => `<tr>
+                <td class="dest-room">${escHtml(r.label)}</td>
+                <td>${r.target ?? '—'}</td>
+                <td>${r.entered}</td>
+                <td>${r.scrapped ? `<span class="target-scrapped">${r.scrapped}</span>` : 0}</td>
+                <td>${remCell(r)}</td>
+              </tr>`).join('')}
+              <tr class="target-total-row">
+                <td>${t('proj.targetTotal')}</td>
+                <td>${totalTarget ?? '—'}</td>
+                <td>${sum('entered')}</td>
+                <td>${sum('scrapped')}</td>
+                <td>${remCell({ remaining: totalTarget != null ? totalTarget - sum('entered') : null })}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6, stageFilter = '') {
   const stages = pod.qc_stages || [];
   const completedStages = stages.filter(s => s.status === 'completed').length;
@@ -466,7 +544,7 @@ function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6, stageF
     : '';
 
   return `
-    <div class="pod-card pod-card-clickable btn-open-pod ${flaggedCount > 0 ? 'pod-card-has-flagged' : unresolvedCount > 0 ? 'pod-card-has-comments' : ''} ${awaitingCasting ? 'pod-card-casting-approved' : ''}" data-pod-id="${pod.id}">
+    <div class="pod-card pod-card-clickable btn-open-pod ${flaggedCount > 0 ? 'pod-card-has-flagged' : unresolvedCount > 0 ? 'pod-card-has-comments' : ''} ${awaitingCasting ? 'pod-card-casting-approved' : ''} ${pod.is_scrapped ? 'pod-card-scrapped' : ''}" data-pod-id="${pod.id}">
       <div class="pod-card-header">
         <div class="pod-card-code">${escHtml(pod.pod_code)}</div>
         ${awaitingCasting ? `<span class="casting-approved-badge" title="${t('pod.castingApprovedTitle')}">${t('pod.castingApproved')}</span>` : ''}
@@ -475,6 +553,7 @@ function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6, stageF
           : unresolvedCount > 0
           ? `<span class="unresolved-badge" title="${t('proj.unresolvedTitle', { n: unresolvedCount })}">💬 ${unresolvedCount}</span>`
           : ''}
+        ${pod.is_scrapped ? `<span class="scrapped-badge" title="${escHtml(pod.scrapped_reason || t('pod.scrappedTitle'))}">✖ ${t('pod.scrapped')}</span>` : ''}
         <span class="status-badge ${statusCls}">${STATUS_LABELS[pod.status] || pod.status}</span>
         ${stageBadge}
       </div>
@@ -600,11 +679,23 @@ async function loadProjectDetailsTab(project) {
   // select('*') — an explicit column list silently drops model_name, which
   // renders the "model name" input empty on every reload even though the value
   // is stored. Keep this as '*' whenever a column is added to project_types.
+  // type_directions(*) carries target_quantity (migration 20260824010000).
   const { data: types } = await supabaseClient
     .from('project_types')
-    .select('*')
+    .select('*, type_directions(*)')
     .eq('project_id', project.id)
     .order('type_number');
+
+  // Before migration 20260824010000 the target column does not exist — the
+  // embed still works, the key is just absent. Detect that and render a hint
+  // instead of inputs whose save would fail.
+  const dirRows = (types || []).flatMap(ty => ty.type_directions || []);
+  const targetsAvailable = dirRows.length > 0 && ('target_quantity' in dirRows[0]);
+  // Direction rows per type, R before L (panels: their single placeholder row).
+  const dirsOf = ty => [...(ty.type_directions || [])].sort((a, b) =>
+    (a.direction === 'R' ? 0 : 1) - (b.direction === 'R' ? 0 : 1));
+  const dirTargetLabel = d => isPanel ? t('proj.targetQty')
+    : (d.direction === 'R' ? t('proj.targetQtyRight') : t('proj.targetQtyLeft'));
 
   // Panels have no length — their dimensions are stored as "WxH" (two parts),
   // so they must be read back as width/height, not length/width.
@@ -642,8 +733,17 @@ async function loadProjectDetailsTab(project) {
               <label style="font-size:11px">${t('proj.height')}</label>
               <input type="text" class="form-control det-dim-h" data-type-id="${ty.id}" value="${escHtml(d.h)}" placeholder="${t('proj.height')}" />
             </div>
+            ${targetsAvailable ? dirsOf(ty).map(dr => `
+            <div class="form-group" style="margin:0;flex:1;min-width:90px">
+              <label style="font-size:11px">${dirTargetLabel(dr)}</label>
+              <input type="number" min="0" step="1" class="form-control det-target-qty" data-dir-id="${dr.id}"
+                value="${dr.target_quantity ?? ''}" placeholder="—" />
+            </div>`).join('') : ''}
           </div>`;
         }).join('')}
+        ${targetsAvailable
+          ? `<div class="form-hint">${t('proj.targetQtyHint')}</div>`
+          : `<div class="form-hint">${t('proj.targetNeedMigration')}</div>`}
       </div>
     </div>
   ` : (!isAdminOrPM() && types?.length ? `
@@ -735,7 +835,15 @@ async function loadProjectDetailsTab(project) {
         return supabaseClient.from('project_types').update({ dimensions: dims, model_name: modelName }).eq('id', t.id);
       });
 
-      const results = await Promise.all([projectUpdate, ...typeUpdates]);
+      // Production targets — one write per direction row that has an input.
+      // Empty input clears the target (NULL = no target set for that slot).
+      const targetUpdates = [...container.querySelectorAll('.det-target-qty')].map(inp => {
+        const raw = inp.value.trim();
+        const qty = raw === '' ? null : Math.max(0, parseInt(raw) || 0);
+        return supabaseClient.from('type_directions').update({ target_quantity: qty }).eq('id', inp.dataset.dirId);
+      });
+
+      const results = await Promise.all([projectUpdate, ...typeUpdates, ...targetUpdates]);
 
       const firstError = results.find(r => r.error);
       if (firstError) { setLoading(btn, false); showToast(t('qc.saveError'), 'error'); return; }

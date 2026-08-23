@@ -66,6 +66,8 @@ async function openPod(podId) {
     castingBadge.style.display = (!isPanel && podAwaitingCasting(pod)) ? '' : 'none';
   }
 
+  refreshPodScrapUI(pod);
+
   const selGroupIdx = groups.findIndex(g => g.id === pod.group_id);
   const dotColor = selGroupIdx >= 0 ? GROUP_COLORS[selGroupIdx % GROUP_COLORS.length] : '';
   const groupLetter = selGroupIdx >= 0 ? String.fromCharCode(65 + selGroupIdx) : '';
@@ -358,8 +360,90 @@ function initPodDetailButtons() {
     if (AppState.currentPod) generateDeliveryNote(AppState.currentPod);
   });
 
+  // Scrap / un-scrap (admin + PM). The pod is never deleted — its QC history
+  // and serial stay; the flag only takes it out of the production-target count.
+  document.getElementById('btn-pod-scrap')?.addEventListener('click', () => {
+    if (AppState.currentPod) togglePodScrapped(AppState.currentPod);
+  });
+
   // Audit history — open to every active user (migration 20260726000000)
   document.getElementById('btn-pod-history')?.addEventListener('click', showPodHistory);
+}
+
+// ---- SCRAPPED POD ----
+// Header badge (with the reason as tooltip) + the toggle button's label.
+// The button stays hidden for viewers/inspectors (admin-only pm-only classes)
+// and before migration 20260824010000 (is_scrapped undefined on a fresh row is
+// falsy, but marking would fail — the error toast says which migration).
+function refreshPodScrapUI(pod) {
+  const badge = document.getElementById('pod-scrapped-badge');
+  if (badge) {
+    badge.style.display = pod.is_scrapped ? '' : 'none';
+    badge.title = pod.scrapped_reason || '';
+  }
+  const btn = document.getElementById('btn-pod-scrap');
+  if (btn && isAdminOrPM()) {
+    btn.style.display = '';
+    btn.textContent = pod.is_scrapped ? t('pod.unscrapAction') : t('pod.scrapAction');
+    btn.className = pod.is_scrapped ? 'btn btn-secondary' : 'btn btn-danger';
+  }
+}
+
+async function togglePodScrapped(pod) {
+  if (!pod.is_scrapped) {
+    // Reason is required: a scrapped unit with no reason is unexplainable a
+    // month later, and the audit row stores whatever is written here.
+    openModal(t('pod.scrapTitle', { code: pod.pod_code }), `
+      <p class="form-hint">${t('pod.scrapExplain')}</p>
+      <div class="form-group">
+        <label>${t('pod.scrapReason')}</label>
+        <textarea id="pod-scrap-reason" class="form-control" rows="3" placeholder="${t('pod.scrapReasonPh')}"></textarea>
+      </div>
+      <div id="pod-scrap-err" class="error-msg hidden"></div>
+    `, [
+      { label: t('common.cancel'), cls: 'btn-ghost', id: 'btn-scrap-cancel' },
+      { label: t('pod.scrapConfirm'), cls: 'btn-danger', id: 'btn-scrap-go' },
+    ]);
+    document.getElementById('btn-scrap-cancel')?.addEventListener('click', closeModal);
+    document.getElementById('btn-scrap-go')?.addEventListener('click', async () => {
+      const reason = document.getElementById('pod-scrap-reason')?.value.trim();
+      if (!reason) {
+        const err = document.getElementById('pod-scrap-err');
+        err.textContent = t('pod.scrapNeedReason');
+        err.classList.remove('hidden');
+        return;
+      }
+      const { error } = await supabaseClient.from('pods').update({
+        is_scrapped: true, scrapped_reason: reason, scrapped_at: new Date().toISOString(),
+      }).eq('id', pod.id);
+      if (error) {
+        console.error('[scrap] update failed:', error);
+        showToast(t('pod.scrapError') + (error.message || ''), 'error');
+        return;
+      }
+      pod.is_scrapped = true;
+      pod.scrapped_reason = reason;
+      closeModal();
+      refreshPodScrapUI(pod);
+      showToast(t('pod.scrapDone'), 'warning');
+    });
+    return;
+  }
+
+  // Un-scrap — e.g. a pod marked by mistake, or repaired and returned to line.
+  if (!await uiConfirm(t('pod.unscrapConfirm', { code: pod.pod_code }), { danger: false })) return;
+  const { error } = await supabaseClient.from('pods').update({
+    is_scrapped: false, scrapped_reason: null, scrapped_at: null,
+  }).eq('id', pod.id);
+  if (error) {
+    console.error('[scrap] update failed:', error);
+    showToast(t('pod.scrapError') + (error.message || ''), 'error');
+    return;
+  }
+  pod.is_scrapped = false;
+  pod.scrapped_reason = null;
+  refreshPodScrapUI(pod);
+  showToast(t('pod.unscrapDone'), 'success');
 }
 
 // ---- AUDIT HISTORY ----

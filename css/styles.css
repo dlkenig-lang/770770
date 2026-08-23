@@ -1387,3 +1387,19 @@ table tbody tr:hover { background: #f8fafc; }
 }
 .dest-import-preview { margin-top: 12px; font-size: 13px; }
 .dest-preview-warn { color: var(--warning); margin-top: 4px; }
+
+/* ===== PRODUCTION TARGET & SCRAPPED PODS ===== */
+.target-summary-card { margin-bottom: 16px; }
+.target-summary-title { font-weight: 700; font-size: 15px; margin-bottom: 10px; }
+.target-total-row td { font-weight: 700; border-top: 2px solid var(--border); background: #f8fafc; }
+.target-remaining { font-weight: 700; color: var(--warning); }
+.target-met { font-weight: 700; color: var(--success); }
+.target-over { font-weight: 700; color: var(--danger); }
+.target-scrapped { font-weight: 700; color: var(--danger); }
+.scrapped-badge {
+  background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;
+  border-radius: 12px; font-size: 11px; font-weight: 700;
+  padding: 2px 8px; white-space: nowrap;
+}
+.pod-card-scrapped { opacity: 0.55; border-style: dashed; }
+.pod-card-scrapped .pod-card-code { text-decoration: line-through; }

@@ -56,8 +56,10 @@ async function loadDestinationsTab(projectId) {
 
   const [{ data: dests, error: destErr }, { data: pods }] = await Promise.all([
     supabaseClient.from('pod_destinations').select('*').eq('project_id', projectId),
+    // '*' (not an explicit list) so destination_id / is_scrapped are simply
+    // absent before their migrations instead of failing the whole query.
     supabaseClient.from('pods')
-      .select('id, pod_code, destination_id, project_types(type_number, model_name), type_directions(direction)')
+      .select('*, project_types(type_number, model_name), type_directions(direction)')
       .eq('project_id', projectId),
   ]);
 
@@ -86,7 +88,9 @@ function renderDestinationsTab() {
   _destPods.forEach(p => { if (p.destination_id) podByDest[p.destination_id] = p; });
 
   const assigned = _destRows.filter(d => podByDest[d.id]).length;
-  const podsWithout = _destPods.filter(p => !p.destination_id).length;
+  // A scrapped pod is not shipped anywhere — it neither needs a destination
+  // nor counts as missing one.
+  const podsWithout = _destPods.filter(p => !p.destination_id && !p.is_scrapped).length;
 
   if (statsEl) {
     statsEl.innerHTML = `
@@ -204,7 +208,7 @@ function showAssignPodModal(destId) {
   const dest = _destRows.find(d => d.id === destId);
   if (!dest) return;
 
-  const free = _destPods.filter(p => !p.destination_id);
+  const free = _destPods.filter(p => !p.destination_id && !p.is_scrapped);
   const matches = p =>
     (!dest.type_number || p.project_types?.type_number === dest.type_number) &&
     (_destIsPanel || !dest.direction || p.type_directions?.direction === dest.direction);
@@ -244,7 +248,7 @@ function showAssignPodModal(destId) {
 // unit of the expected type (and direction, for pods). A room with no expected
 // type is left alone — guessing there would ship a unit to the wrong room.
 async function autoAssignDestinations() {
-  const free = _destPods.filter(p => !p.destination_id);
+  const free = _destPods.filter(p => !p.destination_id && !p.is_scrapped);
   const open = _destRows.filter(d => !_destPods.some(p => p.destination_id === d.id));
   if (open.length === 0) { showToast(t('dest.allAssigned'), 'info'); return; }
 

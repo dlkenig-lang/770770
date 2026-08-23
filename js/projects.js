@@ -489,7 +489,8 @@ function renderTargetSummary(allPods, targetTypes, isPanel) {
 
   // Collapsed state survives re-renders and sessions (language switches and
   // filter changes re-render the tab; the choice shouldn't reset every time).
-  const collapsed = localStorage.getItem('qc_target_collapsed') === '1';
+  // Default is COLLAPSED: only an explicit expand ('0') opens it.
+  const collapsed = localStorage.getItem('qc_target_collapsed') !== '0';
   const totalEntered = sum('entered');
   const totalRemaining = totalTarget != null ? totalTarget - totalEntered : null;
 

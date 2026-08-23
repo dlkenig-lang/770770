@@ -300,6 +300,9 @@ document.getElementById('btn-print-all-barcodes')?.addEventListener('click', () 
 document.getElementById('btn-add-group')?.addEventListener('click', () => {
   if (AppState.currentProject) showGroupModal(AppState.currentProject.id);
 });
+document.getElementById('btn-dest-import')?.addEventListener('click', showDestImportModal);
+document.getElementById('btn-dest-auto')?.addEventListener('click', autoAssignDestinations);
+document.getElementById('btn-dest-export')?.addEventListener('click', exportDestinationsExcel);
 document.getElementById('btn-edit-project')?.addEventListener('click', () => {
   activateTab('details');
 });

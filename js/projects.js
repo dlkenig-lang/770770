@@ -321,6 +321,7 @@ async function openProject(projectId) {
       isPanel ? Promise.resolve() : loadGroupsTab(projectId).catch(e => console.error('[openProject] groups tab error:', e)),
       loadProjectDetailsTab(project).catch(e => console.error('[openProject] details tab error:', e)),
       loadPlansTab(projectId).catch(e => console.error('[openProject] plans tab error:', e)),
+      loadDestinationsTab(projectId).catch(e => console.error('[openProject] destinations tab error:', e)),
       isPanel ? Promise.resolve() : loadMoldsTab(projectId).catch(e => console.error('[openProject] molds tab error:', e)),
       setupPodFilters(projectId).catch(e => console.error('[openProject] filters error:', e)),
     ]);

@@ -134,30 +134,34 @@ async function renderSection(html, scale) {
   return canvas;
 }
 
-async function buildAndDownloadPDF(pod, stages, stageItems) {
+// Company logo as a data URL, for the PDF header. Null when it can't be read.
+async function pdfLogoDataUrl() {
+  try {
+    const res = await fetch('images/logo.svg');
+    const svgText = await res.text();
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgText)));
+  } catch (e) { return null; }
+}
+
+// CODE128 barcode of the unit code as a PNG data URL. Null on failure.
+function pdfBarcodeDataUrl(code) {
+  try {
+    const bc = document.createElement('canvas');
+    JsBarcode(bc, code, { format: 'CODE128', width: 3, height: 150, displayValue: false, margin: 10 });
+    return bc.toDataURL('image/png');
+  } catch (e) { return null; }
+}
+
+// Render HTML sections to an A4 PDF and hand it to the user. Shared by the QC
+// report and the delivery note (destinations.js) — the save-picker fallback and
+// the page-break math live here only.
+async function renderSectionsToPdf(sections, filename) {
   const SCALE = 3;
   const PAGE_H_MM = 297;
   const MARGIN_MM = 10;
   const CONTENT_W_MM = 210 - MARGIN_MM * 2;
   const pxToMm = CONTENT_W_MM / 794;
 
-  // Fetch logo as data URL
-  let logoDataUrl = null;
-  try {
-    const res = await fetch('images/logo.svg');
-    const svgText = await res.text();
-    logoDataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgText)));
-  } catch (e) { /* skip logo */ }
-
-  // Generate barcode as canvas data URL
-  let barcodeDataUrl = null;
-  try {
-    const bc = document.createElement('canvas');
-    JsBarcode(bc, pod.pod_code, { format: 'CODE128', width: 3, height: 150, displayValue: false, margin: 10 });
-    barcodeDataUrl = bc.toDataURL('image/png');
-  } catch (e) { /* skip barcode */ }
-
-  const sections = buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, AppState.currentPodGroupLabel || '');
   const canvases = [];
   for (const html of sections) {
     canvases.push(await renderSection(html, SCALE));
@@ -179,7 +183,6 @@ async function buildAndDownloadPDF(pod, stages, stageItems) {
     yMm += hMm;
   }
 
-  const filename = `QC_${pod.pod_code}_${new Date().toISOString().split('T')[0]}.pdf`;
   const pdfBlob = doc.output('blob');
 
   if (window.showSaveFilePicker) {
@@ -200,6 +203,12 @@ async function buildAndDownloadPDF(pod, stages, stageItems) {
   const a = document.createElement('a');
   a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
+}
+
+async function buildAndDownloadPDF(pod, stages, stageItems) {
+  const [logoDataUrl, barcodeDataUrl] = [await pdfLogoDataUrl(), pdfBarcodeDataUrl(pod.pod_code)];
+  const sections = buildPDFSections(pod, stages, stageItems, logoDataUrl, barcodeDataUrl, AppState.currentPodGroupLabel || '');
+  await renderSectionsToPdf(sections, `QC_${pod.pod_code}_${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
 async function generatePodPDF(pod) {

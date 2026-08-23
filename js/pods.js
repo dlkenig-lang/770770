@@ -29,6 +29,17 @@ async function openPod(podId) {
   // undefined and podProductType() falls back to 'pod'.
   const isPanel = podProductType(pod) === 'medical_panel';
 
+  // Delivery destination — fetched separately and never as an embed on the pod
+  // query: before migration 20260824000000 the table and the FK do not exist,
+  // and an embed would fail the whole query and break the pod screen. Without
+  // the column `destination_id` is simply undefined and no lookup happens.
+  let podDest = null;
+  if (pod.destination_id) {
+    const { data: d } = await supabaseClient
+      .from('pod_destinations').select('*').eq('id', pod.destination_id).maybeSingle();
+    podDest = d || null;
+  }
+
   // Fetch groups for all users — needed for group label in barcode/PDF.
   // Panels have no production groups.
   let groups = [];
@@ -94,6 +105,10 @@ async function openPod(podId) {
       <div class="info-label">${t('proj.pipeType')}</div>
       <div class="info-value">${escHtml(pod.projects?.pipe_type || '—')}</div>
     </div>`}
+    <div class="info-item">
+      <div class="info-label">${t('pod.destination')}</div>
+      <div class="info-value">${podDest ? escHtml(destAddressLabel(podDest)) : '—'}</div>
+    </div>
     <div class="info-item">
       <div class="info-label">${t('pod.inspectionStarted')}</div>
       <div class="info-value">${pod.inspection_started_at ? formatDate(pod.inspection_started_at.split('T')[0]) : '—'}</div>
@@ -336,6 +351,11 @@ function initPodDetailButtons() {
   // PDF button
   document.getElementById('btn-pod-pdf')?.addEventListener('click', () => {
     if (AppState.currentPod) generatePodPDF(AppState.currentPod);
+  });
+
+  // Delivery note — the site address the unit is shipped to (destinations.js)
+  document.getElementById('btn-pod-delivery')?.addEventListener('click', () => {
+    if (AppState.currentPod) generateDeliveryNote(AppState.currentPod);
   });
 
   // Audit history — open to every active user (migration 20260726000000)

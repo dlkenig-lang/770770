@@ -849,7 +849,18 @@ async function loadProjectDetailsTab(project) {
   // embed still works, the key is just absent. Detect that and render a hint
   // instead of inputs whose save would fail.
   const dirRows = (types || []).flatMap(ty => ty.type_directions || []);
-  const targetsAvailable = dirRows.length > 0 && ('target_quantity' in dirRows[0]);
+  let targetsAvailable = dirRows.length > 0 && ('target_quantity' in dirRows[0]);
+  // A project with no types yet has no direction rows, so the embed above cannot
+  // reveal whether the column exists — and the check would report "no migration"
+  // even where the migration ran, hiding target inputs whose save would have
+  // succeeded. Probe the column directly instead (same pattern as the
+  // project_number check in createProject); PostgREST rejects an unknown column
+  // even when the table is empty. Only for admin/PM — nobody else sees the inputs.
+  if (dirRows.length === 0 && isAdminOrPM()) {
+    const { error: targetProbeErr } = await supabaseClient
+      .from('type_directions').select('target_quantity').limit(1);
+    targetsAvailable = !targetProbeErr;
+  }
   // Direction rows per type, R before L (panels: their single placeholder row).
   const dirsOf = ty => [...(ty.type_directions || [])].sort((a, b) =>
     (a.direction === 'R' ? 0 : 1) - (b.direction === 'R' ? 0 : 1));

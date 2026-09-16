@@ -698,6 +698,138 @@ async function loadGroupsTab(projectId) {
   }
 }
 
+// ---- ADD A TYPE TO AN EXISTING PROJECT ----
+// Types used to be creatable only inside createProject. The database never
+// required that: project_types is UNIQUE (project_id, type_number) with no
+// link to the project's creation, and the "Admins and PMs can manage types"
+// policy (migration 20260712000000) is FOR ALL. So this needs NO migration —
+// it is the same pair of inserts createProject already does.
+//
+// ⚠️ Pods are deliberately NOT created here. globalSerial must keep running as
+// one continuous sequence across every type and direction in the project, and
+// that logic lives in createProject / showGroupModal. Duplicating it here is
+// exactly how T9 once got lower serials than T1. After the type exists it
+// appears in the group composition and in "add pod", which number correctly.
+async function showAddTypeModal(project, existingTypes, targetsAvailable) {
+  const isPanel = projIsPanel(project);
+  // UNIQUE (project_id, type_number): continue from the highest existing number
+  // rather than filling gaps, so a number freed by a deleted type is never
+  // reused by a different model.
+  const nextNum = Math.max(0, ...(existingTypes || []).map(ty => ty.type_number || 0)) + 1;
+
+  const targetInput = (dir, width) => targetsAvailable
+    ? `<input type="number" min="0" step="1" id="at-target-${dir}" class="form-control" style="width:${width}" placeholder="${t('proj.targetQty')}" />`
+    : '';
+
+  openModal(isPanel ? t('proj.addModelTitle') : t('proj.addTypeTitle'), `
+    <div class="form-hint" style="margin-bottom:12px">${t('proj.addTypeNumberHint', { n: nextNum })}</div>
+    <div class="form-group">
+      <label>${t('proj.modelName')}</label>
+      <input type="text" id="at-model" class="form-control" placeholder="${t('proj.modelNamePlaceholder')}" />
+    </div>
+    <div class="form-row">
+      ${isPanel ? '' : `
+      <div class="form-group">
+        <label>${t('proj.length')}</label>
+        <input type="text" id="at-dim-l" class="form-control" placeholder="${t('proj.length')}" />
+      </div>`}
+      <div class="form-group">
+        <label>${t('proj.width')}</label>
+        <input type="text" id="at-dim-w" class="form-control" placeholder="${t('proj.width')}" />
+      </div>
+      <div class="form-group">
+        <label>${t('proj.height')}</label>
+        <input type="text" id="at-dim-h" class="form-control" placeholder="${t('proj.height')}" />
+      </div>
+    </div>
+    ${isPanel ? (targetsAvailable ? `
+    <div class="form-group">
+      <label>${t('proj.targetQty')}</label>
+      ${targetInput('R', '110px')}
+    </div>` : '') : `
+    <div class="form-group">
+      <label>${t('proj.addTypeDirs')}</label>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="at-dir-R" checked />
+          <label for="at-dir-R">${t('direction.R')}</label>
+          ${targetInput('R', '90px')}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="at-dir-L" checked />
+          <label for="at-dir-L">${t('direction.L')}</label>
+          ${targetInput('L', '90px')}
+        </div>
+      </div>
+    </div>`}
+    <div class="form-hint">${t('proj.addTypePodsHint')}</div>
+  `, [
+    { label: t('common.cancel'), cls: 'btn-secondary', id: 'btn-add-type-cancel' },
+    { label: t('common.save'), cls: 'btn-primary', id: 'btn-add-type-confirm' },
+  ]);
+
+  document.getElementById('btn-add-type-cancel')?.addEventListener('click', closeModal);
+
+  document.getElementById('btn-add-type-confirm')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-add-type-confirm');
+
+    // Panels render no length field, so dimL stays empty and the stored value
+    // is "WxH" — parseDims in the details tab reads it back the same way.
+    const modelName = document.getElementById('at-model')?.value.trim() || null;
+    const dimL = document.getElementById('at-dim-l')?.value.trim() || '';
+    const dimW = document.getElementById('at-dim-w')?.value.trim() || '';
+    const dimH = document.getElementById('at-dim-h')?.value.trim() || '';
+    const dims = [dimL, dimW, dimH].filter(Boolean).join('x') || null;
+
+    // Panels have no R/L: a single placeholder 'R' row keeps pods.direction_id
+    // NOT NULL working, is never displayed, and carries the model's target.
+    const dirs = isPanel
+      ? ['R']
+      : ['R', 'L'].filter(d => document.getElementById(`at-dir-${d}`)?.checked);
+    if (!dirs.length) { showToast(t('proj.addTypeNoDirs'), 'error'); return; }
+
+    setLoading(btn, true);
+    let newTypeId = null;
+    try {
+      const { data: typeData, error: typeErr } = await supabaseClient
+        .from('project_types')
+        .insert({ project_id: project.id, type_number: nextNum, dimensions: dims, model_name: modelName })
+        .select().single();
+      if (typeErr) throw typeErr;
+      newTypeId = typeData.id;
+
+      const dirRows = dirs.map(d => {
+        // pod_count is written by createProject but never read anywhere; 0 says
+        // "this action created no pods".
+        const row = { type_id: typeData.id, direction: d, pod_count: 0 };
+        // target_quantity only exists after migration 20260824010000 — sending
+        // the key before that fails the whole insert.
+        if (targetsAvailable) {
+          const raw = document.getElementById(`at-target-${d}`)?.value.trim() || '';
+          row.target_quantity = raw === '' ? null : Math.max(0, parseInt(raw) || 0);
+        }
+        return row;
+      });
+      const { error: dirErr } = await supabaseClient.from('type_directions').insert(dirRows);
+      if (dirErr) throw dirErr;
+
+      showToast(t('proj.typeCreated', { label: `T${nextNum}` }), 'success');
+      closeModal();
+      await loadProjectDetailsTab(project);
+      await setupPodFilters(project.id);
+      await loadPodsTab(project.id, getCurrentPodFilters());
+    } catch (err) {
+      // A type with no direction rows is unusable — it cannot be picked in the
+      // group composition or in "add pod" — so roll it back rather than leave
+      // it behind. No pods reference it yet, and the FK cascades.
+      if (newTypeId) await supabaseClient.from('project_types').delete().eq('id', newTypeId);
+      showToast(t('proj.errorPrefix') + (err.message || err), 'error');
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+}
+
 // ---- PROJECT DETAILS TAB ----
 async function loadProjectDetailsTab(project) {
   const container = document.getElementById('project-details-form');
@@ -717,7 +849,18 @@ async function loadProjectDetailsTab(project) {
   // embed still works, the key is just absent. Detect that and render a hint
   // instead of inputs whose save would fail.
   const dirRows = (types || []).flatMap(ty => ty.type_directions || []);
-  const targetsAvailable = dirRows.length > 0 && ('target_quantity' in dirRows[0]);
+  let targetsAvailable = dirRows.length > 0 && ('target_quantity' in dirRows[0]);
+  // A project with no types yet has no direction rows, so the embed above cannot
+  // reveal whether the column exists — and the check would report "no migration"
+  // even where the migration ran, hiding target inputs whose save would have
+  // succeeded. Probe the column directly instead (same pattern as the
+  // project_number check in createProject); PostgREST rejects an unknown column
+  // even when the table is empty. Only for admin/PM — nobody else sees the inputs.
+  if (dirRows.length === 0 && isAdminOrPM()) {
+    const { error: targetProbeErr } = await supabaseClient
+      .from('type_directions').select('target_quantity').limit(1);
+    targetsAvailable = !targetProbeErr;
+  }
   // Direction rows per type, R before L (panels: their single placeholder row).
   const dirsOf = ty => [...(ty.type_directions || [])].sort((a, b) =>
     (a.direction === 'R' ? 0 : 1) - (b.direction === 'R' ? 0 : 1));
@@ -734,11 +877,13 @@ async function loadProjectDetailsTab(project) {
     return { l: (parts[0] || '').trim(), w: (parts[1] || '').trim(), h: (parts[2] || '').trim() };
   }
 
-  const typesSection = isAdminOrPM() && types?.length ? `
+  // The admin/PM branch renders even with zero types, so the "add type" button
+  // is reachable in a project whose types were never created.
+  const typesSection = isAdminOrPM() ? `
     <div class="card" style="margin-top:16px">
       <div class="card-body">
         <div style="font-weight:600;margin-bottom:12px;font-size:15px">${t('proj.dimsByType')}</div>
-        ${types.map(ty => {
+        ${(types || []).map(ty => {
           const d = parseDims(ty.dimensions);
           return `
           <div class="det-type-row" style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
@@ -768,12 +913,13 @@ async function loadProjectDetailsTab(project) {
             </div>`).join('') : ''}
           </div>`;
         }).join('')}
-        ${targetsAvailable
+        ${(types || []).length ? (targetsAvailable
           ? `<div class="form-hint">${t('proj.targetQtyHint')}</div>`
-          : `<div class="form-hint">${t('proj.targetNeedMigration')}</div>`}
+          : `<div class="form-hint">${t('proj.targetNeedMigration')}</div>`) : ''}
+        <button class="btn btn-secondary" id="btn-add-type" style="margin-top:12px">+ ${isPanel ? t('proj.addModelType') : t('proj.addType')}</button>
       </div>
     </div>
-  ` : (!isAdminOrPM() && types?.length ? `
+  ` : (types?.length ? `
     <div class="card" style="margin-top:16px">
       <div class="card-body">
         <div style="font-weight:600;margin-bottom:12px;font-size:15px">${t('proj.dimsByType')}</div>
@@ -837,6 +983,9 @@ async function loadProjectDetailsTab(project) {
   `;
 
   if (isAdminOrPM()) {
+    document.getElementById('btn-add-type')?.addEventListener('click', () =>
+      showAddTypeModal(project, types || [], targetsAvailable));
+
     document.getElementById('btn-save-project-details')?.addEventListener('click', async () => {
       const btn = document.getElementById('btn-save-project-details');
       setLoading(btn, true);

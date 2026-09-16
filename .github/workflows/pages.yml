@@ -2,7 +2,12 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main", "claude/**"]
+    # Only main can actually deploy: the github-pages environment is
+    # restricted to it, so a run on any other branch is rejected before
+    # its first step and shows up as a failure that says nothing about
+    # the code. Feature branches are covered by the run on main after
+    # they merge.
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:

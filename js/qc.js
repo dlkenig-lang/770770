@@ -971,7 +971,12 @@ async function updateStageStatus(stageId, podId, stages) {
 async function updatePodStatus(podId) {
   const { data: stages } = await supabaseClient.from('qc_stages').select('status').eq('pod_id', podId);
   if (!stages) return;
-  const allCompleted = stages.every(s => s.status === 'completed');
+  // "Completed" means every stage of the product's set is signed — not just
+  // every row that happens to exist. A pod signed A–F before stage G was
+  // added has 6 completed rows and no G row; checking rows alone kept it
+  // "completed" at 6/7.
+  const expected = qcStageSet(_qcProductType).length;
+  const allCompleted = stages.length >= expected && stages.every(s => s.status === 'completed');
   const anyFailed = stages.some(s => s.status === 'failed');
   const anyInProgress = stages.some(s => s.status === 'in_progress' || s.status === 'completed');
 

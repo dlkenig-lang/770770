@@ -33,7 +33,7 @@ function flashSaved(field) {
   setTimeout(() => field.classList.remove('qc-field-saved'), 1200);
 }
 
-const STAGE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+const STAGE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
 // Keys of Stage A items that must all pass before casting approval (items 1–7).
 // Edit this list when adding/removing casting-check items from Stage A in qc-data.js.
@@ -330,6 +330,19 @@ function renderActiveStage() {
           const saved = savedItems.find(i => i.item_key === d.key);
           return !saved || saved.status === 'pending';
         });
+        // Photo gate: an item flagged requiresImage (stage G interior photo)
+        // can't be signed without an attached image. Hard block, not a
+        // confirm — the photo is the pod's only record of its finished
+        // interior once it is wrapped.
+        const noPhoto = defItems.filter(d => d.requiresImage &&
+          !savedItems.find(i => i.item_key === d.key)?.image_url);
+        if (noPhoto.length > 0) {
+          const msg = t('qc.photoRequired', { items: noPhoto.map(d => qcItemLabel(d)).join(', ') });
+          if (warningsEl) warningsEl.innerHTML = `<div class="qc-warning-msg">⚠️ ${escHtml(msg)}</div>`;
+          showToast(msg, 'error');
+          return;
+        }
+
         if (missing.length > 0) {
           const list = missing.map(d => `• ${qcItemLabel(d)}`).join('\n');
           const ok = await uiConfirm(t('qc.signMissingItems', { n: missing.length, items: list }));

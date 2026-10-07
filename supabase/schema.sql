@@ -96,7 +96,7 @@ CREATE TABLE pods (
 CREATE TABLE qc_stages (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   pod_id UUID NOT NULL REFERENCES pods(id) ON DELETE CASCADE,
-  stage_number INTEGER NOT NULL CHECK (stage_number BETWEEN 1 AND 6),
+  stage_number INTEGER NOT NULL CHECK (stage_number BETWEEN 1 AND 7),
   stage_name TEXT NOT NULL,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'failed')),
   inspector_name TEXT,

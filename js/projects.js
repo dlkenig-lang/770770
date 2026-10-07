@@ -31,7 +31,7 @@ function podStageStatus(pod, stageNumber) {
 // which loads after this file but is always evaluated before any of these
 // functions runs.
 function stageLetter(stageNumber) {
-  const letters = (typeof STAGE_LETTERS !== 'undefined') ? STAGE_LETTERS : ['A', 'B', 'C', 'D', 'E', 'F'];
+  const letters = (typeof STAGE_LETTERS !== 'undefined') ? STAGE_LETTERS : ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
   return letters[stageNumber - 1] || stageNumber;
 }
 
@@ -549,7 +549,7 @@ function renderTargetSummary(allPods, targetTypes, isPanel) {
   });
 }
 
-function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6, stageFilter = '') {
+function renderPodCard(pod, groups = [], isPanel = false, stageCount = qcStageSet('pod').length, stageFilter = '') {
   const stages = pod.qc_stages || [];
   const completedStages = stages.filter(s => s.status === 'completed').length;
   const pct = Math.round(completedStages / stageCount * 100);
@@ -608,7 +608,7 @@ function renderPodCard(pod, groups = [], isPanel = false, stageCount = 6, stageF
       </div>
       <div class="card-progress-section">
         <div class="card-progress-header">
-          <span class="card-progress-label">${t('proj.stagesCount', { done: completedStages })}</span>
+          <span class="card-progress-label">${t('proj.stagesCount', { done: completedStages, total: stageCount })}</span>
           <span class="card-progress-pct ${pct===100?'pct-done':''}">${pct}%</span>
         </div>
         <div class="progress-bar-outer progress-bar-lg">
@@ -1234,7 +1234,7 @@ async function setupPodFilters(projectId) {
     <option value="L">${t('direction.L')}</option>
   `;
 
-  // Stage list follows the product type: 6 stages (A–F) for sanitary pods,
+  // Stage list follows the product type: 7 stages (A–G) for sanitary pods,
   // 5 (A–E) for medical panels. Rebuilding the options also clears any stale
   // selection, so switching projects can't leave a stage filter armed.
   if (stageSel) {

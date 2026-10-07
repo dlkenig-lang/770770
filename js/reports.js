@@ -952,7 +952,7 @@ async function loadReportsView() {
     ).sort((a, b) => getSerial(a.pod_code) - getSerial(b.pod_code));
   }
 
-  // The stage list depends on the product type in scope: 6 stages (A-F) for
+  // The stage list depends on the product type in scope: 7 stages (A-G) for
   // sanitary pods, 5 (A-E) for medical panels. With one project selected the
   // type is known and stage names are shown; across a mixed selection only the
   // letters are, since the same number means a different stage in each set.

@@ -1,5 +1,5 @@
 // =============================================
-// QC Stage Definitions (6 Control Groups)
+// QC Stage Definitions (7 Control Groups, A–G)
 // Each item carries Hebrew (label/instruction/unit) and English
 // (labelEn/instructionEn/unitEn) text. Use the qc* helpers below to read the
 // value for the active language.
@@ -93,6 +93,27 @@ const QC_STAGES = [
       { key: 'mirror', label: 'מראה', labelEn: 'Mirror', instruction: null, instructionEn: null },
       { key: 'sink_siphon', label: 'סיפון כיור', labelEn: 'Sink siphon (P-trap)', instruction: null, instructionEn: null },
       { key: 'ac_siphon', label: 'סיפון מזגן', labelEn: 'AC condensate siphon', instruction: null, instructionEn: null },
+    ]
+  },
+  {
+    // Stage G — the last check before the pod is wrapped for shipping.
+    // Order follows the work on the floor: clean, photograph the finished
+    // interior, then protect the fixtures and close the door; the exterior
+    // checks (studs, lifting bolts) come before the outer walls are closed.
+    number: 7,
+    name: 'הכנות סופיות וסגירה לפני עיטוף',
+    nameEn: 'Final Preparations & Closing Before Wrapping',
+    items: [
+      { key: 'final_cleaning', label: 'ניקיון', labelEn: 'Cleaning', instruction: 'רצפה, קירות וכל אביזרי הקצה', instructionEn: 'Floor, walls and all end fixtures' },
+      { key: 'interior_photo', label: 'צילום פנים הפוד', labelEn: 'Pod interior photo', instruction: 'אחרי הניקיון ולפני העיטוף. חובה לצרף תמונה לפני חתימת השלב', instructionEn: 'After cleaning and before wrapping. A photo is required before the stage can be signed', requiresImage: true },
+      { key: 'fixtures_wrap', label: 'עיטוף אביזרים', labelEn: 'Fixture wrapping', instruction: 'מזלף, ראש גשם, גוף תאורה, ברז, לחצן אסלה, אינטרפוץ ואסלה', instructionEn: 'Hand shower, rain shower head, light fixture, faucet, flush button, diverter valve and toilet' },
+      { key: 'fixtures_tape', label: 'הדבקת הגנה', labelEn: 'Protective taping', instruction: 'מראה, דלתות ארון, שקע, שסתום כיור, תעלת ניקוז ואסלה', instructionEn: 'Mirror, cabinet doors, outlet, sink valve, drainage channel and toilet' },
+      { key: 'door_osb', label: 'סגירת הדלת בלוח OSB', labelEn: 'Door closed with OSB board', instruction: null, instructionEn: null },
+      { key: 'studs_screws', label: 'בדיקת ניצבים', labelEn: 'Stud check', instruction: 'בורג לכל ניצב', instructionEn: 'One screw per stud' },
+      { key: 'lifting_bolts_final', label: 'תקינות ברגי הרמה', labelEn: 'Lifting bolts condition', instruction: null, instructionEn: null },
+      { key: 'ext_insulation_gypsum', label: 'בידוד וגבס בקירות חוץ', labelEn: 'Exterior-wall insulation and gypsum', instruction: 'לפי תוכנית', instructionEn: 'Per drawing' },
+      { key: 'bottom_tracks_vacuum', label: 'שאיבת אבק מהמסלולים התחתונים', labelEn: 'Vacuuming the bottom tracks', instruction: null, instructionEn: null },
+      { key: 'ceiling_vent_closure', label: 'סגירת פתח האוורור מעל התקרה', labelEn: 'Closing the ventilation opening above the ceiling', instruction: null, instructionEn: null },
     ]
   }
 ];

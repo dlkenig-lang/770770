@@ -1,0 +1,8 @@
+# Not served at runtime — keep out of the Vercel deployment.
+# Runtime files (index.html, manifest.json, sw.js, js/, css/, images/) must NOT be listed here.
+supabase/
+*.md
+.github/
+netlify.toml
+package.json
+package-lock.json

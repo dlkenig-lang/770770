@@ -35,14 +35,16 @@ npx serve . -p 3000
 
 ## 🌐 פריסה (Deploy)
 
-### Netlify (מומלץ - חינמי)
-1. לחץ [כאן לפריסה ב-Netlify](https://app.netlify.com/drop)
-2. גרור את כל תיקיית הפרויקט לחלון
-3. הפרויקט יהיה זמין תוך שניות
+האתר סטטי (אין build) ומתארח ב-**Vercel**, שפורס אוטומטית כל push ל-`main`; כל PR מקבל Preview Deployment.
 
-### Vercel
+- **`vercel.json`** — כותרות `Cache-Control: no-cache` ל-HTML/JS/CSS/`sw.js`, כך שכל פריסה מגיעה למשתמשים מיד.
+- **`.vercelignore`** — מוציא מהפריסה קבצים שאינם נטענים בזמן ריצה (`supabase/`, תיעוד, `package*.json`).
+- **מיגרציות מסד הנתונים אינן רצות בפריסה** — יש להריץ אותן ידנית ב-Supabase SQL Editor, לפני המיזוג ל-`main`.
+- Bolt מנותק מהפרויקט — אין לחבר אותו מחדש (ראו `CLAUDE.md`).
+
+הרצה מקומית:
 ```bash
-npx vercel --prod
+npx serve . -p 3000
 ```
 
 ---
